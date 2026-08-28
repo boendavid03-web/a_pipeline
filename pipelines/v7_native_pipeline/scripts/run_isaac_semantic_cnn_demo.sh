@@ -31,6 +31,7 @@ MODEL="${SEMANTIC_CNN_MODEL:-$PROJECT_ROOT/runs/20260808_gazebo_play/training/se
 MODEL_CODE="${SEMANTIC_CNN_MODEL_CODE:-$(dirname "$MODEL")/model_code_scripts}"
 MAP_YAML="${ISAAC_DEMO_MAP_YAML:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/map.yaml}"
 SEMANTIC_LABEL="${ISAAC_DEMO_SEMANTIC_LABEL:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/label.png}"
+RVIZ_ENABLED="${ISAAC_DEMO_RVIZ:-false}"
 
 for required in "$ISAAC_LAUNCHER" "$MODEL" "$MODEL_CODE/model.py" "$MAP_YAML" "$SEMANTIC_LABEL"; do
     if [[ ! -e "$required" ]]; then
@@ -105,7 +106,7 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     start_bringup:=false \
     start_aux_map:=false \
     gui:=false \
-    start_rviz:=false \
+    start_rviz:="$RVIZ_ENABLED" \
     enable_goal_picker:=true \
     auto_set_initial_goal:=false \
     semantic_cnn_model:="$MODEL" \
