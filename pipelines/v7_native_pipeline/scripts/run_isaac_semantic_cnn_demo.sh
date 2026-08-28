@@ -129,7 +129,7 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     front_stop_distance:="${SEMANTIC_CNN_FRONT_STOP_DISTANCE:-0.50}" \
     goal_tolerance:="${SEMANTIC_CNN_GOAL_TOLERANCE:-0.35}" \
     lookahead:=1.0 \
-    inflate_radius:=0.4 \
+    inflate_radius:="${ISAAC_DEMO_INFLATE_RADIUS:-0.45}" \
     visualize:=false \
     publish_debug_images:=false \
     record_trace:=true \
