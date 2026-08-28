@@ -41,7 +41,14 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, SetLaunchConfiguration, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    IncludeLaunchDescription,
+    SetLaunchConfiguration,
+    Shutdown,
+    TimerAction,
+)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -131,6 +138,7 @@ def generate_launch_description():
         DeclareLaunchArgument("max_angular", default_value="1.5"),
         DeclareLaunchArgument("subgoal_timeout", default_value="0.3"),
         DeclareLaunchArgument("scan_timeout", default_value="0.5"),
+        DeclareLaunchArgument("odom_timeout", default_value="0.3"),
         DeclareLaunchArgument("goal_tolerance", default_value="0.35"),
         DeclareLaunchArgument("front_stop_distance", default_value="0.5"),
         DeclareLaunchArgument("stop_on_empty_front", default_value="true"),
@@ -311,6 +319,7 @@ def generate_launch_description():
         TimerAction(period=7.0, actions=[
             Node(
                 package="semantic_nav_gazebo", executable="semantic_start_goal_path_node.py", name="semantic_start_goal_path", output="screen",
+                on_exit=[Shutdown(reason="SemanticCNN start/goal path node exited")],
                 parameters=[{"use_sim_time": ParameterValue(LaunchConfiguration("use_sim_time"), value_type=bool),
                              "map_yaml": LaunchConfiguration("map_yaml"),
                              "goal_x": ParameterValue(LaunchConfiguration("goal_x"), value_type=float),
@@ -322,6 +331,7 @@ def generate_launch_description():
             Node(
                 package="semantic_nav_gazebo", executable="semantic_cnn_fixed_dual_inference_node.py",
                 name="semantic_cnn_fixed_dual_inference", output="screen", prefix=[train_python],
+                on_exit=[Shutdown(reason="SemanticCNN inference node exited")],
                 parameters=[{"use_sim_time": ParameterValue(LaunchConfiguration("use_sim_time"), value_type=bool),
                              "map_yaml": LaunchConfiguration("map_yaml"), "semantic_label": LaunchConfiguration("semantic_label"),
                              "model": LaunchConfiguration("semantic_cnn_model"), "model_code": LaunchConfiguration("semantic_cnn_model_code"),
@@ -338,6 +348,7 @@ def generate_launch_description():
                              "max_angular": ParameterValue(LaunchConfiguration("max_angular"), value_type=float),
                              "subgoal_timeout": ParameterValue(LaunchConfiguration("subgoal_timeout"), value_type=float),
                              "scan_timeout": ParameterValue(LaunchConfiguration("scan_timeout"), value_type=float),
+                             "odom_timeout": ParameterValue(LaunchConfiguration("odom_timeout"), value_type=float),
                              "goal_tolerance": ParameterValue(LaunchConfiguration("goal_tolerance"), value_type=float),
                              "front_stop_distance": ParameterValue(LaunchConfiguration("front_stop_distance"), value_type=float),
                              "stop_on_empty_front": ParameterValue(LaunchConfiguration("stop_on_empty_front"), value_type=bool),

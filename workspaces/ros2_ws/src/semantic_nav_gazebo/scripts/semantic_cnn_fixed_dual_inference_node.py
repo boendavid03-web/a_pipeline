@@ -262,6 +262,7 @@ class FixedDualSemanticCnnInference(Node):
         self.declare_parameter("max_angular", 1.0)
         self.declare_parameter("subgoal_timeout", 0.3)
         self.declare_parameter("scan_timeout", 0.5)
+        self.declare_parameter("odom_timeout", 0.3)
         self.declare_parameter("odom_jump_reset_distance", 1.0)
         self.declare_parameter("odom_jump_reset_yaw", 1.0)
         self.declare_parameter("command_timeout", 0.5)
@@ -299,6 +300,7 @@ class FixedDualSemanticCnnInference(Node):
         for parameter_name in (
             "subgoal_timeout",
             "scan_timeout",
+            "odom_timeout",
             "odom_jump_reset_distance",
             "odom_jump_reset_yaw",
             "command_timeout",
@@ -316,6 +318,7 @@ class FixedDualSemanticCnnInference(Node):
         self.label_img = label_img[:, :, 0] if label_img.ndim == 3 else label_img
         self.label_img = self.label_img.astype(np.int64)
         self.pose = None
+        self.pose_stamp_ns = None
         self.subgoal = None
         self.subgoal_stamp_ns = None
         self.subgoal_history = deque(maxlen=100)
@@ -450,6 +453,7 @@ class FixedDualSemanticCnnInference(Node):
         )
         if not np.isfinite(pose).all():
             self.pose = None
+            self.pose_stamp_ns = None
             self.clear_subgoal_state()
             self.clear_temporal_history()
             self.publish_stop()
@@ -475,6 +479,7 @@ class FixedDualSemanticCnnInference(Node):
             self.clear_temporal_history()
             self.publish_stop()
         self.pose = pose
+        self.pose_stamp_ns = stamp_to_nanoseconds(msg.header.stamp)
 
     def clear_temporal_history(self) -> None:
         self.scan_history.clear()
@@ -489,6 +494,7 @@ class FixedDualSemanticCnnInference(Node):
 
     def reset_runtime_inputs(self) -> None:
         self.pose = None
+        self.pose_stamp_ns = None
         self.clear_subgoal_state()
         self.final_goal = None
         self.clear_temporal_history()
@@ -903,7 +909,19 @@ class FixedDualSemanticCnnInference(Node):
             scan_01_stamp_ns,
             float(self.get_parameter("subgoal_timeout").value),
         )
-        if self.pose is None or causal_subgoal_sample is None:
+        if self.pose is None or not time_is_fresh(
+            scan_01_stamp_ns,
+            self.pose_stamp_ns,
+            float(self.get_parameter("odom_timeout").value),
+        ):
+            self.clear_temporal_history()
+            self.publish_stop("stale_odom", input_stamp=scan_01.header.stamp)
+            self.get_logger().warning(
+                "odom is missing, stale, or newer than the synchronized scan",
+                throttle_duration_sec=2.0,
+            )
+            return
+        if causal_subgoal_sample is None:
             self.clear_temporal_history()
             self.publish_stop()
             return

@@ -91,6 +91,7 @@ install(
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
   ament_add_pytest_test(
     test_scenario_pedestrian_time
     test/test_scenario_pedestrian_time.py
@@ -115,6 +116,22 @@ if(BUILD_TESTING)
     test_drl_vo_control_contract
     test/test_drl_vo_control_contract.py
   )
+  set(semantic_cnn_test_site_packages
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../..//.venvs/train/lib/python3.10/site-packages"
+  )
+  if(EXISTS "${semantic_cnn_test_site_packages}")
+    ament_add_pytest_test(
+      test_semantic_cnn_fixed_dual_helpers
+      test/test_semantic_cnn_fixed_dual_helpers.py
+      PYTHON_EXECUTABLE "${Python3_EXECUTABLE}"
+      APPEND_ENV "PYTHONPATH=${semantic_cnn_test_site_packages}"
+    )
+  else()
+    message(STATUS
+      "Skipping test_semantic_cnn_fixed_dual_helpers: "
+      "project .venvs/train site-packages are not available"
+    )
+  endif()
 endif()
 
 ament_package()

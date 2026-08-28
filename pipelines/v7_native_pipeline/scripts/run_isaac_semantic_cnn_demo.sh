@@ -14,6 +14,18 @@ export ROS_DOMAIN_ID
 export ISAAC_ROS_DOMAIN_ID="${ROS_DOMAIN_ID}"
 export ROS_LOCALHOST_ONLY="${ROS_LOCALHOST_ONLY:-1}"
 export RMW_IMPLEMENTATION="${RMW_IMPLEMENTATION:-rmw_fastrtps_cpp}"
+export ISAAC_SCENE=custom
+export ISAAC_CUSTOM_SCENE_USD="$PROJECT_ROOT/isaac_sim/scenes/a_pipeline_eng_lobby.usda"
+export ISAAC_ENABLE_PEOPLE=1
+export ISAAC_ROBOT_PHYSICS="${ISAAC_ROBOT_PHYSICS:-1}"
+export ISAAC_ROBOT_COLLISION_PROTECTION="${ISAAC_ROBOT_COLLISION_PROTECTION:-1}"
+export ISAAC_PEDESTRIAN_COUNT="${ISAAC_PEDESTRIAN_COUNT:-19}"
+export ISAAC_PEDESTRIAN_SEED="${ISAAC_PEDESTRIAN_SEED:-7}"
+export ISAAC_PEDESTRIAN_SPEED="${ISAAC_PEDESTRIAN_SPEED:-1.0}"
+export ISAAC_PEDESTRIAN_AVOIDANCE_MODE="${ISAAC_PEDESTRIAN_AVOIDANCE_MODE:-gentle}"
+export ISAAC_LIDAR_MODE="${ISAAC_LIDAR_MODE:-physx}"
+export ISAAC_LIDAR_RATE_HZ="${ISAAC_LIDAR_RATE_HZ:-15}"
+export ISAAC_LIDAR_SAMPLE_COUNT="${ISAAC_LIDAR_SAMPLE_COUNT:-2000}"
 
 MODEL="${SEMANTIC_CNN_MODEL:-$PROJECT_ROOT/runs/20260808_gazebo_play/training/semantic_cnn_formal_auto_teacher/20260828_000241_semantic_cnn_native_cmd_51epoch/semantic_cnn_native_cmd_best_dev.pth}"
 MODEL_CODE="${SEMANTIC_CNN_MODEL_CODE:-$(dirname "$MODEL")/model_code_scripts}"
@@ -34,6 +46,10 @@ source /opt/ros/humble/setup.bash
 source "$ROS_WS/install/setup.bash"
 set -u
 export ROS_DOMAIN_ID ISAAC_ROS_DOMAIN_ID ROS_LOCALHOST_ONLY RMW_IMPLEMENTATION
+
+# Avoid using a stale ROS 2 graph cache from an earlier Isaac run during the
+# readiness check below.
+ros2 daemon stop >/dev/null 2>&1 || true
 
 run_tag="$(date +%Y%m%d_%H%M%S)"
 output_root="$PROJECT_ROOT/runs/isaac_custom_semantic_cnn_demo/$run_tag"
@@ -102,13 +118,17 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     actuation_decision_topic:=/semantic_cnn/actuation_decision \
     simulator_actuation_topic:=/isaac/actuation_state \
     inference_metrics_topic:=/navigation_evaluation/inference_metrics \
-    max_linear:="${SEMANTIC_CNN_MAX_LINEAR:-0.5}" \
-    max_angular:="${SEMANTIC_CNN_MAX_ANGULAR:-1.2}" \
+    max_linear:="${SEMANTIC_CNN_MAX_LINEAR:-0.99}" \
+    max_angular:="${SEMANTIC_CNN_MAX_ANGULAR:-1.99}" \
     lidar_range_max:="${SEMANTIC_CNN_LIDAR_RANGE_MAX:-50.0}" \
     pool_range_max:="${SEMANTIC_CNN_POOL_RANGE_MAX:-8.0}" \
     scan_timeout:="${SEMANTIC_CNN_SCAN_TIMEOUT:-0.75}" \
     subgoal_timeout:="${SEMANTIC_CNN_SUBGOAL_TIMEOUT:-0.50}" \
+    odom_timeout:="${SEMANTIC_CNN_ODOM_TIMEOUT:-0.30}" \
     front_stop_distance:="${SEMANTIC_CNN_FRONT_STOP_DISTANCE:-0.50}" \
+    goal_tolerance:="${SEMANTIC_CNN_GOAL_TOLERANCE:-0.35}" \
+    lookahead:=1.0 \
+    inflate_radius:=0.4 \
     visualize:=false \
     publish_debug_images:=false \
     record_trace:=true \
@@ -119,8 +139,8 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     evaluation_multi_episode:=true \
     experiment_scene_id:="isaac_custom_semantic_cnn_${run_tag}" \
     scene_file:="$PROJECT_ROOT/isaac_sim/scenes/a_pipeline_eng_lobby.usda" \
-    pedestrian_count:="${ISAAC_PEDESTRIAN_COUNT:-19}" \
-    pedestrian_seed:="${ISAAC_PEDESTRIAN_SEED:-7}"
+    pedestrian_count:="$ISAAC_PEDESTRIAN_COUNT" \
+    pedestrian_seed:="$ISAAC_PEDESTRIAN_SEED"
 status=$?
 set -e
 exit "$status"
