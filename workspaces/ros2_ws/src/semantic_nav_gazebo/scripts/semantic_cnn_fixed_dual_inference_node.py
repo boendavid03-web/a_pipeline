@@ -909,15 +909,24 @@ class FixedDualSemanticCnnInference(Node):
             scan_01_stamp_ns,
             float(self.get_parameter("subgoal_timeout").value),
         )
-        if self.pose is None or not time_is_fresh(
-            scan_01_stamp_ns,
-            self.pose_stamp_ns,
-            float(self.get_parameter("odom_timeout").value),
+        odom_timeout_ns = int(
+            float(self.get_parameter("odom_timeout").value)
+            * NANOSECONDS_PER_SECOND
+        )
+        odom_delta_ns = (
+            None
+            if self.pose_stamp_ns is None
+            else abs(int(scan_01_stamp_ns) - int(self.pose_stamp_ns))
+        )
+        if (
+            self.pose is None
+            or odom_delta_ns is None
+            or odom_delta_ns > odom_timeout_ns
         ):
             self.clear_temporal_history()
             self.publish_stop("stale_odom", input_stamp=scan_01.header.stamp)
             self.get_logger().warning(
-                "odom is missing, stale, or newer than the synchronized scan",
+                "odom is missing or stale relative to the synchronized scan",
                 throttle_duration_sec=2.0,
             )
             return
@@ -948,14 +957,18 @@ class FixedDualSemanticCnnInference(Node):
         self.last_scan_time = self.get_clock().now()
         self.scan_timeout = False
         front = ranges[valid & (np.abs(angles) <= 0.35)]
+        # An empty *front sector* is valid in an open corridor (all returns can
+        # be to the sides or behind the robot).  The fail-safe must therefore
+        # distinguish that case from a completely empty dual scan; otherwise
+        # the controller can never start from an open-space pose.
         if (
-            front.size == 0
+            not valid.any()
             and bool(self.get_parameter("stop_on_empty_front").value)
         ):
             self.clear_temporal_history()
             self.publish_stop()
             self.get_logger().warning(
-                "front scan has no valid returns; fail-safe stop",
+                "dual scan has no valid returns; fail-safe stop",
                 throttle_duration_sec=2.0,
             )
             return

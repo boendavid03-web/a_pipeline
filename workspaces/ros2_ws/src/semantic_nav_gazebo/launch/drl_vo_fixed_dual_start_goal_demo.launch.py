@@ -325,6 +325,20 @@ def generate_launch_description():
             DeclareLaunchArgument("goal_y", default_value="16.0"),
             DeclareLaunchArgument("enable_goal_picker", default_value="true"),
             DeclareLaunchArgument(
+                "fixed_test",
+                default_value="false",
+                description=(
+                    "When true, publish the fixed goals file sequentially; "
+                    "manual picker remains the default."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "fixed_goals_file",
+                default_value=str(project_root / "configs" / "evaluation" / "fixed_four_goals.yaml"),
+            ),
+            DeclareLaunchArgument("fixed_test_start_delay_sec", default_value="2.0"),
+            DeclareLaunchArgument("fixed_test_inter_goal_delay_sec", default_value="1.0"),
+            DeclareLaunchArgument(
                 "auto_set_initial_goal",
                 default_value="false",
                 description=(
@@ -702,7 +716,11 @@ def generate_launch_description():
                             value_type=float,
                         ),
                         "follow_accepted_goal": ParameterValue(
-                            LaunchConfiguration("enable_goal_picker"),
+                            PythonExpression([
+                                "'", LaunchConfiguration("enable_goal_picker"),
+                                "' == 'true' or '", LaunchConfiguration("fixed_test"),
+                                "' == 'true'",
+                            ]),
                             value_type=bool,
                         ),
                         "goal_tolerance": ParameterValue(
@@ -1157,9 +1175,11 @@ def generate_launch_description():
                         ],
                     ),
                     Node(
-                        condition=IfCondition(
-                            LaunchConfiguration("enable_goal_picker")
-                        ),
+                        condition=IfCondition(PythonExpression([
+                            "'", LaunchConfiguration("enable_goal_picker"),
+                            "' == 'true' or '", LaunchConfiguration("fixed_test"),
+                            "' == 'true'",
+                        ])),
                         package="semantic_nav_gazebo",
                         executable="demo_goal_arrival_node.py",
                         name="drl_vo_demo_goal_arrival",
@@ -1187,9 +1207,11 @@ def generate_launch_description():
                         ],
                     ),
                     Node(
-                        condition=IfCondition(
-                            LaunchConfiguration("enable_goal_picker")
-                        ),
+                        condition=IfCondition(PythonExpression([
+                            "'", LaunchConfiguration("enable_goal_picker"),
+                            "' == 'true' and '", LaunchConfiguration("fixed_test"),
+                            "' != 'true'",
+                        ])),
                         package="semantic_nav_gazebo",
                         executable="episode_goal_picker.py",
                         name="drl_vo_episode_goal_picker",
@@ -1212,6 +1234,27 @@ def generate_launch_description():
                             }
                         ],
                         env=clean_rviz_environment(),
+                    ),
+                    Node(
+                        condition=IfCondition(LaunchConfiguration("fixed_test")),
+                        package="semantic_nav_gazebo",
+                        executable="fixed_goal_sequence.py",
+                        name="drl_vo_fixed_goal_sequence",
+                        output="screen",
+                        parameters=[
+                            {
+                                "use_sim_time": ParameterValue(
+                                    LaunchConfiguration("use_sim_time"), value_type=bool
+                                ),
+                                "goals_file": LaunchConfiguration("fixed_goals_file"),
+                                "start_delay_sec": ParameterValue(
+                                    LaunchConfiguration("fixed_test_start_delay_sec"), value_type=float
+                                ),
+                                "inter_goal_delay_sec": ParameterValue(
+                                    LaunchConfiguration("fixed_test_inter_goal_delay_sec"), value_type=float
+                                ),
+                            }
+                        ],
                     ),
                 ],
             ),

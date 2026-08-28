@@ -32,6 +32,13 @@ MODEL_CODE="${SEMANTIC_CNN_MODEL_CODE:-$(dirname "$MODEL")/model_code_scripts}"
 MAP_YAML="${ISAAC_DEMO_MAP_YAML:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/map.yaml}"
 SEMANTIC_LABEL="${ISAAC_DEMO_SEMANTIC_LABEL:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/label.png}"
 RVIZ_ENABLED="${ISAAC_DEMO_RVIZ:-false}"
+FIXED_TEST="${SEMANTIC_CNN_FIXED_TEST:-false}"
+FIXED_GOALS_FILE="${SEMANTIC_CNN_FIXED_GOALS_FILE:-$PROJECT_ROOT/configs/evaluation/fixed_four_goals.yaml}"
+case "${FIXED_TEST,,}" in
+    1|true|yes|on) FIXED_TEST=true; GOAL_PICKER_ENABLED=false ;;
+    0|false|no|off) FIXED_TEST=false; GOAL_PICKER_ENABLED=true ;;
+    *) echo "ERROR: SEMANTIC_CNN_FIXED_TEST must be a boolean value." >&2; exit 2 ;;
+esac
 
 for required in "$ISAAC_LAUNCHER" "$MODEL" "$MODEL_CODE/model.py" "$MAP_YAML" "$SEMANTIC_LABEL"; do
     if [[ ! -e "$required" ]]; then
@@ -39,6 +46,10 @@ for required in "$ISAAC_LAUNCHER" "$MODEL" "$MODEL_CODE/model.py" "$MAP_YAML" "$
         exit 1
     fi
 done
+if [[ "$FIXED_TEST" == "true" && ! -f "$FIXED_GOALS_FILE" ]]; then
+    echo "ERROR: fixed goals file is missing: $FIXED_GOALS_FILE" >&2
+    exit 1
+fi
 
 set +u
 # shellcheck disable=SC1091
@@ -107,7 +118,9 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     start_aux_map:=false \
     gui:=false \
     start_rviz:="$RVIZ_ENABLED" \
-    enable_goal_picker:=true \
+    enable_goal_picker:="$GOAL_PICKER_ENABLED" \
+    fixed_test:="$FIXED_TEST" \
+    fixed_goals_file:="$FIXED_GOALS_FILE" \
     auto_set_initial_goal:=false \
     semantic_cnn_model:="$MODEL" \
     semantic_cnn_model_code:="$MODEL_CODE" \
@@ -132,7 +145,7 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     inflate_radius:="${ISAAC_DEMO_INFLATE_RADIUS:-0.45}" \
     visualize:=false \
     publish_debug_images:=false \
-    record_trace:=true \
+    record_trace:="${SEMANTIC_CNN_RECORD_TRACE:-true}" \
     trace_path:="$trace_path" \
     evaluate_episode:=true \
     evaluation_output_dir:="$evaluation_dir" \

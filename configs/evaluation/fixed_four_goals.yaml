@@ -1,0 +1,25 @@
+schema: fixed_navigation_goal_suite/v1
+name: fixed_four_goals_v1
+frame_id: map
+
+# The first goal starts from the common simulator start pose. Later goals are
+# intentionally sequential: the robot remains where it reached the previous
+# goal. This matches the existing multi-episode evaluator semantics.
+start:
+  x: 2.0
+  y: 2.0
+  yaw: 0.0
+
+goals:
+  - id: goal_01
+    x: 23.290199279785156
+    y: 10.725000381469727
+  - id: goal_02
+    x: 17.140199661254883
+    y: 19.625
+  - id: goal_03
+    x: 13.440199851989746
+    y: 7.324999809265137
+  - id: goal_04
+    x: 7.390200138092041
+    y: 17.075000762939453

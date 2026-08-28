@@ -67,6 +67,7 @@ install(
     scripts/navigation_evaluation_core.py
     scripts/drl_vo_online_ppo_training_node.py
     scripts/episode_goal_picker.py
+    scripts/fixed_goal_sequence.py
     scripts/isaac_pedestrian_ground_truth_adapter.py
     scripts/scenario_pedestrian_controller.py
     scripts/odom_path_node.py
@@ -115,6 +116,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_drl_vo_control_contract
     test/test_drl_vo_control_contract.py
+  )
+  ament_add_pytest_test(
+    test_fixed_goal_sequence_config
+    test/test_fixed_goal_sequence_config.py
   )
   set(semantic_cnn_test_site_packages
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../..//.venvs/train/lib/python3.10/site-packages"
