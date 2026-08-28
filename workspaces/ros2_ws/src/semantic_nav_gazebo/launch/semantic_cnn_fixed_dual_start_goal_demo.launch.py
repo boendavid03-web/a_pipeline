@@ -118,6 +118,9 @@ def generate_launch_description():
         DeclareLaunchArgument("lidar_range_max", default_value="8.0"),
         DeclareLaunchArgument("pool_range_max", default_value="8.0"),
         DeclareLaunchArgument("cmd_vel_topic", default_value="/cmd_vel"),
+        DeclareLaunchArgument(
+            "actuation_decision_topic", default_value="/semantic_cnn/actuation_decision"
+        ),
         DeclareLaunchArgument("cmd_vel_angular_z_scale", default_value="1.5"),
         DeclareLaunchArgument("start_rviz", default_value="true"),
         DeclareLaunchArgument("rviz_config", default_value=default_rviz_config),
@@ -147,6 +150,12 @@ def generate_launch_description():
             "inference_metrics_topic",
             default_value="/navigation_evaluation/inference_metrics",
         ),
+        DeclareLaunchArgument(
+            "simulator_actuation_topic", default_value="/isaac/actuation_state"
+        ),
+        DeclareLaunchArgument("alignment_rate_hz", default_value="15.0"),
+        DeclareLaunchArgument("alignment_freshness_sec", default_value="0.20"),
+        DeclareLaunchArgument("alignment_max_delay_sec", default_value="0.50"),
         DeclareLaunchArgument("experiment_scene_id", default_value="semantic_cnn_manual_demo"),
         DeclareLaunchArgument("robot_radius", default_value="0.34"),
         DeclareLaunchArgument("pedestrian_radius", default_value="0.125"),
@@ -242,6 +251,21 @@ def generate_launch_description():
                     LaunchConfiguration("evaluation_multi_episode"), value_type=bool
                 ),
                 "inference_metrics_topic": LaunchConfiguration("inference_metrics_topic"),
+                "actuation_decision_topic": LaunchConfiguration(
+                    "actuation_decision_topic"
+                ),
+                "simulator_actuation_topic": LaunchConfiguration(
+                    "simulator_actuation_topic"
+                ),
+                "alignment_rate_hz": ParameterValue(
+                    LaunchConfiguration("alignment_rate_hz"), value_type=float
+                ),
+                "alignment_freshness_sec": ParameterValue(
+                    LaunchConfiguration("alignment_freshness_sec"), value_type=float
+                ),
+                "alignment_max_delay_sec": ParameterValue(
+                    LaunchConfiguration("alignment_max_delay_sec"), value_type=float
+                ),
                 "map_yaml": LaunchConfiguration("map_yaml"),
                 "semantic_label_path": LaunchConfiguration("semantic_label"),
                 "inflate_radius": ParameterValue(
@@ -303,6 +327,9 @@ def generate_launch_description():
                              "model": LaunchConfiguration("semantic_cnn_model"), "model_code": LaunchConfiguration("semantic_cnn_model_code"),
                              "device": LaunchConfiguration("device"),
                              "inference_metrics_topic": LaunchConfiguration("inference_metrics_topic"),
+                             "actuation_decision_topic": LaunchConfiguration(
+                                 "actuation_decision_topic"
+                             ),
                              "pool_mode": LaunchConfiguration("semantic_cnn_pool_mode"),
                              "range_max": ParameterValue(LaunchConfiguration("lidar_range_max"), value_type=float),
                              "pool_range_max": ParameterValue(LaunchConfiguration("pool_range_max"), value_type=float),

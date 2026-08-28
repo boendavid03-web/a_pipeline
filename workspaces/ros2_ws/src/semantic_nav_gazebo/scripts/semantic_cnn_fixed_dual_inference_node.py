@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # 【具体数据接口】
 # 代码中检测到的命令行参数：未检测到 --参数；可能通过 ROS 2 参数、环境变量或固定配置输入。
-# 代码中检测到的 ROS 2 话题/路径字符串：/cmd_vel, /odom, /scan_01, /scan_02, /semantic_cnn/debug/cmd_vel, /semantic_cnn/debug/markers, /semantic_cnn/debug/raw_cmd, /semantic_cnn/debug/scan_map, /semantic_cnn/debug/semantic_map, /semantic_cnn/final_goal, /semantic_cnn/local_subgoal, /semantic_cnn/raw_model_cmd
-# 检测到的消息类型：ColorRGBA; Image as ImageMsg; LaserScan; Marker, MarkerArray; Odometry; Point, PointStamped, Twist
+# 代码中检测到的 ROS 2 话题/路径字符串：/cmd_vel, /odom, /scan_01, /scan_02, /semantic_cnn/actuation_decision, /semantic_cnn/debug/cmd_vel, /semantic_cnn/debug/markers, /semantic_cnn/debug/raw_cmd, /semantic_cnn/debug/scan_map, /semantic_cnn/debug/semantic_map, /semantic_cnn/final_goal, /semantic_cnn/local_subgoal, /semantic_cnn/raw_model_cmd
+# 检测到的消息类型：ActuationDecision; ColorRGBA; Image as ImageMsg; LaserScan; Marker, MarkerArray; Odometry; Point, PointStamped, Twist
 # 检测到的文件格式：PNG, YAML
 # 可能使用的关键环境变量：CUBE_LIST, GOAL_MU, GOAL_STD, IGNORE_LABEL, IMG_SIZE, NANOSECONDS_PER_SECOND, NAVIGATION_PROJECT_ROOT, POINTS, POOL_ANGLE_MAX, POOL_ANGLE_MIN, POOL_MODES, SCAN_MU, SCAN_STD, SEQ_LEN, SPHERE, TEXT_VIEW_FACING
 # 数据说明：以上内容从代码正文中的参数、topic、消息导入、文件扩展名和环境变量提取；实际字段、shape、单位和发布方向仍以本脚本正文为准。
@@ -58,7 +58,7 @@ import torch
 import yaml
 from geometry_msgs.msg import Point, PointStamped, Twist
 from nav_msgs.msg import Odometry
-from navigation_evaluation_msgs.msg import InferenceMetrics
+from navigation_evaluation_msgs.msg import ActuationDecision, InferenceMetrics
 from PIL import Image
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -238,6 +238,9 @@ class FixedDualSemanticCnnInference(Node):
         self.declare_parameter("local_subgoal_topic", "/semantic_cnn/local_subgoal")
         self.declare_parameter("final_goal_topic", "/semantic_cnn/final_goal")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel")
+        self.declare_parameter(
+            "actuation_decision_topic", "/semantic_cnn/actuation_decision"
+        )
         self.declare_parameter("base_frame", "base_link")
         self.declare_parameter("sync_slop", 0.05)
         self.declare_parameter("tf_timeout", 0.05)
@@ -349,6 +352,12 @@ class FixedDualSemanticCnnInference(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.cmd_pub = self.create_publisher(Twist, str(self.get_parameter("cmd_vel_topic").value), 10)
         self.raw_pub = self.create_publisher(Twist, "/semantic_cnn/raw_model_cmd", 10)
+        self.actuation_decision_pub = self.create_publisher(
+            ActuationDecision,
+            str(self.get_parameter("actuation_decision_topic").value),
+            30,
+        )
+        self.actuation_decision_sequence_id = 0
         self.debug_raw_pub = self.create_publisher(Twist, "/semantic_cnn/debug/raw_cmd", 10)
         self.debug_cmd_pub = self.create_publisher(Twist, "/semantic_cnn/debug/cmd_vel", 10)
         self.inference_metrics_pub = self.create_publisher(
@@ -540,10 +549,60 @@ class FixedDualSemanticCnnInference(Node):
             self.publish_stop()
         self.final_goal = final_goal
 
-    def publish_stop(self) -> None:
+    def publish_actuation_decision(
+        self,
+        raw_action: np.ndarray | None,
+        command: np.ndarray | None,
+        *,
+        input_stamp=None,
+        reasons: tuple[str, ...] = (),
+        front_min: float | None = None,
+    ) -> None:
+        """Publish model/final command telemetry for model-agnostic evaluation."""
+        message = ActuationDecision()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = str(self.get_parameter("base_frame").value)
+        message.input_stamp = (
+            input_stamp if input_stamp is not None else message.header.stamp
+        )
+        self.actuation_decision_sequence_id += 1
+        message.decision_sequence_id = self.actuation_decision_sequence_id
+        message.inference_sequence_id = self.inference_sequence_id
+        message.has_raw_action = raw_action is not None
+        if raw_action is not None:
+            raw = np.asarray(raw_action, dtype=np.float64).reshape(-1)
+            if raw.shape != (2,) or not np.isfinite(raw).all():
+                raise ValueError("raw SemanticCNN action must contain two finite values")
+            message.raw_physical_action.linear.x = float(raw[0])
+            message.raw_physical_action.angular.z = float(raw[1])
+        final = (
+            np.zeros(2, dtype=np.float64)
+            if command is None
+            else np.asarray(command, dtype=np.float64).reshape(-1)
+        )
+        if final.shape != (2,) or not np.isfinite(final).all():
+            raise ValueError("final SemanticCNN command must contain two finite values")
+        message.final_command.linear.x = float(final[0])
+        message.final_command.angular.z = float(final[1])
+        message.gated = bool(reasons)
+        message.gate_reasons = list(reasons)
+        message.has_front_min_range = front_min is not None and math.isfinite(front_min)
+        message.front_min_range_m = float(front_min) if message.has_front_min_range else 0.0
+        self.actuation_decision_pub.publish(message)
+
+    def publish_stop(self, reason: str = "stop", input_stamp=None) -> None:
         cmd = Twist()
         self.last_cmd_linear = 0.0
         self.last_cmd_angular = 0.0
+        try:
+            self.publish_actuation_decision(
+                None, None, input_stamp=input_stamp, reasons=(reason,)
+            )
+        except Exception as exc:
+            self.get_logger().warning(
+                f"SemanticCNN actuation telemetry failed: {exc}",
+                throttle_duration_sec=2.0,
+            )
         self.cmd_pub.publish(cmd)
         self.debug_cmd_pub.publish(cmd)
 
@@ -936,9 +995,15 @@ class FixedDualSemanticCnnInference(Node):
         cmd = Twist()
         cmd.linear.x = float(np.clip(prediction[0], -float(self.get_parameter("max_linear").value), float(self.get_parameter("max_linear").value)))
         cmd.angular.z = float(np.clip(prediction[1], -float(self.get_parameter("max_angular").value), float(self.get_parameter("max_angular").value)))
+        gate_reasons = []
+        if not math.isclose(float(prediction[0]), cmd.linear.x, abs_tol=1.0e-6):
+            gate_reasons.append("linear_limit")
+        if not math.isclose(float(prediction[1]), cmd.angular.z, abs_tol=1.0e-6):
+            gate_reasons.append("angular_limit")
         if self.front_min <= float(self.get_parameter("front_stop_distance").value):
             self.front_stop = True
             cmd.linear.x = 0.0
+            gate_reasons.append("front_stop")
             if abs(cmd.angular.z) < float(self.get_parameter("front_stop_angular_deadband").value):
                 direction = 1.0 if float(causal_subgoal[1]) >= 0.0 else -1.0
                 cmd.angular.z = direction * min(
@@ -947,13 +1012,26 @@ class FixedDualSemanticCnnInference(Node):
                 )
         self.last_cmd_linear = cmd.linear.x
         self.last_cmd_angular = cmd.angular.z
+        self.inference_sequence_id += 1
         self.raw_pub.publish(raw_cmd)
         self.debug_raw_pub.publish(raw_cmd)
+        try:
+            self.publish_actuation_decision(
+                prediction,
+                np.asarray([cmd.linear.x, cmd.angular.z], dtype=np.float64),
+                input_stamp=scan_01.header.stamp,
+                reasons=tuple(dict.fromkeys(gate_reasons)),
+                front_min=self.front_min,
+            )
+        except Exception as exc:
+            self.get_logger().warning(
+                f"SemanticCNN actuation telemetry failed: {exc}",
+                throttle_duration_sec=2.0,
+            )
         self.cmd_pub.publish(cmd)
         self.debug_cmd_pub.publish(cmd)
         self.publish_debug_markers()
         postprocessing_finished = time.perf_counter()
-        self.inference_sequence_id += 1
         self.publish_inference_metrics(
             sequence_id=self.inference_sequence_id,
             input_stamp=scan_01.header.stamp,

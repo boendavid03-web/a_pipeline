@@ -53,6 +53,15 @@ SPEC.loader.exec_module(MODULE)
 
 
 class SemanticCnnFixedDualHelperTests(unittest.TestCase):
+    def test_isaac_actuation_contract_is_exposed_without_changing_cmd_vel(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertIn("ActuationDecision", source)
+        self.assertIn('"actuation_decision_topic"', source)
+        self.assertIn('"/semantic_cnn/actuation_decision"', source)
+        self.assertIn("message.final_command.linear.x", source)
+        self.assertIn("message.final_command.angular.z", source)
+        self.assertIn("self.cmd_pub.publish(cmd)", source)
+
     def test_checkpoint_goal_normalization_uses_recorded_vector_contract(self):
         mean, std, source = MODULE.checkpoint_goal_normalization({
             "normalization": {
