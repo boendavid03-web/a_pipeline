@@ -1,0 +1,471 @@
+{
+  "bag": "examples/smoke/test_rosbag",
+  "output_root": "converted_dataset",
+  "session_name": "20260716-085329-semantic-converted",
+  "person_label_mode": "disabled",
+  "person_label_rule": "static neighborhood majority; every unlabeled, non-free, unknown, or out-of-map endpoint -> ignore=-1; Person=4 is disabled",
+  "map_yaml": "semantic_map/map.yaml",
+  "semantic_label": "semantic_map/label.png",
+  "scan_topic": "/scan_merged",
+  "odom_topic": "/odom",
+  "cmd_vel_topic": "/cmd_vel",
+  "cmd_vel_stamped_topic": "/cmd_vel_stamped",
+  "pose_source_requested": "auto",
+  "pose_source_used": "tf-map-scan",
+  "scan_frame_id": "base_link",
+  "base_frame": "base_link",
+  "map_frame": "map",
+  "tf_alignment_status": "safe",
+  "tf_alignment_warnings": [],
+  "used_map_to_scan_tf": true,
+  "used_map_to_base_tf": false,
+  "fallback_to_odom": false,
+  "projection_debug_dir": "converted_dataset/20260716-085329-semantic-converted/projection_debug",
+  "projection_debug_files": [
+    "converted_dataset/20260716-085329-semantic-converted/projection_debug/projection_0000000.png",
+    "converted_dataset/20260716-085329-semantic-converted/projection_debug/projection_0000017.png",
+    "converted_dataset/20260716-085329-semantic-converted/projection_debug/projection_0000034.png"
+  ],
+  "velocity_source_used": "odom_twist",
+  "cmd_velocities_generated": false,
+  "cmd_velocity_dim": 3,
+  "cmd_velocities_source": null,
+  "cmd_vel_alignment_method": "none",
+  "cmd_vel_match_policy": "hold-last",
+  "cmd_vel_time_source": "storage_time",
+  "cmd_vel_alignment_status": "unavailable",
+  "cmd_vel_alignment_warnings": [
+    "no cmd_vel or cmd_vel_stamped messages available"
+  ],
+  "cmd_vel_warnings": [
+    "no cmd_vel or cmd_vel_stamped messages available"
+  ],
+  "cmd_vel_clock_mapping_status": "unavailable",
+  "cmd_vel_clock_mapping_monotonic": true,
+  "cmd_vel_mapped_time_range": {
+    "count": 0,
+    "start_ns": null,
+    "end_ns": null,
+    "start_sec": null,
+    "end_sec": null
+  },
+  "cmd_velocities_stats": {
+    "linear_x": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    },
+    "linear_y": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    },
+    "angular_z": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    }
+  },
+  "cmd_velocities_no_prior_count": 0,
+  "cmd_velocities_hold_last_after_final_count": 0,
+  "cmd_velocities_nonzero_count": 0,
+  "cmd_velocities_angular_z_stats": {
+    "count": 0,
+    "min": null,
+    "mean": null,
+    "max": null,
+    "unique_count": 0,
+    "unique_preview": []
+  },
+  "cmd_vel_stamped_available": false,
+  "cmd_vel_stamped_count": 0,
+  "cmd_vel_time_basis_mismatch": false,
+  "raw_cmd_vel_stats": {
+    "linear_x": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    },
+    "linear_y": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    },
+    "angular_z": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    }
+  },
+  "raw_cmd_vel_stamped_stats": {
+    "linear_x": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    },
+    "linear_y": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    },
+    "angular_z": {
+      "count": 0,
+      "min": null,
+      "mean": null,
+      "max": null,
+      "unique_count": 0,
+      "unique_preview": []
+    }
+  },
+  "raw_odom_twist_stats": {
+    "linear_x": {
+      "count": 207,
+      "min": 0.0,
+      "mean": 0.0,
+      "max": 0.0,
+      "unique_count": 1,
+      "unique_preview": [
+        0.0
+      ]
+    },
+    "angular_z": {
+      "count": 207,
+      "min": 0.0,
+      "mean": 0.0,
+      "max": 0.0,
+      "unique_count": 1,
+      "unique_preview": [
+        0.0
+      ]
+    }
+  },
+  "converted_velocity_stats": {
+    "linear_x": {
+      "count": 35,
+      "min": 0.0,
+      "mean": 0.0,
+      "max": 0.0,
+      "unique_count": 1,
+      "unique_preview": [
+        0.0
+      ]
+    },
+    "angular_z": {
+      "count": 35,
+      "min": 0.0,
+      "mean": 0.0,
+      "max": 0.0,
+      "unique_count": 1,
+      "unique_preview": [
+        0.0
+      ]
+    }
+  },
+  "scan_time_range": {
+    "count": 35,
+    "start_ns": 21000000000,
+    "end_ns": 27800000000,
+    "start_sec": 21.0,
+    "end_sec": 27.8
+  },
+  "odom_time_range": {
+    "count": 207,
+    "start_ns": 20905000000,
+    "end_ns": 27909000000,
+    "start_sec": 20.905,
+    "end_sec": 27.909
+  },
+  "cmd_vel_time_range": {
+    "count": 0,
+    "start_ns": null,
+    "end_ns": null,
+    "start_sec": null,
+    "end_sec": null
+  },
+  "cmd_vel_stamped_time_range": {
+    "count": 0,
+    "start_ns": null,
+    "end_ns": null,
+    "start_sec": null,
+    "end_sec": null
+  },
+  "clock_storage_time_range": {
+    "count": 7044,
+    "start_ns": 1784206410526197604,
+    "end_ns": 1784206446811691759,
+    "start_sec": 1784206410.5261974,
+    "end_sec": 1784206446.8116918
+  },
+  "clock_time_range": {
+    "count": 7044,
+    "start_ns": 20889000000,
+    "end_ns": 27932000000,
+    "start_sec": 20.889,
+    "end_sec": 27.932
+  },
+  "native_lidar": true,
+  "interpolated_to_baseline_1081": false,
+  "ignore_label": -1,
+  "beam_count_min": 360,
+  "beam_count_max": 360,
+  "beam_count_unique": [
+    360
+  ],
+  "beam_count_histogram": {
+    "360": 35
+  },
+  "valid_beam_count_min": 360,
+  "valid_beam_count_max": 360,
+  "valid_beam_fraction": 1.0,
+  "angle_min_min": -3.1415927410125732,
+  "angle_min_max": -3.1415927410125732,
+  "angle_max_min": 3.1415927410125732,
+  "angle_max_max": 3.1415927410125732,
+  "angle_increment_min": 0.017501909285783768,
+  "angle_increment_max": 0.017501909285783768,
+  "train_ratio": 0.7,
+  "dev_ratio": 0.1,
+  "test_ratio": 0.2,
+  "split_seed": 0,
+  "subgoal_lookahead": 20,
+  "samples": 35,
+  "train_samples": 24,
+  "dev_samples": 4,
+  "test_samples": 7,
+  "dataset_index_sessions": [],
+  "map": {
+    "resolution": 0.05,
+    "origin": [
+      -0.11,
+      0.0204,
+      0.0
+    ],
+    "label_shape": [
+      482,
+      632
+    ],
+    "occupancy_image": "semantic_map/occupancy.pgm",
+    "occupancy_shape": [
+      482,
+      632
+    ],
+    "negate": 0,
+    "occupied_thresh": 0.65,
+    "free_thresh": 0.25,
+    "static_label_filter_radius": 2,
+    "static_label_filter_window": 4,
+    "person_label_rule": "no nonzero static label in filtered neighborhood -> ignore=-1"
+  },
+  "label_names": [
+    "_background_",
+    "Chair",
+    "Door",
+    "Elevator",
+    "Person",
+    "Pillar",
+    "Sofa",
+    "Table",
+    "Trash bin",
+    "Wall"
+  ],
+  "label_names_source": "semantic_map/label_names.txt",
+  "topic_types": {
+    "/clock": "rosgraph_msgs/msg/Clock",
+    "/tf": "tf2_msgs/msg/TFMessage",
+    "/cmd_vel_stamped": "geometry_msgs/msg/TwistStamped",
+    "/scan_01": "sensor_msgs/msg/LaserScan",
+    "/odom": "nav_msgs/msg/Odometry",
+    "/scan_02": "sensor_msgs/msg/LaserScan",
+    "/scan_merged": "sensor_msgs/msg/LaserScan",
+    "/tf_static": "tf2_msgs/msg/TFMessage"
+  },
+  "topic_counts": {
+    "/clock": 7044,
+    "/tf_static": 2,
+    "/odom": 207,
+    "/tf": 1975,
+    "/scan_01": 35,
+    "/scan_02": 35,
+    "/scan_merged": 35
+  },
+  "tf_dynamic_edges": [
+    [
+      "map",
+      "odom"
+    ],
+    [
+      "odom",
+      "base_link"
+    ]
+  ],
+  "tf_static_edges": [
+    [
+      "base_link",
+      "mecanum730_xms5_v7_teacher_dual_scan/base_scan_01/lidar_2d_01"
+    ],
+    [
+      "base_link",
+      "mecanum730_xms5_v7_teacher_dual_scan/base_scan_02/lidar_2d_02"
+    ]
+  ],
+  "scan_fusion": {
+    "/scan_01": {
+      "count": 35,
+      "frame_ids": {
+        "mecanum730_xms5_v7_teacher_dual_scan/base_scan_01/lidar_2d_01": 35
+      },
+      "angle_min_min": -3.141590118408203,
+      "angle_min_max": -3.141590118408203,
+      "angle_min_unique": [
+        -3.141590118408203
+      ],
+      "angle_min_unique_truncated": false,
+      "angle_max_min": 3.141590118408203,
+      "angle_max_max": 3.141590118408203,
+      "angle_max_unique": [
+        3.141590118408203
+      ],
+      "angle_max_unique_truncated": false,
+      "angle_increment_min": 0.007863804697990417,
+      "angle_increment_max": 0.007863804697990417,
+      "angle_increment_unique": [
+        0.007863804697990417
+      ],
+      "angle_increment_unique_truncated": false,
+      "beam_count_min": 800,
+      "beam_count_max": 800,
+      "beam_count_unique": [
+        800
+      ],
+      "beam_count_unique_truncated": false,
+      "range_min_min": 0.10000000149011612,
+      "range_min_max": 0.10000000149011612,
+      "range_min_unique": [
+        0.10000000149011612
+      ],
+      "range_min_unique_truncated": false,
+      "range_max_min": 50.0,
+      "range_max_max": 50.0,
+      "range_max_unique": [
+        50.0
+      ],
+      "range_max_unique_truncated": false
+    },
+    "/scan_02": {
+      "count": 35,
+      "frame_ids": {
+        "mecanum730_xms5_v7_teacher_dual_scan/base_scan_02/lidar_2d_02": 35
+      },
+      "angle_min_min": -3.141590118408203,
+      "angle_min_max": -3.141590118408203,
+      "angle_min_unique": [
+        -3.141590118408203
+      ],
+      "angle_min_unique_truncated": false,
+      "angle_max_min": 3.141590118408203,
+      "angle_max_max": 3.141590118408203,
+      "angle_max_unique": [
+        3.141590118408203
+      ],
+      "angle_max_unique_truncated": false,
+      "angle_increment_min": 0.007863804697990417,
+      "angle_increment_max": 0.007863804697990417,
+      "angle_increment_unique": [
+        0.007863804697990417
+      ],
+      "angle_increment_unique_truncated": false,
+      "beam_count_min": 800,
+      "beam_count_max": 800,
+      "beam_count_unique": [
+        800
+      ],
+      "beam_count_unique_truncated": false,
+      "range_min_min": 0.10000000149011612,
+      "range_min_max": 0.10000000149011612,
+      "range_min_unique": [
+        0.10000000149011612
+      ],
+      "range_min_unique_truncated": false,
+      "range_max_min": 50.0,
+      "range_max_max": 50.0,
+      "range_max_unique": [
+        50.0
+      ],
+      "range_max_unique_truncated": false
+    },
+    "/scan_merged": {
+      "count": 35,
+      "frame_ids": {
+        "base_link": 35
+      },
+      "angle_min_min": -3.1415927410125732,
+      "angle_min_max": -3.1415927410125732,
+      "angle_min_unique": [
+        -3.1415927410125732
+      ],
+      "angle_min_unique_truncated": false,
+      "angle_max_min": 3.1415927410125732,
+      "angle_max_max": 3.1415927410125732,
+      "angle_max_unique": [
+        3.1415927410125732
+      ],
+      "angle_max_unique_truncated": false,
+      "angle_increment_min": 0.017501909285783768,
+      "angle_increment_max": 0.017501909285783768,
+      "angle_increment_unique": [
+        0.017501909285783768
+      ],
+      "angle_increment_unique_truncated": false,
+      "beam_count_min": 360,
+      "beam_count_max": 360,
+      "beam_count_unique": [
+        360
+      ],
+      "beam_count_unique_truncated": false,
+      "range_min_min": 0.10000000149011612,
+      "range_min_max": 0.10000000149011612,
+      "range_min_unique": [
+        0.10000000149011612
+      ],
+      "range_min_unique_truncated": false,
+      "range_max_min": 50.0,
+      "range_max_max": 50.0,
+      "range_max_unique": [
+        50.0
+      ],
+      "range_max_unique_truncated": false
+    }
+  },
+  "label_histogram": {
+    "-1": 402,
+    "1": 111,
+    "5": 204,
+    "6": 325,
+    "7": 197,
+    "9": 11361
+  }
+}

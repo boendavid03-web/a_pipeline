@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+# 【具体数据接口】
+# 代码中检测到的命令行参数：--bag, --cmd-vel-topic, --map-yaml, --max-points, --odom-topic, --output-dir, --scan-topic, --semantic-label, --semantic-viz, --target-points
+# 代码中检测到的 ROS 2 话题/路径字符串：/cmd_vel, /odom, /scan_merged
+# 检测到的消息类型：未检测到 Python 消息导入；可能使用文件、标准库或 Shell 数据。
+# 检测到的文件格式：BAG, JSON, PNG
+# 可能使用的关键环境变量：未检测到明显的大写环境变量。
+# 数据说明：以上内容从代码正文中的参数、topic、消息导入、文件扩展名和环境变量提取；实际字段、shape、单位和发布方向仍以本脚本正文为准。
+# 【后续管理信息】
+# 类型：Python 工具/训练/转换脚本
+# 推荐运行方式：python3 /home/user/navigation_project/a_pipeline/workspaces/ros2_ws/tools/debug_out_of_map_projection.py
+# 输入来源：命令行参数、数据文件、模型文件或 ROS 2 状态。
+# 输出结果：检查报告、转换数据、训练模型、可视化结果或日志。
+# 前置条件：需要对应 Python 环境、输入文件和依赖库。
+# 后续步骤：输出由上层 pipeline 或人工分析继续使用。
+# 副作用与安全：通常写入输出文件；运行前确认不会覆盖重要数据。
+# 当前状态：当前项目源文件。
+# 【文件时间信息】
+# 文件系统创建时间：2026-07-17 03:41:31.685303552 -0400
+# 添加本说明前的最后修改时间：2026-08-02 06:21:31.259092401 -0400
+# 注意：本区块写入后，文件系统的最后修改时间会更新；创建时间不会因本次注释改变。
+# 【依赖作用说明】
+# 直接依赖的具体作用：未检测到其他项目脚本的直接调用；主要依赖外部库、ROS 2 节点或系统命令。
+# 被依赖的具体作用：/home/user/navigation_project/a_pipeline/scripts/validation/ros2_workspace_tools/debug_out_of_map_projection.py（引用其脚本路径或名称，形成流程关联）
+# 说明依据：上述关系根据本文件中的 source、ros2 launch、ros2 run、import、subprocess 和脚本路径调用整理；参数/话题级关系仍以代码正文为准。
+# 【绝对依赖关系】
+# 文件绝对路径：/home/user/navigation_project/a_pipeline/workspaces/ros2_ws/tools/debug_out_of_map_projection.py
+# 直接依赖（脚本层面）：无项目内脚本引用（外部库/ROS 2 命令另见代码正文）。
+# 被依赖/被引用（脚本层面）：/home/user/navigation_project/a_pipeline/scripts/validation/ros2_workspace_tools/debug_out_of_map_projection.py
+# 版本与来源：当前项目源文件；构建产物 install/build 不作为编辑源。
+# 注意：以上是按文件引用和同名脚本调用静态整理；ROS 2 话题、系统命令、第三方库依赖仍以代码正文为准。
+# 【脚本说明｜debug_out_of_map_projection.py】
+# 用途：ROS 2 工作空间辅助工具，用于数据检查、转换、调试或运行时辅助。
+# 输入输出：输入通常是命令行参数、bag、数据集或 ROS 2 状态；输出为检查结果、转换文件、日志或辅助话题。
+# 关系：被 pipeline 或人工命令调用，依赖 ROS 2 环境和对应数据格式；不是备份文件。
+# 版本定位：当前源文件；不要只修改 build/install/log 或 runs 中的副本。
+"""Visualize LiDAR endpoints that project outside the semantic label image."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from collections import Counter
+from pathlib import Path
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+
+from convert_rosbag2_to_semantic2d_baseline import (
+    load_map_info,
+    nearest_by_time,
+    read_bag,
+    resample_scan,
+)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--bag", required=True, type=Path)
+    parser.add_argument("--map-yaml", required=True, type=Path)
+    parser.add_argument("--semantic-label", required=True, type=Path)
+    parser.add_argument("--semantic-viz", type=Path)
+    parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--scan-topic", default="/scan_merged")
+    parser.add_argument("--odom-topic", default="/odom")
+    parser.add_argument("--cmd-vel-topic", default="/cmd_vel")
+    parser.add_argument("--target-points", default=1081, type=int)
+    parser.add_argument("--max-points", default=250000, type=int)
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+
+    resolution, origin_x, origin_y, _ = load_map_info(args.map_yaml)
+    label_img = np.asarray(Image.open(args.semantic_label))
+    if label_img.ndim == 3:
+        label_img = label_img[:, :, 0]
+    height, width = label_img.shape[:2]
+
+    if args.semantic_viz and args.semantic_viz.exists():
+        base_img = Image.open(args.semantic_viz).convert("RGB")
+    else:
+        base_arr = np.zeros((height, width, 3), dtype=np.uint8)
+        base_arr[label_img == 0] = (35, 35, 35)
+        base_arr[label_img != 0] = (185, 185, 185)
+        base_img = Image.fromarray(base_arr)
+
+    scans, odoms, _cmds, topic_types, topic_counts = read_bag(
+        args.bag, args.scan_topic, args.odom_topic, args.cmd_vel_topic
+    )
+
+    clipped_points = []
+    distances_px = []
+    side_counts = Counter()
+    counts = Counter()
+
+    for stamp_ns, scan_msg in scans:
+        odom_match = nearest_by_time(odoms, stamp_ns)
+        if odom_match is None:
+            continue
+        x, y, yaw, _odom_lin, _odom_ang = odom_match[1]
+        ranges, _intensity, angles = resample_scan(scan_msg, args.target_points, None, None)
+        finite = np.isfinite(ranges)
+        world_x = x + ranges * np.cos(yaw + angles)
+        world_y = y + ranges * np.sin(yaw + angles)
+        cols_float = (world_x - origin_x) / resolution
+        rows_float = (height - 1) - (world_y - origin_y) / resolution
+
+        in_map = (
+            (cols_float >= 0.0)
+            & (cols_float <= width - 1)
+            & (rows_float >= 0.0)
+            & (rows_float <= height - 1)
+            & finite
+        )
+        out = finite & ~in_map
+        invalid = ~finite
+        counts["total_beams"] += int(len(ranges))
+        counts["finite_beams"] += int(finite.sum())
+        counts["in_map_finite"] += int(in_map.sum())
+        counts["out_of_map_finite"] += int(out.sum())
+        counts["invalid"] += int(invalid.sum())
+
+        if not out.any():
+            continue
+
+        out_cols = cols_float[out]
+        out_rows = rows_float[out]
+        clipped_cols = np.clip(out_cols, 0, width - 1)
+        clipped_rows = np.clip(out_rows, 0, height - 1)
+        dist = np.hypot(out_cols - clipped_cols, out_rows - clipped_rows)
+        distances_px.append(dist)
+        clipped_points.append(np.column_stack([clipped_cols, clipped_rows]))
+
+        side_counts["left"] += int((out_cols < 0).sum())
+        side_counts["right"] += int((out_cols > width - 1).sum())
+        side_counts["top"] += int((out_rows < 0).sum())
+        side_counts["bottom"] += int((out_rows > height - 1).sum())
+
+    if clipped_points:
+        points = np.vstack(clipped_points)
+        distances = np.concatenate(distances_px)
+    else:
+        points = np.empty((0, 2), dtype=np.float64)
+        distances = np.empty((0,), dtype=np.float64)
+
+    if len(points) > args.max_points:
+        rng = np.random.default_rng(0)
+        idx = rng.choice(len(points), args.max_points, replace=False)
+        points_to_draw = points[idx]
+        distances_to_draw = distances[idx]
+    else:
+        points_to_draw = points
+        distances_to_draw = distances
+
+    fig, ax = plt.subplots(figsize=(12, 9), dpi=180)
+    ax.imshow(base_img)
+    if len(points_to_draw):
+        scatter = ax.scatter(
+            points_to_draw[:, 0],
+            points_to_draw[:, 1],
+            s=1.0,
+            c=np.minimum(distances_to_draw, 30.0),
+            cmap="magma",
+            alpha=0.65,
+        )
+        cbar = fig.colorbar(scatter, ax=ax, fraction=0.035, pad=0.02)
+        cbar.set_label("outside distance (px), clipped at 30")
+    ax.set_xlim(0, width)
+    ax.set_ylim(height, 0)
+    ax.set_axis_off()
+    fig.tight_layout(pad=0)
+    overlay_path = args.output_dir / "out_of_map_projection_clipped_to_border.png"
+    fig.savefig(overlay_path, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+
+    def pct(value, denom):
+        return 100.0 * float(value) / float(denom) if denom else 0.0
+
+    if len(distances):
+        percentiles = {
+            "min_px": float(np.min(distances)),
+            "p50_px": float(np.percentile(distances, 50)),
+            "p75_px": float(np.percentile(distances, 75)),
+            "p90_px": float(np.percentile(distances, 90)),
+            "p95_px": float(np.percentile(distances, 95)),
+            "p99_px": float(np.percentile(distances, 99)),
+            "max_px": float(np.max(distances)),
+        }
+        percentiles.update({k.replace("_px", "_m"): v * resolution for k, v in list(percentiles.items())})
+        within_px = {
+            str(radius): {
+                "count": int((distances <= radius).sum()),
+                "pct_of_out_of_map_finite": pct((distances <= radius).sum(), len(distances)),
+            }
+            for radius in (1, 2, 3, 5, 10, 20, 50)
+        }
+    else:
+        percentiles = {}
+        within_px = {}
+
+    report = {
+        "bag": str(args.bag),
+        "map_yaml": str(args.map_yaml),
+        "semantic_label": str(args.semantic_label),
+        "resolution_m_per_px": resolution,
+        "label_shape": [int(height), int(width)],
+        "topic_types": topic_types,
+        "topic_counts": dict(topic_counts),
+        "counts": {k: int(v) for k, v in counts.items()},
+        "summary": {
+            "out_of_map_finite_pct_total": pct(counts["out_of_map_finite"], counts["total_beams"]),
+            "invalid_pct_total": pct(counts["invalid"], counts["total_beams"]),
+            "in_map_finite_pct_total": pct(counts["in_map_finite"], counts["total_beams"]),
+        },
+        "side_counts": dict(side_counts),
+        "outside_distance": percentiles,
+        "within_px": within_px,
+        "outputs": {"overlay": str(overlay_path)},
+    }
+    stats_path = args.output_dir / "out_of_map_projection_stats.json"
+    stats_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()

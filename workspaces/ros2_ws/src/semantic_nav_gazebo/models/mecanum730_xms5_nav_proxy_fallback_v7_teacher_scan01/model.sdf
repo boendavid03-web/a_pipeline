@@ -1,0 +1,212 @@
+<?xml version='1.0' encoding='utf-8'?>
+<sdf version="1.7">
+  <model name="mecanum730_xms5_nav_proxy_fallback_v7_teacher_scan01">
+    <static>false</static>
+    <self_collide>false</self_collide>
+    <allow_auto_disable>false</allow_auto_disable>
+    <canonical_link>base_link</canonical_link>
+    <link name="base_link">
+      <pose>0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>0 0 0.34 0 0 0</pose>
+        <mass>50.0</mass>
+        <inertia>
+          <ixx>1.95</ixx>
+          <iyy>2.53</iyy>
+          <izz>1.78</izz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyz>0.0</iyz>
+        </inertia>
+      </inertial>
+      <collision name="base_collision">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <!-- Convex top-view envelope of the visual mesh below z=0.60 m,
+               simplified and expanded outward by 0.01 m. -->
+          <polyline>
+            <point>-0.3024 0.0462</point>
+            <point>-0.3024 -0.0462</point>
+            <point>-0.2829 -0.1786</point>
+            <point>-0.2755 -0.1966</point>
+            <point>-0.2531 -0.2173</point>
+            <point>-0.2185 -0.2266</point>
+            <point>-0.1324 -0.2335</point>
+            <point>0.1126 -0.2331</point>
+            <point>0.1936 -0.2270</point>
+            <point>0.2403 -0.2137</point>
+            <point>0.2544 -0.1997</point>
+            <point>0.2631 -0.1818</point>
+            <point>0.2722 -0.1288</point>
+            <point>0.2737 0.1049</point>
+            <point>0.2674 0.1657</point>
+            <point>0.2523 0.2026</point>
+            <point>0.2402 0.2138</point>
+            <point>0.2219 0.2216</point>
+            <point>0.1126 0.2330</point>
+            <point>-0.1324 0.2335</point>
+            <point>-0.1946 0.2296</point>
+            <point>-0.2554 0.2161</point>
+            <point>-0.2729 0.2004</point>
+            <point>-0.2879 0.1560</point>
+            <height>0.60</height>
+          </polyline>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.0</mu>
+              <mu2>0.0</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="assembled_real_geometry">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://mecanum730_xms5_nav_proxy_fallback_v7_teacher_scan01/meshes/derived/mecanum730_xms5_body_with_dual_lidar_recesses.stl</uri>
+            <scale>1 1 1</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.95 0.95 0.95 1</ambient>
+          <diffuse>0.95 0.95 0.95 1</diffuse>
+          <specular>0.25 0.25 0.25 1</specular>
+          <emissive>0.8 0.8 0.8 1</emissive>
+        </material>
+      </visual>
+    </link>
+    <link name="base_scan_01">
+      <pose>0.2 0.13 0.208 3.14 0 0</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>0.000001</ixx>
+          <iyy>0.000001</iyy>
+          <izz>0.000001</izz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyz>0.0</iyz>
+        </inertia>
+      </inertial>
+      <visual name="lidar_2d_01_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.045</radius>
+            <length>0.035</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.02 0.02 0.02 1</ambient>
+          <diffuse>0.02 0.02 0.02 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+      <sensor name="lidar_2d_01" type="gpu_lidar">
+        <pose>0 0 0 0 0 0</pose>
+        <topic>/scan_01</topic>
+        <update_rate>10</update_rate>
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>360</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.1</min>
+            <max>50.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.0</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </link>
+    <joint name="base_link_to_base_scan_01" type="fixed">
+      <parent>base_link</parent>
+      <child>base_scan_01</child>
+    </joint>
+    <link name="base_scan_02">
+      <pose>-0.2 -0.13 0.208 3.14 0 3.14</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>0.000001</ixx>
+          <iyy>0.000001</iyy>
+          <izz>0.000001</izz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyz>0.0</iyz>
+        </inertia>
+      </inertial>
+      <visual name="lidar_2d_02_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.045</radius>
+            <length>0.035</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.02 0.02 0.02 1</ambient>
+          <diffuse>0.02 0.02 0.02 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+      <sensor name="lidar_2d_02" type="gpu_lidar">
+        <pose>0 0 0 0 0 0</pose>
+        <topic>/scan_02</topic>
+        <update_rate>10</update_rate>
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>360</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.14159</min_angle>
+              <max_angle>3.14159</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.1</min>
+            <max>50.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.0</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </link>
+    <joint name="base_link_to_base_scan_02" type="fixed">
+      <parent>base_link</parent>
+      <child>base_scan_02</child>
+    </joint>
+    <plugin filename="ignition-gazebo-velocity-control-system" name="ignition::gazebo::systems::VelocityControl">
+      <topic>/cmd_vel</topic>
+    </plugin>
+    <plugin filename="ignition-gazebo-odometry-publisher-system" name="ignition::gazebo::systems::OdometryPublisher">
+      <odom_frame>odom</odom_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+      <odom_publish_frequency>30</odom_publish_frequency>
+      <odom_topic>/odom</odom_topic>
+      <odom_covariance_topic>/odom_with_covariance</odom_covariance_topic>
+      <tf_topic>/tf</tf_topic>
+      <dimensions>2</dimensions>
+      <gaussian_noise>0.0</gaussian_noise>
+    </plugin>
+  </model>
+</sdf>

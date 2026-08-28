@@ -1,0 +1,37 @@
+.venvs/*
+!.venvs/.gitkeep
+.runtime/*
+!.runtime/.gitkeep
+# Local simulators, third-party checkouts, environments, and generated outputs.
+isaac_sim/
+github_src/
+build/
+install/
+log/
+temp/
+backup.txt
+nvidia-bug-report.log*
+symlink_install_manifest.txt
+
+# ROS 2 build products and recorded runtime data (recreate or store elsewhere).
+workspaces/ros2_ws/build*/
+workspaces/ros2_ws/install*/
+workspaces/ros2_ws/log*/
+workspaces/ros2_ws/.pytest_cache/
+*.db3
+*.mcap
+
+# Generated mesh output; source definitions remain tracked.
+workspaces/ros2_ws/src/semantic_nav_gazebo/models/**/meshes/derived/
+
+runs/*
+!runs/.gitkeep
+dist/*.tar.zst
+dist/*.sha256
+**/__pycache__/
+**/*.pyc
+.claude/
+.agents/
+.codex/
+.vscode/
+.pytest_cache/

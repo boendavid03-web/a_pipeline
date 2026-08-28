@@ -1,0 +1,5 @@
+labelme==6.3.1
+numpy==2.2.6
+pillow==12.2.0
+PyYAML==6.0.3
+imgviz==2.1.0

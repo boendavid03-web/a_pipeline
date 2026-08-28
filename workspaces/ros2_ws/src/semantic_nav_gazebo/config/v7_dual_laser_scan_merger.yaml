@@ -1,0 +1,26 @@
+v7_dual_laser_scan_merger:
+  ros__parameters:
+    input_scan_01_topic: /scan_01
+    input_scan_02_topic: /scan_02
+    output_topic: /scan_merged
+    output_frame: base_link
+    output_samples: 360
+    angle_min: -3.141592653589793
+    angle_max: 3.141592653589793
+    range_min: 0.1
+    range_max: 50.0
+    sync_slop: 0.05
+    queue_size: 10
+    tf_timeout: 0.05
+    enable_self_filter: true
+    self_filter_min_x: -0.36
+    self_filter_max_x: 0.36
+    self_filter_min_y: -0.32
+    self_filter_max_y: 0.32
+    # Experimental native-point branch. It never changes /scan_merged.
+    enable_high_fidelity_probe: false
+    duplicate_mode: fixed_xy
+    duplicate_epsilon: 0.03
+    publish_probe_pointclouds: true
+    save_probe_files: false
+    probe_output_dir: ""

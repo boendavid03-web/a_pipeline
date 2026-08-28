@@ -1,0 +1,120 @@
+cmake_minimum_required(VERSION 3.8)
+project(semantic_nav_gazebo)
+
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(navigation_evaluation_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(ignition-transport11 REQUIRED)
+find_package(ignition-msgs8 REQUIRED)
+find_package(ignition-gazebo6 REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/DrlVoTrainingState.msg"
+  "msg/PedestrianState.msg"
+  "msg/PedestrianStateArray.msg"
+  DEPENDENCIES geometry_msgs std_msgs
+)
+
+add_executable(cmd_vel_ign_relay src/cmd_vel_ign_relay.cpp)
+ament_target_dependencies(cmd_vel_ign_relay rclcpp geometry_msgs)
+target_link_libraries(
+  cmd_vel_ign_relay
+  ignition-transport11::ignition-transport11
+  ignition-msgs8::ignition-msgs8
+)
+
+add_executable(pedestrian_actor_pose_bridge src/pedestrian_actor_pose_bridge.cpp)
+ament_target_dependencies(pedestrian_actor_pose_bridge rclcpp geometry_msgs)
+target_link_libraries(
+  pedestrian_actor_pose_bridge
+  ignition-transport11::ignition-transport11
+  ignition-msgs8::ignition-msgs8
+)
+
+add_library(pedestrian_actor_motion_system SHARED
+  src/pedestrian_actor_motion_system.cpp
+)
+target_link_libraries(
+  pedestrian_actor_motion_system
+  ignition-gazebo6::ignition-gazebo6
+  ignition-transport11::ignition-transport11
+  ignition-msgs8::ignition-msgs8
+)
+
+install(
+  DIRECTORY launch config maps worlds docs models scenarios rviz
+  DESTINATION share/${PROJECT_NAME}
+  PATTERN "__pycache__" EXCLUDE
+  PATTERN "*.pyc" EXCLUDE
+  PATTERN "*.bak" EXCLUDE
+  PATTERN "*.bak.*" EXCLUDE
+)
+
+install(
+  PROGRAMS
+    scripts/continuous_teleop.py
+    scripts/closed_loop_demo_recorder.py
+    scripts/auto_goal_rosbag_scheduler.py
+    scripts/demo_pedestrian_controller.py
+    scripts/demo_goal_arrival_node.py
+    scripts/demo_velocity_display_node.py
+    scripts/drl_vo_fixed_dual_inference_node.py
+    scripts/drl_vo_control_contract.py
+    scripts/navigation_episode_evaluator.py
+    scripts/navigation_evaluation_core.py
+    scripts/drl_vo_online_ppo_training_node.py
+    scripts/episode_goal_picker.py
+    scripts/isaac_pedestrian_ground_truth_adapter.py
+    scripts/scenario_pedestrian_controller.py
+    scripts/odom_path_node.py
+    scripts/run_v7_dual_slam.sh
+    scripts/s3net_fixed_dual_inference_node.py
+    scripts/semantic_cnn_fixed_dual_inference_node.py
+    scripts/semantic_cnn_v7_inference_node.py
+    scripts/semantic_start_goal_path_node.py
+    scripts/teleop_episode_recorder_controller.py
+    scripts/tokennav_v7_inference_node.py
+    scripts/v7_dual_laser_scan_merger.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+  TARGETS
+    cmd_vel_ign_relay
+    pedestrian_actor_pose_bridge
+    pedestrian_actor_motion_system
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(
+    test_scenario_pedestrian_time
+    test/test_scenario_pedestrian_time.py
+  )
+  ament_add_pytest_test(
+    test_navigation_evaluation_core
+    test/test_navigation_evaluation_core.py
+  )
+  ament_add_pytest_test(
+    test_navigation_episode_evaluator_multi
+    test/test_navigation_episode_evaluator_multi.py
+  )
+  ament_add_pytest_test(
+    test_odom_path_node
+    test/test_odom_path_node.py
+  )
+  ament_add_pytest_test(
+    test_auto_goal_rosbag_scheduler_helpers
+    test/test_auto_goal_rosbag_scheduler_helpers.py
+  )
+  ament_add_pytest_test(
+    test_drl_vo_control_contract
+    test/test_drl_vo_control_contract.py
+  )
+endif()
+
+ament_package()

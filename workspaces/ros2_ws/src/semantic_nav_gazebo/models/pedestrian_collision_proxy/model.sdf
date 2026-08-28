@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="pedestrian_collision_proxy">
+    <!-- A static model's render transform is not refreshed for GPU LiDAR.
+         This kinematic, gravity-free model remains script-controlled. -->
+    <static>false</static>
+    <link name="link">
+      <gravity>false</gravity>
+      <kinematic>true</kinematic>
+      <!-- Match the two lower-leg visuals in simple_pedestrian. Both v7
+           LiDAR scan planes are at z=0.208 m, inside these 0.5 m legs. -->
+      <collision name="left_leg_collision">
+        <pose>0 -0.07 0.25 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.055</radius>
+            <length>0.5</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="right_leg_collision">
+        <pose>0 0.07 0.25 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.055</radius>
+            <length>0.5</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name="left_leg_lidar_proxy_visual">
+        <pose>0 -0.07 0.25 0 0 0</pose>
+        <transparency>1.0</transparency>
+        <material>
+          <ambient>0.08 0.08 0.08 0</ambient>
+          <diffuse>0.15 0.15 0.15 0</diffuse>
+        </material>
+        <geometry>
+          <cylinder>
+            <radius>0.055</radius>
+            <length>0.5</length>
+          </cylinder>
+        </geometry>
+      </visual>
+      <visual name="right_leg_lidar_proxy_visual">
+        <pose>0 0.07 0.25 0 0 0</pose>
+        <!-- The world preloads this transparent kinematic proxy before GPU
+             LiDAR starts, so its render pose follows scripted pedestrians. -->
+        <transparency>1.0</transparency>
+        <material>
+          <ambient>0.08 0.08 0.08 0</ambient>
+          <diffuse>0.15 0.15 0.15 0</diffuse>
+        </material>
+        <geometry>
+          <cylinder>
+            <radius>0.055</radius>
+            <length>0.5</length>
+          </cylinder>
+        </geometry>
+      </visual>
+    </link>
+  </model>
+</sdf>

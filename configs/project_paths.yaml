@@ -1,0 +1,14 @@
+schema_version: 1
+path_policy: project_root_relative
+project_root_env: A_PIPELINE_ROOT
+active_pipeline: pipelines/v7_native_pipeline
+ros2_workspace: workspaces/ros2_ws
+ros2_package: workspaces/ros2_ws/src/semantic_nav_gazebo
+workspace_tools: workspaces/ros2_ws/tools
+s3net: methods/baselines/s3net
+semantic_cnn: methods/baselines/semantic_cnn
+runs: runs
+runtime: .runtime
+labelme_python: .venvs/labelme/bin/python
+training_python: .venvs/train/bin/python
+smoke_example: examples/smoke
