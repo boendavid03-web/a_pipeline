@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Send the offline-checked 1.5 m clear-space goal, or an explicit map pose.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ROS_WS="$PROJECT_ROOT/workspaces/ros2_ws"
+
+if [[ "${AMENT_PREFIX_PATH:-}" == *"/isaac_sim/arena_ws/"* ]]; then
+    echo "ERROR: arena_ws is sourced in this shell. Open a fresh terminal." >&2
+    exit 2
+fi
+set +u
+# shellcheck disable=SC1091
+source /opt/ros/humble/setup.bash
+# shellcheck disable=SC1091
+source "$ROS_WS/install/setup.bash"
+set -u
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp ROS_DOMAIN_ID=0 ROS_LOCALHOST_ONLY=1
+export PYTHONDONTWRITEBYTECODE=1
+
+arena_fragment="/isaac_sim/arena_ws"
+for variable in AMENT_PREFIX_PATH CMAKE_PREFIX_PATH COLCON_PREFIX_PATH PYTHONPATH \
+    LD_LIBRARY_PATH PATH ROS_PACKAGE_PATH; do
+    if [[ "${!variable:-}" == *"${arena_fragment}"* ]]; then
+        echo "ERROR: arena_ws remains in ${variable}. Use a fresh shell." >&2
+        exit 2
+    fi
+done
+
+if (( $# == 0 )); then
+    set -- 3.232223007 0.938835104 0.142446610
+elif (( $# < 3 )); then
+    echo "Usage: $0 [map_x map_y yaw_rad [goal-client-options...]]" >&2
+    exit 2
+fi
+
+exec python3 "$SCRIPT_DIR/tools/send_test_goal.py" "$@"

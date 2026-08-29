@@ -1,0 +1,11 @@
+controller_server:
+  ros__parameters:
+    controller_plugins: ["FollowPath"]
+
+    FollowPath:
+      plugin: "nav2py_drl_vo_controller::DRL_VO_Controller"
+      debug_trajectory_details: True
+      desired_linear_vel: 0.2
+      lookahead_dist: 0.4
+      max_angular_vel: 1.0
+      transform_tolerance: 1.0

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "2.0.0",
+  "nodeLibraries": [
+    {
+      "name": "omni.behavior.tree.core",
+      "version": "1.1"
+    },
+    {
+      "name": "omni.anim.behavior.tree",
+      "version": "0.3"
+    }
+  ],
+  "root": {
+    "type": "Sequence",
+    "source": "omni.behavior.tree.core",
+    "name": "WarehousePatrolLoop",
+    "children": [
+      {
+        "type": "MoveTo",
+        "source": "omni.anim.behavior.tree",
+        "name": "MoveToA",
+        "portOverrides": {
+          "target": {
+            "type": "SdfPath",
+            "value": "/World/Patrol_Point_A"
+          }
+        }
+      },
+      {
+        "type": "MoveTo",
+        "source": "omni.anim.behavior.tree",
+        "name": "MoveToB",
+        "portOverrides": {
+          "target": {
+            "type": "SdfPath",
+            "value": "/World/Patrol_Point_B"
+          }
+        }
+      },
+      {
+        "type": "MoveTo",
+        "source": "omni.anim.behavior.tree",
+        "name": "MoveToC",
+        "portOverrides": {
+          "target": {
+            "type": "SdfPath",
+            "value": "/World/Patrol_Point_C"
+          }
+        }
+      }
+    ],
+    "modifiers": [
+      {
+        "type": "Repeat",
+        "source": "omni.behavior.tree.core",
+        "name": "RepeatForever"
+      }
+    ]
+  }
+}

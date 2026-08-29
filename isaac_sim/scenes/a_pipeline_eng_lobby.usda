@@ -1,0 +1,2525 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    doc = "Project-owned Isaac scene generated from the Gazebo V7 engineering lobby."
+    endTimeCode = 86400
+    framesPerSecond = 60
+    metersPerUnit = 1
+    startTimeCode = 0
+    timeCodesPerSecond = 60
+    upAxis = "Z"
+    customLayerData = {
+        dictionary navmeshSettings = {
+            double agentMaxFloorSlope = 45
+            double agentMaxRadius = 0.6
+            double agentMaxStepHeight = 0.25
+            double agentMinHeight = 1.5
+            double agentMinIslandRadius = 0.5
+            double agentMinRadius = 0.1
+            double agentSamplingDistance = 0.2
+            dictionary areas = {
+                dictionary "0" = {
+                    string areaName = "Walkable"
+                    float3 color = (0.2, 0.8, 1)
+                    double defaultCost = 1
+                }
+                dictionary "1" = {
+                    string areaName = "NotWalkable"
+                    float3 color = (1, 0, 0)
+                    double defaultCost = -1
+                }
+            }
+            bool excludeRigidBodies = 1
+        }
+        string generatedBy = "isaac_sim/scripts/convert_gazebo_boxes_to_usda.py"
+        int migratedStaticBoxes = 79
+        int skippedGazeboIncludes = 15
+        string sourceWorld = "workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world"
+        string sourceWorldSha256 = "040c58fc7064c5823379edbde7478648d3cec88ea010e5e1a47e067b36f8ef5b"
+    }
+)
+
+def Xform "World"
+{
+    custom string aPipeline:sceneName = "a_pipeline_eng_lobby"
+
+    def NavMeshVolume "NavMeshVolume" (
+        prepend apiSchemas = ["NavMeshAreaAPI"]
+    )
+    {
+        float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+        token nav:volume:type = "Include"
+        double3 xformOp:translate = (16, 12, 1.5)
+        float3 xformOp:scale = (32, 24, 4)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+    }
+
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0, 0, -1)
+        float physics:gravityMagnitude = 9.81
+    }
+
+    def Xform "NavMeshObstacles"
+    {
+        def NavMeshVolume "NoWalk_grey_wall_1"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (0, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (25.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_2"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (4.25, 0, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (9.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_3"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (8.5, 4, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (9.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_4"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (9.75, 8, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (3.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_5"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (11, 6.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (4.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_6"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (14.25, 5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (7.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_7"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (17.5, 6.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (4.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_8"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (24.5, 8, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (15.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_9"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (31.5, 10, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (5.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_10"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (27.5, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (9.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_11"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (23.5, 12.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_12"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (23.25, 13, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_13"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (23, 13.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_14"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (23.25, 14, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_15"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (23.5, 15, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (3.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_16"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (24.75, 16, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (3.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_17"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (26, 17.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (4.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_18"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (26.25, 19, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_19"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (26.5, 20, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (3.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_20"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (24.5, 21, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (5.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_21"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (22.5, 21.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_22"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (22, 21.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_23"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (21.5, 21.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_24"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (20.75, 21, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_25"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (20, 21.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_26"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (19.5, 21.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_27"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (19, 21.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_28"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (18.25, 21, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_29"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (17.5, 21.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_30"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (17, 21.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_31"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (16.5, 21.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_32"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (15.75, 21, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_33"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (15, 22.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (4.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_34"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (14, 24, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (3.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_35"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (13, 21.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (6.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_36"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (9.5, 19, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (8.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_37"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (6, 18.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_38"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (5.5, 18, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_39"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (5, 18.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_40"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (4.5, 19, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_41"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (4, 19.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_42"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (3.5, 20, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_43"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (3, 22, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (5.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_44"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (1.5, 24, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (4.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_45"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (3, 11.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_46"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (3.25, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_47"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (3, 12.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_48"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (2.75, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_49"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (7.5, 11, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_50"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (7, 11.85, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (2.8, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_51"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (7.5, 12.7, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.1, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_52"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (9, 11.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_53"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (9.25, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_54"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (9, 12.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_55"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (8.75, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_59"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (11.85, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.8, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_60"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (11.25, 13, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_61"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (11, 13.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_62"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (11.25, 13.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_63"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (12.5, 14.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_64"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (12.75, 15, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_65"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (13, 14.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_66"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (13.75, 13, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_67"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (14, 13.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_68"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (13.75, 13.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_69"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (17.85, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (2.8, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_70"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (16.75, 13, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_71"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (16.5, 13.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_72"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (16.75, 13.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_73"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (18, 14.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_74"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (18.25, 15, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_75"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (18.5, 14.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_76"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (19.25, 13, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_77"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (19.5, 13.25, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_78"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (19.25, 13.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_79"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (20.25, 11.5, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_80"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (20.5, 11.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_81"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (20.25, 12, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def NavMeshVolume "NoWalk_grey_wall_82"
+        {
+            float3[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            token nav:volume:type = "Exclude"
+            double3 xformOp:translate = (20, 11.75, 2)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            float3 xformOp:scale = (1.6, 1.3, 4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+    }
+
+    def Scope "Looks"
+    {
+        def Material "FloorMaterial"
+        {
+            token outputs:surface.connect = </World/Looks/FloorMaterial/PreviewSurface.outputs:surface>
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.18, 0.20, 0.23)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.82
+                token outputs:surface
+            }
+        }
+        def Material "WallMaterial"
+        {
+            token outputs:surface.connect = </World/Looks/WallMaterial/PreviewSurface.outputs:surface>
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.56, 0.61, 0.67)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.68
+                token outputs:surface
+            }
+        }
+        def Material "LowObstacleMaterial"
+        {
+            token outputs:surface.connect = </World/Looks/LowObstacleMaterial/PreviewSurface.outputs:surface>
+            def Shader "PreviewSurface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.82, 0.46, 0.18)
+                float inputs:metallic = 0
+                float inputs:roughness = 0.72
+                token outputs:surface
+            }
+        }
+    }
+
+    def Xform "Environment"
+    {
+        def Mesh "Ground" (
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Floor"
+            string nav:area = "Walkable"
+            rel material:binding = </World/Looks/FloorMaterial>
+            int[] faceVertexCounts = [4, 4, 4, 4, 4, 4]
+            int[] faceVertexIndices = [0, 1, 3, 2, 4, 6, 7, 5, 6, 2, 3, 7, 4, 5, 1, 0, 4, 0, 2, 6, 5, 7, 3, 1]
+            point3f[] points = [(-0.5, -0.5, 0.5), (0.5, -0.5, 0.5), (-0.5, 0.5, 0.5), (0.5, 0.5, 0.5), (-0.5, -0.5, -0.5), (0.5, -0.5, -0.5), (-0.5, 0.5, -0.5), (0.5, 0.5, -0.5)]
+            uniform token subdivisionScheme = "none"
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (16, 12, -0.05)
+            double3 xformOp:scale = (32, 24, 0.1)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        }
+
+        def Xform "GazeboV7Layout"
+        {
+        def Cube "grey_wall_1" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (0, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (24, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_2" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (4.25, 0, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (8.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_3" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (8.5, 4, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (8, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_4" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (9.75, 8, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (2.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_5" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (11, 6.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (3, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_6" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (14.25, 5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (6.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_7" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (17.5, 6.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (3, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_8" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (24.5, 8, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (14, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_9" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (31.5, 10, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (4, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_10" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (27.5, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (8, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_11" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (23.5, 12.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_12" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (23.25, 13, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_13" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (23, 13.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_14" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (23.25, 14, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_15" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (23.5, 15, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (2, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_16" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (24.75, 16, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (2.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_17" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (26, 17.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (3, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_18" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (26.25, 19, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_19" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (26.5, 20, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (2, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_20" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (24.5, 21, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (4, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_21" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (22.5, 21.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_22" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (22, 21.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_23" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (21.5, 21.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_24" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (20.75, 21, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_25" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (20, 21.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_26" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (19.5, 21.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_27" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (19, 21.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_28" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (18.25, 21, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_29" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (17.5, 21.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_30" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (17, 21.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_31" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (16.5, 21.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_32" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (15.75, 21, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_33" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (15, 22.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (3, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_34" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (14, 24, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (2, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_35" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (13, 21.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_36" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (9.5, 19, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (7, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_37" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (6, 18.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_38" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (5.5, 18, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_39" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (5, 18.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_40" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (4.5, 19, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_41" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (4, 19.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_42" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (3.5, 20, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_43" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (3, 22, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (4, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_44" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (1.5, 24, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (3, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_45" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (3, 11.75, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_46" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (3.25, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_47" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (3, 12.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_48" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (2.75, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_49" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (7.5, 11, 0.6)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 1.2)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_50" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (7, 11.85, 0.6)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (1.7, 0.2, 1.2)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_51" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (7.5, 12.7, 0.6)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1, 0.2, 1.2)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_52" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (9, 11.75, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_53" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (9.25, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_54" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (9, 12.25, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_55" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (8.75, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_59" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (11.85, 12, 0.2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1.7, 0.2, 0.4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_60" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (11.25, 13, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_61" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (11, 13.25, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_62" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (11.25, 13.5, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_63" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (12.5, 14.75, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_64" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (12.75, 15, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_65" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (13, 14.75, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_66" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (13.75, 13, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_67" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (14, 13.25, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_68" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (13.75, 13.5, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_69" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (17.85, 12, 0.2)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (1.7, 0.2, 0.4)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_70" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (16.75, 13, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_71" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (16.5, 13.25, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_72" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (16.75, 13.5, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_73" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (18, 14.75, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_74" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (18.25, 15, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_75" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (18.5, 14.75, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_76" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (19.25, 13, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_77" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (19.5, 13.25, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_78" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Pillar"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/LowObstacleMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (19.25, 13.5, 0.3)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 0.6)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_79" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (20.25, 11.5, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_80" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (20.5, 11.75, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_81" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (20.25, 12, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 0)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+
+        def Cube "grey_wall_82" (
+            # A collision box is an obstacle, not a walkable top surface.
+            # IRA uses this navigation-area opinion while sampling its initial
+            # patrol pose and when routing between patrol points.
+            prepend apiSchemas = ["PhysicsCollisionAPI", "MaterialBindingAPI", "NavMeshAreaAPI"]
+        )
+        {
+            custom string aPipeline:semanticLabel = "Wall"
+            string nav:area = "NotWalkable"
+            rel material:binding = </World/Looks/WallMaterial>
+            double size = 1
+            point3f[] extent = [(-0.5, -0.5, -0.5), (0.5, 0.5, 0.5)]
+            color3f[] primvars:displayColor = [(0.55, 0.58, 0.62)]
+            bool physics:collisionEnabled = true
+            double3 xformOp:translate = (20, 11.75, 1.4)
+            double3 xformOp:rotateXYZ = (0, 0, 89.9543738355)
+            double3 xformOp:scale = (0.5, 0.2, 2.8)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        }
+        }
+    }
+
+    def Xform "Lights"
+    {
+        def DomeLight "Dome"
+        {
+            color3f inputs:color = (0.78, 0.86, 1)
+            float inputs:intensity = 650
+        }
+        def DistantLight "Sun"
+        {
+            float inputs:angle = 1
+            color3f inputs:color = (1, 0.94, 0.84)
+            float inputs:intensity = 2800
+            double3 xformOp:rotateXYZ = (-42, 28, 18)
+            uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+        }
+    }
+
+    def Xform "Markers"
+    {
+        def Xform "RobotSpawn"
+        {
+            custom string aPipeline:role = "robot_spawn"
+            double3 xformOp:translate = (2, 2, 0.3)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+        }
+    }
+}

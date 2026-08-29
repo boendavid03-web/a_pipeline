@@ -1,0 +1,33 @@
+isaacsim.replicator.agent:
+  version: 1.6.0
+  seed: 20260809
+  # The standalone runner controls how long the GUI remains open.  This long
+  # timeline range keeps the patrol behavior active during interactive use.
+  simulation_duration: 86400.0
+  environment:
+    # This NVIDIA sample contains a baked navigation mesh plus Patrol_Point_A,
+    # Patrol_Point_B, and Patrol_Point_C used by patrol_loop.json.
+    base_stage_asset_path: Isaac/Samples/BehaviorTree/IRA_OBT_Sample_Warehouse.usd
+  character:
+    # Do not rely on IRA 1.6.8's online default motion-library setting.
+    motion_library_path: Isaac/People/MotionLibrary/HumanMotionLibrary.usd
+    groups:
+      warehouse_walkers:
+        # The loader shuffles the directory and takes the first three entries,
+        # so these are three distinct local skinned character assets.
+        num: 3
+        asset_path: Isaac/People/Characters/
+        # Use IRA 1.6's native routine runtime.  The OBT MoveTo backend in the
+        # Isaac Sim 6.0.1 build is known to crash inside the native Behavior/
+        # USD stack and, on this machine, only produced walking-in-place.
+        # Native patrol still uses the baked warehouse NavMesh and the same
+        # three authored targets, but keeps world-position motion measurable.
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.8, 1.1]
+              target_prims:
+                - /World/Patrol_Point_A
+                - /World/Patrol_Point_B
+                - /World/Patrol_Point_C

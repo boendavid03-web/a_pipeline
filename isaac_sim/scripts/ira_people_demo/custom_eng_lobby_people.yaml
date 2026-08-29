@@ -1,0 +1,134 @@
+isaacsim.replicator.agent:
+  version: 1.6.0
+  # Overridden by generate_free_space_people_config.py for each launch.
+  seed: 7
+  simulation_duration: 86400.0
+  environment:
+    # Project-owned Z-up/metre scene. Its NavMesh and floor are bounded to the
+    # Gazebo map's 0..32 x 0..24 m interior, so IRA cannot leave the map.
+    base_stage_asset_path: ../../scenes/a_pipeline_eng_lobby.usda
+  character:
+    motion_library_path: Isaac/People/MotionLibrary/HumanMotionLibrary.usd
+    groups:
+      bookshop_to_coffee:
+        # Canonical Gazebo eng_hall_15.xml population weights are retained in
+        # this template.  The launcher scales [5,5,2,1,1,1] to the requested
+        # total and emits one deterministic-speed IRA group per person.
+        num: 5
+        asset_path: Isaac/People/Characters/
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.9, 1.1]
+              # These are collision-free corridors generated from the same
+              # static-box map that Gazebo uses.  Do not replace them with
+              # direct links between the old area-waypoint centres: several
+              # of those centres are inside walls and cause visual clipping.
+              path_points:
+                - [25.0, 9.0, 0.0]
+                - [22.75, 11.5, 0.0]
+                - [22.25, 12.5, 0.0]
+                - [22.25, 15.75, 0.0]
+                - [25.0, 20.25, 0.0]
+                - [13.0, 18.25, 0.0]
+                - [6.0, 17.25, 0.0]
+                - [3.0, 17.0, 0.0]
+                - [2.0, 12.5, 0.0]
+                - [2.0, 11.25, 0.0]
+                - [3.0, 10.0, 0.0]
+      coffee_to_bookshop:
+        num: 5
+        asset_path: Isaac/People/Characters/
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.9, 1.1]
+              path_points:
+                - [3.0, 17.0, 0.0]
+                - [6.0, 17.25, 0.0]
+                - [13.0, 18.25, 0.0]
+                - [25.0, 20.25, 0.0]
+                - [22.25, 15.75, 0.0]
+                - [22.25, 12.5, 0.0]
+                - [22.75, 11.5, 0.0]
+                - [25.0, 9.0, 0.0]
+                - [3.0, 10.0, 0.0]
+                - [2.0, 11.25, 0.0]
+                - [2.0, 12.5, 0.0]
+      coffee_to_north:
+        num: 2
+        asset_path: Isaac/People/Characters/
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.9, 1.1]
+              path_points:
+                - [3.0, 17.0, 0.0]
+                - [21.75, 18.75, 0.0]
+                - [25.0, 20.25, 0.0]
+                - [13.0, 18.25, 0.0]
+                - [6.0, 17.25, 0.0]
+      east_to_west:
+        num: 1
+        asset_path: Isaac/People/Characters/
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.9, 1.1]
+              path_points:
+                - [30.0, 9.0, 0.0]
+                - [3.0, 10.0, 0.0]
+      west_to_lift:
+        num: 1
+        asset_path: Isaac/People/Characters/
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.9, 1.1]
+              path_points:
+                - [3.0, 16.0, 0.0]
+                - [3.0, 17.0, 0.0]
+                - [6.0, 17.25, 0.0]
+                - [13.0, 18.25, 0.0]
+                - [21.75, 18.75, 0.0]
+      restroom_to_classroom:
+        num: 1
+        asset_path: Isaac/People/Characters/
+        routines:
+          - patrol:
+              weight: 1
+              repeat: 1
+              speed_range: [0.9, 1.1]
+              # Safe two-way corridor corresponding to the Gazebo
+              # enter_restroom <-> enter_classroom route.
+              path_points:
+                - [14.225, 14.975, 0.0]
+                - [14.225, 19.875, 0.0]
+                - [14.175, 16.225, 0.0]
+                - [11.925, 16.225, 0.0]
+                - [9.975, 15.725, 0.0]
+                - [6.075, 13.775, 0.0]
+                - [4.675, 12.275, 0.0]
+                - [4.625, 11.975, 0.0]
+                - [4.925, 10.175, 0.0]
+                - [5.325, 9.775, 0.0]
+                - [5.775, 9.725, 0.0]
+                - [13.225, 9.075, 0.0]
+                - [15.775, 6.475, 0.0]
+                - [10.925, 9.725, 0.0]
+                - [5.525, 9.725, 0.0]
+                - [5.175, 9.875, 0.0]
+                - [4.925, 10.175, 0.0]
+                - [4.625, 12.075, 0.0]
+                - [4.775, 12.425, 0.0]
+                - [6.225, 13.875, 0.0]
+                - [13.925, 17.925, 0.0]
+                - [14.175, 18.225, 0.0]
+                - [14.225, 18.675, 0.0]
+                - [14.225, 19.875, 0.0]
+                - [14.225, 14.975, 0.0]

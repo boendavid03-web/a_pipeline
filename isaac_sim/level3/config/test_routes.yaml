@@ -1,0 +1,19 @@
+# Offline-selected runtime acceptance poses in the frozen map frame.
+spawn_map:
+  x_m: 1.747415569
+  y_m: 0.725887054
+  yaw_rad: 0.142446610
+
+first_goal:
+  x_m: 3.232223007
+  y_m: 0.938835104
+  yaw_rad: 0.142446610
+
+obstacle_goal:
+  x_m: 11.075
+  y_m: 6.425
+  yaw_rad: 0.142446610
+
+omni_follow_path:
+  local_y_distance_m: 0.80
+

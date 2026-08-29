@@ -3,7 +3,32 @@
 .runtime/*
 !.runtime/.gitkeep
 # Local simulators, third-party checkouts, environments, and generated outputs.
-isaac_sim/
+# Keep the Isaac project scripts/configuration in Git, but leave the local
+# simulator installation, NVIDIA assets, vendor workspaces, and runtime data
+# out of the public repository.
+isaac_sim/assets-6.0.1/
+isaac_sim/isaacsim-6.0.1/
+isaac_sim/arena_isaac5_backup/
+isaac_sim/arena_ws/build/
+isaac_sim/arena_ws/install/
+isaac_sim/arena_ws/log/
+isaac_sim/arena_ws/src/deps/
+isaac_sim/arena_ws/src/arena/
+isaac_sim/arena_ws/src/gazebo/
+isaac_sim/arena_ws/src/planners/deps/
+isaac_sim/arena_ws/src/planners/CrowdNav_Prediction_AttnGraph/
+isaac_sim/arena_ws/src/planners/PaS_CrowdNav/
+isaac_sim/arena_ws/src/planners/Sicnav/
+isaac_sim/arena_ws/src/planners/Drl_vo/**/model/
+isaac_sim/bags/
+isaac_sim/backups/
+isaac_sim/captures/
+isaac_sim/runtime/
+isaac_sim/scripts/logs/
+isaac_sim/maps/logs/
+isaac_sim/level3/reports/
+isaac_sim/**/__pycache__/
+isaac_sim/**/*.py[cod]
 github_src/
 build/
 install/
