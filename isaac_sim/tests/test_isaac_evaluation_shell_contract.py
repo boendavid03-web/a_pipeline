@@ -4,6 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "isaac_sim/scripts/run_custom_people_drlvo_demo.sh"
 ISAAC_RUNNER = ROOT / "isaac_sim/scripts/show_warehouse_people_robot_6_0.py"
+WAREHOUSE_LAUNCHER = (
+    ROOT / "isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh"
+)
 
 
 def test_launcher_records_complete_evaluation_contract_and_never_mass_kills():
@@ -77,8 +80,9 @@ def test_timing_catchup_and_pose_truth_are_explicitly_instrumented():
     assert '"robot_final_yaw_unwrapped_ros_rad": navigation_yaw_unwrapped' in source
 
 
-def test_gazebo_social_mode_is_opt_in_and_does_not_replace_patrol_tasks():
+def test_gazebo_social_mode_uses_persistent_full_2d_follow_target():
     launcher = LAUNCHER.read_text(encoding="utf-8")
+    warehouse_launcher = WAREHOUSE_LAUNCHER.read_text(encoding="utf-8")
     source = ISAAC_RUNNER.read_text(encoding="utf-8")
     adapter = source[
         source.index("class BehaviorAgentSocialMotion") : source.index(
@@ -90,11 +94,30 @@ def test_gazebo_social_mode_is_opt_in_and_does_not_replace_patrol_tasks():
     assert 'legacy|gazebo_social' in launcher
     assert 'PEDESTRIAN_SOCIAL_MODE == "gazebo_social"' in source
     assert "agent.get_linear_velocity(True)" in adapter
-    assert ".get_speed()" in adapter
-    assert "agent.get_target_location()" in adapter
+    assert '"actual_navigation_velocity_source": "pose_derived_position_delta"' in adapter
+    assert '"behavior_agent_reported_navigation_velocity_mps"' in adapter
+    assert "authored_midpoint_mps" in adapter
+    assert ".get_target_location()" in adapter
     assert ".set_speed(" in adapter
-    assert ".move_to(" not in adapter
+    assert ".follow(" in adapter
+    assert "steering_target_from_velocity(" in adapter
+    assert "guard.segment_world_free(" in adapter
+    assert "steering_free_space_guard = free_space_guard" in source
+    assert "ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" in warehouse_launcher
+    assert "--opposed-pair-test" in warehouse_launcher
+    assert "CUSTOM_FREE_SPACE_CLEARANCE_M" in source
+    assert '"locomotion_target_free_space_constrained"' in adapter
+    assert '"free_space_constrained_target_count"' in adapter
+    assert "output.final_desired_velocity_mps" in adapter
+    assert "[float(point[0]), float(point[1]), float(point[2])]" in adapter
+    assert '"lateral_vector_applied_directly": True' in adapter
+    assert '"patrol_execution": "persistent_follow_moving_target"' in adapter
+    assert '"stock_per_waypoint_autobrake": False' in adapter
+    assert '"trace_path": PEDESTRIAN_SOCIAL_TRACE_PATH or None' in adapter
     assert ".move_along(" not in adapter
     assert ".dodge(" not in adapter
-    assert '"patrol_task_replacement": False' in adapter
+    assert '"patrol_task_replacement": True' in adapter
     assert 'agent.set_auto_avoidance_enabled(social_mode == "legacy")' in source
+    assert '"behavior_agent_persistent_follow_target_2d"' in source
+    assert 'social_motion["target_write_count"] <= result["people"]' in source
+    assert 'result["pedestrian_robot_dodge_count"] != 0' in source

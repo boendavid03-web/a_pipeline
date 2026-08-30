@@ -191,6 +191,7 @@ if [[ "$ISAAC_SCENE" == "custom" ]]; then
     export ISAAC_PEDESTRIAN_COUNT="${ISAAC_PEDESTRIAN_COUNT:--1}"
     export ISAAC_PEDESTRIAN_SEED="${ISAAC_PEDESTRIAN_SEED:-7}"
     export ISAAC_PEDESTRIAN_SPEED="${ISAAC_PEDESTRIAN_SPEED:-1.0}"
+    export ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST="${ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST:-0}"
     if [[ ! "$ISAAC_PEDESTRIAN_COUNT" =~ ^-?[0-9]+$ ]] \
         || (( ISAAC_PEDESTRIAN_COUNT < -1 || ISAAC_PEDESTRIAN_COUNT > 50 )); then
         echo "ERROR: ISAAC_PEDESTRIAN_COUNT must be -1 or an integer from 0 through 50." >&2
@@ -204,6 +205,16 @@ if [[ "$ISAAC_SCENE" == "custom" ]]; then
     if ! awk -v value="$ISAAC_PEDESTRIAN_SPEED" \
         'BEGIN { exit !(value ~ /^[0-9]+([.][0-9]+)?$/ && value > 0) }'; then
         echo "ERROR: ISAAC_PEDESTRIAN_SPEED must be positive." >&2
+        exit 2
+    fi
+    case "${ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST,,}" in
+        1|true|yes|on) ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST="1" ;;
+        0|false|no|off) ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST="0" ;;
+        *) echo "ERROR: ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST must be a boolean value." >&2; exit 2 ;;
+    esac
+    if [[ "$ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" == "1" \
+        && "$ISAAC_PEDESTRIAN_COUNT" != "2" ]]; then
+        echo "ERROR: ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST=1 requires ISAAC_PEDESTRIAN_COUNT=2." >&2
         exit 2
     fi
     if (( ISAAC_PEDESTRIAN_COUNT == 0 )); then
@@ -280,6 +291,10 @@ if [[ "$ISAAC_SCENE" == "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
         fi
     done
     generated_config="$LOG_DIR/custom_people_slam_free_space.yaml"
+    opposed_pair_args=()
+    if [[ "$ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" == "1" ]]; then
+        opposed_pair_args+=(--opposed-pair-test)
+    fi
     /usr/bin/python3 "$CUSTOM_ROUTE_GENERATOR" \
         --map-yaml "$ISAAC_PEDESTRIAN_FREE_SPACE_MAP_YAML" \
         --template "$CUSTOM_IRA_TEMPLATE" \
@@ -291,7 +306,8 @@ if [[ "$ISAAC_SCENE" == "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
         --scenario "$CUSTOM_GAZEBO_SCENARIO" \
         --pedestrian-count "$ISAAC_PEDESTRIAN_COUNT" \
         --seed "$ISAAC_PEDESTRIAN_SEED" \
-        --speed "$ISAAC_PEDESTRIAN_SPEED"
+        --speed "$ISAAC_PEDESTRIAN_SPEED" \
+        "${opposed_pair_args[@]}"
     /usr/bin/python3 "$CUSTOM_ROUTE_VALIDATOR" \
         --config "$generated_config" \
         --world "$CUSTOM_GAZEBO_WORLD" \
@@ -365,6 +381,9 @@ case "$ISAAC_PEDESTRIAN_SOCIAL_MODE" in
         exit 2
         ;;
 esac
+if [[ "$ISAAC_PEDESTRIAN_SOCIAL_MODE" == "gazebo_social" ]]; then
+    export ISAAC_PEDESTRIAN_SOCIAL_TRACE_PATH="${ISAAC_PEDESTRIAN_SOCIAL_TRACE_PATH:-${LOG_FILE%.log}_steering.jsonl}"
+fi
 if [[ "$ISAAC_ENABLE_PEOPLE" == "0" && "$ISAAC_PEDESTRIAN_AVOIDANCE_MODE" != "off" ]]; then
     echo "ERROR: pedestrian avoidance must be off when ISAAC_ENABLE_PEOPLE=0." >&2
     exit 2

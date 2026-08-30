@@ -17,6 +17,7 @@ from generate_free_space_people_config import (  # noqa: E402
     FreeSpaceMap,
     allocate_pedestrian_counts,
     gazebo_compatible_groups,
+    configure_opposed_pair_test,
     load_gazebo_clusters,
 )
 
@@ -385,6 +386,38 @@ class GazeboPeopleConfigTest(unittest.TestCase):
             first_route_targets,
             [[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]],
         )
+
+    def test_opposed_pair_test_uses_same_closed_loop_in_reverse(self) -> None:
+        points = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ]
+        groups = template_groups(2)
+        for group in groups.values():
+            group["routines"][0]["patrol"]["path_points"] = [
+                list(point) for point in points
+            ]
+
+        configure_opposed_pair_test(groups)
+
+        second = list(groups.values())[1]["routines"][0]["patrol"][
+            "path_points"
+        ]
+        self.assertEqual(
+            second,
+            [
+                [1.0, 1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ],
+        )
+        with self.assertRaisesRegex(ValueError, "exactly two"):
+            configure_opposed_pair_test(template_groups(1))
 
 
 if __name__ == "__main__":

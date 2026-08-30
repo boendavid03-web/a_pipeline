@@ -35,6 +35,7 @@ from pedestrian_social import (
     SocialQualityTracker,
     SocialYieldPlanner,
 )
+from pedestrian_steering import PatrolPolylineCursor, steering_target_from_velocity
 from rtx_lidar_scan import project_rtx_returns
 from udp_telemetry import COMPRESSED_MAGIC, TelemetryEncoder
 from isaac_actuation_contract import (
@@ -417,6 +418,21 @@ PEDESTRIAN_SOCIAL_EMERGENCY_DODGE_CLEARANCE_M = environment_float(
 PEDESTRIAN_SOCIAL_DEBUG_PERIOD_SEC = environment_float(
     "ISAAC_PEDESTRIAN_SOCIAL_DEBUG_PERIOD_SEC", 5.0, 0.5, 60.0, unit="s"
 )
+PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M", 1.0, 0.4, 2.0, unit="m"
+)
+PEDESTRIAN_SOCIAL_ROUTE_LOOKAHEAD_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_ROUTE_LOOKAHEAD_M", 1.5, 0.5, 4.0, unit="m"
+)
+PEDESTRIAN_SOCIAL_WAYPOINT_REACH_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_WAYPOINT_REACH_M", 0.35, 0.1, 1.0, unit="m"
+)
+PEDESTRIAN_SOCIAL_TARGET_MIN_SHIFT_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_TARGET_MIN_SHIFT_M", 0.02, 0.0, 0.25, unit="m"
+)
+PEDESTRIAN_SOCIAL_TRACE_PATH = os.environ.get(
+    "ISAAC_PEDESTRIAN_SOCIAL_TRACE_PATH", ""
+).strip()
 if PEDESTRIAN_VISUAL_OVERLAP_M >= PEDESTRIAN_PERSONAL_SPACE_M:
     raise SystemExit(
         "ERROR: ISAAC_PEDESTRIAN_VISUAL_OVERLAP_M must be smaller than "
@@ -1457,21 +1473,28 @@ def pedestrian_social_force_parameters() -> SocialForceParameters:
 
 
 class BehaviorAgentSocialMotion:
-    """Apply pure social-force output without replacing IRA patrol tasks.
+    """Execute complete social velocity through one persistent follow task.
 
-    Isaac Sim 6.0.1 exposes a read-only locomotion target and a mutable scalar
-    speed.  Starting another ``move_to``/``move_along`` task would cancel the
-    native patrol move task, so this adapter continuously modulates speed while
-    native NavMesh/obstacle avoidance remains the sole directional owner.  The
-    vector output is retained for diagnostics, while its forward projection is
-    applied through ``set_speed`` because the active patrol target is read-only.
+    Isaac 6.0.1 has no public desired-velocity setter on ``IBehaviorAgent``.
+    Its writable locomotion contract is a scalar speed plus a navigation target.
+    In the opt-in social mode this adapter suspends IRA's per-waypoint routine,
+    starts one non-terminating ``follow`` task, and moves an invisible target in
+    the complete social ``(vx, vy)`` direction.  BehaviorAgent still owns the
+    NavMesh controller, heading, motion matching, and walking animation.
     """
 
-    def __init__(self, initial_positions: dict[str, np.ndarray]) -> None:
+    def __init__(
+        self,
+        stage: Usd.Stage,
+        initial_positions: dict[str, np.ndarray],
+        free_space_guard=None,
+    ) -> None:
         import omni.anim.behavior.core as behavior_core
         from isaacsim.replicator.agent.core.character import IRA_Character
         from omni.metropolis.pipeline.agent import AgentsManager
 
+        self.behavior_core = behavior_core
+        self.free_space_guard = free_space_guard
         behavior_interface = behavior_core.acquire_interface()
         self.agents = {
             path: behavior_interface.get_agent(path) for path in initial_positions
@@ -1482,18 +1505,63 @@ class BehaviorAgentSocialMotion:
                 "BehaviorAgent runtime missing for Gazebo social motion: "
                 + ", ".join(missing)
             )
-        runtime_agents = {
+        self.runtime_agents = {
             str(runtime_agent.prim.GetPath()): runtime_agent
             for runtime_agent in AgentsManager.get_instance().get_agents_by_type(
                 IRA_Character
             )
         }
+        missing_runtime = [
+            path for path in initial_positions if path not in self.runtime_agents
+        ]
+        if missing_runtime:
+            raise RuntimeError(
+                "IRA patrol runtime missing for Gazebo social steering: "
+                + ", ".join(missing_runtime)
+            )
         self.preferred_speeds_mps: dict[str, float] = {}
+        self.patrol_cursors: dict[str, PatrolPolylineCursor] = {}
+        self.follow_task_ids: dict[str, int] = {}
+        self.follow_restart_count = 0
+        self.target_write_count = 0
+        self.last_target_positions_m: dict[str, tuple[float, float]] = {}
+        self.previous_positions_m: dict[str, tuple[float, float]] = {}
+        self.previous_actual_lateral_mps: dict[str, float] = {}
+        self.maximum_sample_displacement_m = 0.0
+        self.maximum_actual_lateral_delta_mps = 0.0
+        self.maximum_commanded_lateral_mps = 0.0
+        self.maximum_actual_lateral_mps = 0.0
+        self.lateral_command_sample_count = 0
+        self.actual_lateral_motion_sample_count = 0
+        self.free_space_constrained_target_count = 0
+        self.current_freeze_sec = {path: 0.0 for path in initial_positions}
+        self.maximum_freeze_sec = {path: 0.0 for path in initial_positions}
+        self.trace_file = None
+        if PEDESTRIAN_SOCIAL_TRACE_PATH:
+            trace_path = Path(PEDESTRIAN_SOCIAL_TRACE_PATH).expanduser().resolve()
+            trace_path.parent.mkdir(parents=True, exist_ok=True)
+            self.trace_file = trace_path.open("w", encoding="utf-8", buffering=1)
+            self.trace_file.write(
+                json.dumps(
+                    {
+                        "schema": "isaac_pedestrian_social_steering/v1",
+                        "type": "header",
+                        "adapter": "behavior_agent_persistent_follow_target_2d",
+                    },
+                    sort_keys=True,
+                )
+                + "\n"
+            )
+        UsdGeom.Xform.Define(
+            stage, "/World/PedestrianSocialSteeringTargets"
+        )
+        self.target_xforms: dict[str, UsdGeom.XformCommonAPI] = {}
+        self.target_paths: dict[str, str] = {}
         for path in initial_positions:
-            runtime_agent = runtime_agents.get(path)
+            runtime_agent = self.runtime_agents[path]
             selectors = [
                 routine.walk_speed_selector
-                for routine in (runtime_agent.routines if runtime_agent else [])
+                for routine in runtime_agent.routines
                 if getattr(routine, "walk_speed_selector", None) is not None
             ]
             if not selectors:
@@ -1504,16 +1572,64 @@ class BehaviorAgentSocialMotion:
             authored_midpoint_mps = 0.5 * (
                 float(selector.min) + float(selector.max)
             )
-            # Preserve IRA's seeded per-agent patrol-speed sample.  The
-            # authored midpoint is only a setup-transition fallback.
-            live_speed_mps = (
-                float(self.agents[path].get_speed()) * STAGE_METERS_PER_UNIT
+            # The generated custom config authors a deterministic one-value
+            # speed range.  BehaviorAgent may still report its 1.5 m/s default
+            # during the setup transition, so the authored value is the only
+            # stable patrol-speed contract here.
+            self.preferred_speeds_mps[path] = authored_midpoint_mps
+            patrol_routines = [
+                routine
+                for routine in runtime_agent.routines
+                if getattr(routine, "path_points", None)
+            ]
+            if not patrol_routines:
+                raise RuntimeError(
+                    f"IRA patrol path missing for Gazebo social steering: {path}"
+                )
+            route_points_m = []
+            for point in patrol_routines[0].path_points:
+                point_stage = np.asarray(
+                    [float(point[0]), float(point[1]), float(point[2])], dtype=float
+                )
+                point_m = stage_to_ros_vector(point_stage)[:2]
+                route_points_m.append((float(point_m[0]), float(point_m[1])))
+            initial_m_array = stage_to_ros_vector(initial_positions[path])[:2]
+            initial_m = float(initial_m_array[0]), float(initial_m_array[1])
+            self.patrol_cursors[path] = PatrolPolylineCursor(
+                route_points_m,
+                initial_m,
+                waypoint_reach_m=PEDESTRIAN_SOCIAL_WAYPOINT_REACH_M,
+                route_lookahead_m=PEDESTRIAN_SOCIAL_ROUTE_LOOKAHEAD_M,
             )
-            self.preferred_speeds_mps[path] = (
-                live_speed_mps
-                if math.isfinite(live_speed_mps) and live_speed_mps > 1.0e-4
-                else authored_midpoint_mps
+            target_path = (
+                "/World/PedestrianSocialSteeringTargets/Target_"
+                + hashlib.sha256(path.encode("utf-8")).hexdigest()[:12]
             )
+            target_prim = UsdGeom.Xform.Define(stage, target_path).GetPrim()
+            self.target_xforms[path] = UsdGeom.XformCommonAPI(target_prim)
+            self.target_paths[path] = target_path
+            base_direction = self.patrol_cursors[path].desired_direction(initial_m)
+            initial_target_m = (
+                initial_m[0]
+                + base_direction[0] * PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
+                initial_m[1]
+                + base_direction[1] * PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
+            )
+            initial_target_m, _ = self._free_space_safe_target(
+                initial_m, initial_target_m, base_direction
+            )
+            self._write_target(path, initial_target_m, force=True)
+
+        # PatrolRuntimeState would otherwise replace follow() with the next
+        # dense, auto-braking move_to().  These are private 6.0.1 scheduler
+        # fields, deliberately isolated to this opt-in adapter.
+        for path in initial_positions:
+            runtime_agent = self.runtime_agents[path]
+            runtime_agent._refresh_runtime_states_coro()
+            runtime_agent._active_routine = None
+            runtime_agent.routines.clear()
+            runtime_agent._routine_p = []
+            self._launch_follow(path, initial=True)
         self.controller = PedestrianSocialForceController(
             pedestrian_social_force_parameters()
         )
@@ -1523,30 +1639,138 @@ class BehaviorAgentSocialMotion:
         self.latest_debug: dict[str, dict[str, object]] = {}
         self.next_debug_sim_time = -math.inf
 
-    @staticmethod
-    def _desired_direction(agent, position_stage: np.ndarray) -> tuple[float, float]:
-        target = agent.get_target_location()
-        target_stage = np.asarray(
-            [float(target.x), float(target.y), float(target.z)], dtype=float
+    def _write_target(
+        self,
+        path: str,
+        target_position_m: tuple[float, float],
+        *,
+        force: bool = False,
+    ) -> bool:
+        previous = self.last_target_positions_m.get(path)
+        if (
+            not force
+            and previous is not None
+            and math.dist(previous, target_position_m)
+            < PEDESTRIAN_SOCIAL_TARGET_MIN_SHIFT_M
+        ):
+            return False
+        target_stage = stage_from_ros_offset(
+            target_position_m[0], target_position_m[1], 0.0
         )
-        direction = stage_to_ros_vector(target_stage - position_stage)[:2]
-        if float(np.linalg.norm(direction)) < 1.0e-5:
-            velocity = agent.get_linear_velocity(True)
-            velocity_stage = np.asarray(
-                [float(velocity.x), float(velocity.y), float(velocity.z)],
-                dtype=float,
+        self.target_xforms[path].SetTranslate(
+            Gf.Vec3d(*[float(value) for value in target_stage])
+        )
+        self.last_target_positions_m[path] = target_position_m
+        self.target_write_count += 1
+        return True
+
+    def _launch_follow(self, path: str, *, initial: bool = False) -> None:
+        task_id = self.agents[path].follow(
+            target=self.target_paths[path], distance=0.0
+        )
+        if task_id == self.behavior_core.BEHAVIOR_TASK_ID_INVALID:
+            raise RuntimeError(
+                f"BehaviorAgent refused continuous steering follow task: {path}"
             )
-            direction = stage_to_ros_vector(velocity_stage)[:2]
-        if float(np.linalg.norm(direction)) < 1.0e-5:
-            facing = agent.get_facing_direction()
-            facing_stage = np.asarray(
-                [float(facing.x), float(facing.y), float(facing.z)], dtype=float
+        self.follow_task_ids[path] = task_id
+        if not initial:
+            self.follow_restart_count += 1
+
+    def _free_space_safe_target(
+        self,
+        position_m: tuple[float, float],
+        requested_target_m: tuple[float, float],
+        base_direction: tuple[float, float],
+    ) -> tuple[tuple[float, float], bool]:
+        guard = self.free_space_guard
+        # A navigation/motion-matching step can carry the root slightly beyond
+        # the runtime intrusion guard.  Every segment beginning at that current
+        # point is then (correctly) rejected by ``segment_world_free``.  Steer
+        # back toward confirmed free cells instead of freezing in place; this
+        # remains a continuous BehaviorAgent command and never teleports the
+        # character.
+        if guard is not None and not guard.contains_world(
+            position_m[0], position_m[1]
+        ):
+            recovery_world = guard.world(
+                guard.nearest(position_m[0], position_m[1])
             )
-            direction = stage_to_ros_vector(facing_stage)[:2]
-        length = float(np.linalg.norm(direction))
-        if length < 1.0e-9:
-            return 1.0, 0.0
-        return float(direction[0] / length), float(direction[1] / length)
+            recovery_position = (
+                float(recovery_world[0]),
+                float(recovery_world[1]),
+            )
+            recovery_directions = (
+                base_direction,
+                (-base_direction[1], base_direction[0]),
+                (base_direction[1], -base_direction[0]),
+                (-base_direction[0], -base_direction[1]),
+            )
+            # A target at only the nearest cell centre may fall inside the
+            # BehaviorAgent arrival/navigation radius, leaving the animated
+            # root pinned just outside the raster guard.  Extend the recovery
+            # along the first continuously safe tangent so locomotion has a
+            # meaningful target distance and walks back into free space.
+            for direction in recovery_directions:
+                for distance_m in (1.0, 0.8, 0.6, 0.4):
+                    candidate = (
+                        recovery_position[0] + direction[0] * distance_m,
+                        recovery_position[1] + direction[1] * distance_m,
+                    )
+                    if guard.segment_world_free(
+                        recovery_position[0],
+                        recovery_position[1],
+                        candidate[0],
+                        candidate[1],
+                    ):
+                        self.free_space_constrained_target_count += 1
+                        return candidate, True
+            self.free_space_constrained_target_count += 1
+            return recovery_position, True
+        if guard is None or guard.segment_world_free(
+            position_m[0],
+            position_m[1],
+            requested_target_m[0],
+            requested_target_m[1],
+        ):
+            return requested_target_m, False
+        offset = (
+            requested_target_m[0] - position_m[0],
+            requested_target_m[1] - position_m[1],
+        )
+        for fraction in (0.8, 0.6, 0.4, 0.2):
+            candidate = (
+                position_m[0] + offset[0] * fraction,
+                position_m[1] + offset[1] * fraction,
+            )
+            if guard.segment_world_free(
+                position_m[0], position_m[1], candidate[0], candidate[1]
+            ):
+                self.free_space_constrained_target_count += 1
+                return candidate, True
+        for fraction in (1.0, 0.8, 0.6, 0.4, 0.2):
+            candidate = (
+                position_m[0]
+                + base_direction[0]
+                * PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M
+                * fraction,
+                position_m[1]
+                + base_direction[1]
+                * PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M
+                * fraction,
+            )
+            if guard.segment_world_free(
+                position_m[0], position_m[1], candidate[0], candidate[1]
+            ):
+                self.free_space_constrained_target_count += 1
+                return candidate, True
+        self.free_space_constrained_target_count += 1
+        return position_m, True
+
+    def _ensure_follow(self, path: str) -> None:
+        task_id = self.follow_task_ids.get(path)
+        if task_id is not None and self.agents[path].is_task_running(task_id):
+            return
+        self._launch_follow(path)
 
     def update(
         self,
@@ -1565,6 +1789,10 @@ class BehaviorAgentSocialMotion:
         )
         self.last_sim_time = sim_time
         states: dict[str, PedestrianMotionState] = {}
+        positions_m: dict[str, tuple[float, float]] = {}
+        actual_velocities_mps: dict[str, tuple[float, float]] = {}
+        navigation_reported_velocities_mps: dict[str, tuple[float, float]] = {}
+        base_directions: dict[str, tuple[float, float]] = {}
         for path, position_stage in positions.items():
             agent = self.agents[path]
             # The previous-frame navigation-agent velocity is the locomotion
@@ -1575,16 +1803,33 @@ class BehaviorAgentSocialMotion:
                 [float(velocity.x), float(velocity.y), float(velocity.z)],
                 dtype=float,
             )
+            position_array = stage_to_ros_vector(position_stage)[:2]
+            position_m = float(position_array[0]), float(position_array[1])
+            velocity_array = stage_to_ros_vector(velocity_stage)[:2]
+            navigation_reported_velocity_mps = (
+                float(velocity_array[0]),
+                float(velocity_array[1]),
+            )
+            previous_position_m = self.previous_positions_m.get(path)
+            actual_velocity_mps = (
+                (
+                    (position_m[0] - previous_position_m[0]) / dt,
+                    (position_m[1] - previous_position_m[1]) / dt,
+                )
+                if previous_position_m is not None
+                else navigation_reported_velocity_mps
+            )
+            base_direction = self.patrol_cursors[path].desired_direction(position_m)
+            positions_m[path] = position_m
+            actual_velocities_mps[path] = actual_velocity_mps
+            navigation_reported_velocities_mps[path] = (
+                navigation_reported_velocity_mps
+            )
+            base_directions[path] = base_direction
             states[path] = PedestrianMotionState(
-                position_m=tuple(
-                    float(value)
-                    for value in stage_to_ros_vector(position_stage)[:2]
-                ),
-                velocity_mps=tuple(
-                    float(value)
-                    for value in stage_to_ros_vector(velocity_stage)[:2]
-                ),
-                desired_direction=self._desired_direction(agent, position_stage),
+                position_m=position_m,
+                velocity_mps=actual_velocity_mps,
+                desired_direction=base_direction,
                 preferred_speed_mps=self.preferred_speeds_mps[path],
             )
         planar_dimension_index = 1 if STAGE_UP_AXIS == "Z" else 2
@@ -1606,14 +1851,116 @@ class BehaviorAgentSocialMotion:
         debug: dict[str, dict[str, object]] = {}
         for path, output in outputs.items():
             is_inhibited = path in inhibited
+            target_written = False
             if is_inhibited:
                 self.inhibited_update_count += 1
             else:
+                self._ensure_follow(path)
+                steering_command = steering_target_from_velocity(
+                    positions_m[path],
+                    output.final_desired_velocity_mps,
+                    PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
+                )
+                applied_target_m, free_space_constrained = (
+                    self._free_space_safe_target(
+                        positions_m[path],
+                        steering_command.target_position_m,
+                        base_directions[path],
+                    )
+                )
+                target_written = self._write_target(
+                    path, applied_target_m
+                )
                 self.agents[path].set_speed(
-                    output.speed_command_mps / STAGE_METERS_PER_UNIT
+                    steering_command.speed_mps / STAGE_METERS_PER_UNIT
                 )
                 self.speed_update_count += 1
+            if is_inhibited:
+                steering_command = None
+                free_space_constrained = False
+            base_direction = base_directions[path]
+            left_direction = -base_direction[1], base_direction[0]
+            desired_forward = sum(
+                output.final_desired_velocity_mps[index]
+                * base_direction[index]
+                for index in range(2)
+            )
+            desired_lateral = sum(
+                output.final_desired_velocity_mps[index]
+                * left_direction[index]
+                for index in range(2)
+            )
+            actual_velocity = actual_velocities_mps[path]
+            actual_forward = sum(
+                actual_velocity[index] * base_direction[index]
+                for index in range(2)
+            )
+            actual_lateral = sum(
+                actual_velocity[index] * left_direction[index]
+                for index in range(2)
+            )
+            self.maximum_commanded_lateral_mps = max(
+                self.maximum_commanded_lateral_mps, abs(desired_lateral)
+            )
+            self.maximum_actual_lateral_mps = max(
+                self.maximum_actual_lateral_mps, abs(actual_lateral)
+            )
+            if abs(desired_lateral) >= 0.02:
+                self.lateral_command_sample_count += 1
+            if abs(actual_lateral) >= 0.02:
+                self.actual_lateral_motion_sample_count += 1
+            previous_lateral = self.previous_actual_lateral_mps.get(path)
+            if previous_lateral is not None:
+                self.maximum_actual_lateral_delta_mps = max(
+                    self.maximum_actual_lateral_delta_mps,
+                    abs(actual_lateral - previous_lateral),
+                )
+            self.previous_actual_lateral_mps[path] = actual_lateral
+            previous_position = self.previous_positions_m.get(path)
+            if previous_position is not None:
+                self.maximum_sample_displacement_m = max(
+                    self.maximum_sample_displacement_m,
+                    math.dist(previous_position, positions_m[path]),
+                )
+            self.previous_positions_m[path] = positions_m[path]
+            locomotion_speed_command_mps = math.hypot(
+                *output.final_desired_velocity_mps
+            )
+            if (
+                not is_inhibited
+                and locomotion_speed_command_mps >= 0.2
+                and math.hypot(*actual_velocity) < 0.05
+            ):
+                self.current_freeze_sec[path] += dt
+                self.maximum_freeze_sec[path] = max(
+                    self.maximum_freeze_sec[path], self.current_freeze_sec[path]
+                )
+            else:
+                self.current_freeze_sec[path] = 0.0
+            reported_target = self.agents[path].get_target_location()
+            reported_target_stage = np.asarray(
+                [
+                    float(reported_target.x),
+                    float(reported_target.y),
+                    float(reported_target.z),
+                ],
+                dtype=float,
+            )
+            facing = self.agents[path].get_facing_direction()
+            facing_stage = np.asarray(
+                [float(facing.x), float(facing.y), float(facing.z)], dtype=float
+            )
             debug[path] = {
+                "position_m": list(positions_m[path]),
+                "actual_navigation_velocity_mps": list(actual_velocity),
+                "actual_navigation_velocity_source": "pose_derived_position_delta",
+                "behavior_agent_reported_navigation_velocity_mps": list(
+                    navigation_reported_velocities_mps[path]
+                ),
+                "actual_navigation_forward_mps": actual_forward,
+                "actual_navigation_lateral_mps": actual_lateral,
+                "base_patrol_direction": list(base_direction),
+                "heading_direction": list(stage_to_ros_vector(facing_stage)[:2]),
                 "desired_component_mps": list(output.desired_component_mps),
                 "human_social_component_mps2": list(
                     output.human_social_component_mps2
@@ -1630,7 +1977,34 @@ class BehaviorAgentSocialMotion:
                 "final_desired_velocity_mps": list(
                     output.final_desired_velocity_mps
                 ),
-                "speed_command_mps": output.speed_command_mps,
+                "desired_forward_component_mps": desired_forward,
+                "desired_lateral_component_mps": desired_lateral,
+                "social_controller_speed_command_mps": output.speed_command_mps,
+                "locomotion_speed_command_mps": (
+                    locomotion_speed_command_mps if not is_inhibited else 0.0
+                ),
+                "locomotion_steering_velocity_mps": list(
+                    output.final_desired_velocity_mps
+                ),
+                "locomotion_requested_target_position_m": (
+                    list(steering_command.target_position_m)
+                    if steering_command is not None
+                    else None
+                ),
+                "locomotion_target_position_m": list(
+                    self.last_target_positions_m[path]
+                ),
+                "locomotion_target_free_space_constrained": (
+                    free_space_constrained
+                ),
+                "behavior_agent_reported_target_m": list(
+                    stage_to_ros_vector(reported_target_stage)[:2]
+                ),
+                "follow_task_id": self.follow_task_ids[path],
+                "follow_task_running": self.agents[path].is_task_running(
+                    self.follow_task_ids[path]
+                ),
+                "target_written_this_update": target_written,
                 "robot_footprint_clearance_m": (
                     output.robot_footprint_clearance_m
                 ),
@@ -1640,6 +2014,19 @@ class BehaviorAgentSocialMotion:
                 "inhibited_by_emergency": is_inhibited,
             }
         self.latest_debug = debug
+        if self.trace_file is not None:
+            self.trace_file.write(
+                json.dumps(
+                    {
+                        "schema": "isaac_pedestrian_social_steering/v1",
+                        "type": "sample",
+                        "sim_time": sim_time,
+                        "people": debug,
+                    },
+                    sort_keys=True,
+                )
+                + "\n"
+            )
         if sim_time >= self.next_debug_sim_time:
             print(
                 "PEDESTRIAN_GAZEBO_SOCIAL_DEBUG="
@@ -1658,17 +2045,51 @@ class BehaviorAgentSocialMotion:
     def summary(self) -> dict[str, object]:
         return {
             "mode": "gazebo_social",
-            "adapter": "behavior_agent_forward_projection_plus_native_avoidance",
-            "lateral_vector_applied_directly": False,
-            "directional_owner": "isaac_native_navmesh_obstacle_avoidance",
-            "patrol_task_replacement": False,
+            "adapter": "behavior_agent_persistent_follow_target_2d",
+            "lateral_vector_applied_directly": True,
+            "directional_owner": "social_2d_target_plus_isaac_navmesh",
+            "patrol_task_replacement": True,
+            "patrol_execution": "persistent_follow_moving_target",
+            "stock_per_waypoint_autobrake": False,
+            "isaac_public_direct_velocity_setter_available": False,
+            "isaac_public_control_entry": (
+                "IBehaviorAgent.follow(target_prim, distance=0)"
+            ),
+            "ira_private_scheduler_suspended": True,
             "parameters": asdict(self.controller.parameters),
             "preferred_speeds_mps": self.preferred_speeds_mps,
             "speed_update_count": self.speed_update_count,
             "inhibited_update_count": self.inhibited_update_count,
+            "target_write_count": self.target_write_count,
+            "follow_restart_count": self.follow_restart_count,
+            "follow_task_ids": self.follow_task_ids,
+            "trace_path": PEDESTRIAN_SOCIAL_TRACE_PATH or None,
+            "maximum_sample_displacement_m": self.maximum_sample_displacement_m,
+            "maximum_actual_lateral_delta_mps": (
+                self.maximum_actual_lateral_delta_mps
+            ),
+            "maximum_commanded_lateral_mps": self.maximum_commanded_lateral_mps,
+            "maximum_actual_lateral_mps": self.maximum_actual_lateral_mps,
+            "lateral_command_sample_count": self.lateral_command_sample_count,
+            "actual_lateral_motion_sample_count": (
+                self.actual_lateral_motion_sample_count
+            ),
+            "free_space_constrained_target_count": (
+                self.free_space_constrained_target_count
+            ),
+            "maximum_freeze_sec_by_person": self.maximum_freeze_sec,
+            "patrol_cursors": {
+                path: cursor.summary()
+                for path, cursor in self.patrol_cursors.items()
+            },
             "latest_people": self.latest_debug,
             **self.controller.summary(),
         }
+
+    def close(self) -> None:
+        if self.trace_file is not None:
+            self.trace_file.close()
+            self.trace_file = None
 
 
 class PedestrianRobotAvoidance:
@@ -3298,8 +3719,10 @@ def main() -> int:
     rtx_lidar = None
     robot = None
     collision_proxy = None
+    pedestrian_social_motion = None
     exit_reason = "window_closed"
     free_space_guard = None
+    steering_free_space_guard = None
     free_space_intrusion_tracker = None
     # Runtime pose recovery is deliberately disabled.  Keep this explicit
     # counter in the result contract so tests can detect any future regression.
@@ -3671,6 +4094,14 @@ def main() -> int:
         initial_navigation_yaw_unwrapped = navigation_yaw_unwrapped
         if PEOPLE_ENABLED:
             free_space_guard = custom_free_space_guard()
+            if PEDESTRIAN_SOCIAL_MODE == "gazebo_social":
+                # Patrols are authored with the stricter route-generation
+                # margin (normally 0.55 m).  Steering may use the established
+                # runtime intrusion boundary (normally 0.20 m); constraining
+                # every local target to the route margin can pin an animated
+                # root at tight turns even though it remains safely in free
+                # space.
+                steering_free_space_guard = free_space_guard
             runtime_deadline = time.monotonic() + 15.0
             while True:
                 try:
@@ -3792,7 +4223,9 @@ def main() -> int:
             else None
         )
         pedestrian_social_motion = (
-            BehaviorAgentSocialMotion(initial_people_positions)
+            BehaviorAgentSocialMotion(
+                stage, initial_people_positions, steering_free_space_guard
+            )
             if PEOPLE_ENABLED and PEDESTRIAN_SOCIAL_MODE == "gazebo_social"
             else None
         )
@@ -3890,7 +4323,7 @@ def main() -> int:
                     "people_enabled": PEOPLE_ENABLED,
                     "pedestrian_social_mode": PEDESTRIAN_SOCIAL_MODE,
                     "pedestrian_social_adapter": (
-                        "behavior_agent_forward_projection_plus_native_avoidance"
+                        "behavior_agent_persistent_follow_target_2d"
                         if pedestrian_social_motion is not None
                         else (
                             "legacy_discrete_yield" if PEOPLE_ENABLED else "disabled"
@@ -5017,9 +5450,22 @@ def main() -> int:
                     "Pedestrian avoidance validation had no robot/pedestrian encounter"
                 )
             if SCENE_NAME == "custom":
-                if result["pedestrian_robot_dodge_count"] < 1:
+                if (
+                    PEDESTRIAN_SOCIAL_MODE == "gazebo_social"
+                    and result["pedestrian_robot_dodge_count"] != 0
+                ):
                     raise RuntimeError(
-                        "Custom pedestrian avoidance validation produced no dodge"
+                        "Gazebo-social pedestrian avoidance unexpectedly used "
+                        "an emergency dodge: "
+                        f"count={result['pedestrian_robot_dodge_count']}"
+                    )
+                if (
+                    PEDESTRIAN_SOCIAL_MODE == "legacy"
+                    and result["pedestrian_robot_dodge_count"] < 1
+                ):
+                    raise RuntimeError(
+                        "Legacy custom pedestrian avoidance validation produced "
+                        "no dodge"
                     )
                 if pedestrian_inside_robot_frames != 0:
                     raise RuntimeError(
@@ -5047,6 +5493,24 @@ def main() -> int:
                     )
         if ARGS.test_pedestrian_social:
             social_quality = result["pedestrian_social_quality"]
+            social_motion = result["pedestrian_social_motion"]
+            if PEDESTRIAN_SOCIAL_MODE == "gazebo_social":
+                if not social_motion["lateral_vector_applied_directly"]:
+                    raise RuntimeError(
+                        "Gazebo-social adapter did not apply the complete 2D vector"
+                    )
+                if social_motion["target_write_count"] <= result["people"]:
+                    raise RuntimeError(
+                        "Gazebo-social adapter did not continuously update steering "
+                        "targets: "
+                        f"writes={social_motion['target_write_count']}, "
+                        f"people={result['people']}"
+                    )
+                if result["pedestrian_robot_dodge_count"] != 0:
+                    raise RuntimeError(
+                        "Gazebo-social normal validation used emergency dodge: "
+                        f"count={result['pedestrian_robot_dodge_count']}"
+                    )
             if social_quality["sample_frames"] < 1:
                 raise RuntimeError(
                     "Pedestrian social validation sampled no crowd frames"
@@ -5114,6 +5578,8 @@ def main() -> int:
         print(f"[WAREHOUSE-ROBOT] ERROR: {exc}", file=sys.stderr, flush=True)
         return 1
     finally:
+        if pedestrian_social_motion is not None:
+            pedestrian_social_motion.close()
         if collision_proxy is not None:
             collision_proxy.close_dynamic_controller()
         if ros is not None:

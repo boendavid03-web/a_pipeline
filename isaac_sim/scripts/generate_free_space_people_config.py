@@ -88,6 +88,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument(
+        "--opposed-pair-test",
+        action="store_true",
+        help=(
+            "Test-only: put exactly two people on the same straight safe "
+            "patrol segment and send the second in the opposite direction."
+        ),
+    )
+    parser.add_argument(
         "--world",
         type=Path,
         help="Optional Gazebo world; its static collision boxes are excluded too.",
@@ -859,6 +867,40 @@ def gazebo_compatible_groups(
     return generated
 
 
+def configure_opposed_pair_test(
+    groups: dict[str, dict[str, object]],
+) -> None:
+    """Create a deterministic real-runtime head-on case on one safe loop."""
+    if len(groups) != 2:
+        raise ValueError("opposed-pair test requires exactly two pedestrians")
+    first_group, second_group = groups.values()
+    first_patrol = next(
+        routine["patrol"]
+        for routine in first_group.get("routines", [])
+        if "patrol" in routine
+    )
+    second_patrol = next(
+        routine["patrol"]
+        for routine in second_group.get("routines", [])
+        if "patrol" in routine
+    )
+    closed = [list(point) for point in first_patrol["path_points"]]
+    loop = closed[:-1] if closed[0] == closed[-1] else closed
+    if len(loop) < 4:
+        raise ValueError("opposed-pair test patrol requires at least four points")
+    # The generated lobby loop uses roughly one-metre route samples.  Starting
+    # on its first long corridor keeps the real-runtime encounter prompt and
+    # unambiguous; a geometric half-loop can still be many routed metres away
+    # on this non-convex patrol.
+    start_index = min(12, len(loop) // 2)
+    opposed = [
+        list(loop[(start_index - offset) % len(loop)])
+        for offset in range(len(loop))
+    ]
+    opposed.append(list(opposed[0]))
+    second_patrol["path_points"] = opposed
+
+
 def main() -> int:
     args = parse_args()
     if not math.isfinite(args.clearance) or args.clearance <= 0.0:
@@ -921,6 +963,8 @@ def main() -> int:
             args.min_patrol_segment,
             args.max_patrol_segment,
         )
+        if args.opposed_pair_test:
+            configure_opposed_pair_test(groups)
         config["isaacsim.replicator.agent"]["character"]["groups"] = groups
         point_count = sum(
             len(routine["patrol"]["path_points"])
