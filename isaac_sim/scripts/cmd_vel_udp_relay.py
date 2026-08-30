@@ -15,6 +15,7 @@ import math
 import os
 import socket
 import struct
+from collections import deque
 from pathlib import Path
 from typing import Iterable
 
@@ -43,6 +44,7 @@ TELEMETRY_PORT = int(os.environ.get("ISAAC_TELEMETRY_UDP_PORT", "15974"))
 RESET_PORT = int(os.environ.get("ISAAC_RESET_UDP_PORT", "15975"))
 COMMAND_PACKET = struct.Struct("!IQdddd")
 TELEMETRY_SCHEMA = "isaac_6_warehouse_telemetry/v1"
+LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"
 MANUAL_EPISODE_SCHEMA = "isaac_manual_teleop_episode/v1"
 MANUAL_EPISODE_EVENTS_ENABLED = os.environ.get(
     "ISAAC_MANUAL_EPISODE_EVENTS", "1"
@@ -119,6 +121,8 @@ class IsaacUdpRosBridge:
 
         self.sim_time = 0.0
         self.last_telemetry_time = -math.inf
+        self.last_lidar_time = -math.inf
+        self.pending_lidar: deque[tuple[float, dict]] = deque(maxlen=256)
         self.telemetry_count = 0
         self.command_count = 0
         self.command_sequence_id = 0
@@ -287,7 +291,9 @@ class IsaacUdpRosBridge:
             self.episode_active = False
             self.stop_started_sim_time = None
 
-    def make_scan(self, payload: dict, frame_id: str) -> LaserScan:
+    def make_scan(
+        self, payload: dict, frame_id: str, sim_time: float | None = None
+    ) -> LaserScan:
         raw_ranges = payload["ranges"]
         if not isinstance(raw_ranges, list) or not raw_ranges:
             raise ValueError(f"{frame_id}.ranges must be a non-empty list")
@@ -345,7 +351,9 @@ class IsaacUdpRosBridge:
             sensor_timestamp_ns = int(sensor_timestamp_ns)
             if sensor_timestamp_ns < 0:
                 raise ValueError(f"{frame_id}.sensor_timestamp_ns must be non-negative")
-        message.header.stamp = self.stamp(self.sim_time)
+        message.header.stamp = self.stamp(
+            self.sim_time if sim_time is None else sim_time
+        )
         message.header.frame_id = frame_id
         message.angle_min = angle_min
         message.angle_increment = angle_increment
@@ -496,8 +504,46 @@ class IsaacUdpRosBridge:
         self.last_sensor_config = encoded
         self.last_sensor_config_publish_sim_time = self.sim_time
 
+    def publish_scans(self, scans: dict, sim_time: float) -> None:
+        if not isinstance(scans, dict):
+            raise ValueError("scans must be an object")
+        front = self.make_scan(scans["scan_01"], "base_scan_01", sim_time)
+        rear = self.make_scan(scans["scan_02"], "base_scan_02", sim_time)
+        self.scan_01_pub.publish(front)
+        self.scan_02_pub.publish(rear)
+        legacy = self.make_scan(scans["scan_01"], "base_scan", sim_time)
+        self.scan_pub.publish(legacy)
+
+    def handle_lidar_telemetry(self, payload: dict) -> None:
+        sim_time = float(payload["sim_time"])
+        if not math.isfinite(sim_time) or sim_time < 0.0:
+            raise ValueError("lidar sim_time must be finite and non-negative")
+        if sim_time <= self.last_lidar_time + 1.0e-9:
+            raise ValueError(
+                "lidar sim_time must increase strictly: "
+                f"previous={self.last_lidar_time}, current={sim_time}"
+            )
+        scans = payload["scans"]
+        if not isinstance(scans, dict):
+            raise ValueError("lidar scans must be an object")
+        self.pending_lidar.append((sim_time, scans))
+        self.last_lidar_time = sim_time
+
+    def publish_ready_lidar(self, telemetry_sim_time: float) -> None:
+        """Publish scans only after odom/TF covers their simulation stamp."""
+        while (
+            self.pending_lidar
+            and self.pending_lidar[0][0] <= telemetry_sim_time + 1.0e-9
+        ):
+            lidar_sim_time, scans = self.pending_lidar.popleft()
+            self.publish_scans(scans, lidar_sim_time)
+
     def handle_telemetry(self, payload: dict) -> None:
-        if payload.get("schema") != TELEMETRY_SCHEMA:
+        schema = payload.get("schema")
+        if schema == LIDAR_TELEMETRY_SCHEMA:
+            self.handle_lidar_telemetry(payload)
+            return
+        if schema != TELEMETRY_SCHEMA:
             raise ValueError(f"unexpected telemetry schema: {payload.get('schema')!r}")
         sim_time = float(payload["sim_time"])
         if not math.isfinite(sim_time) or sim_time < 0.0:
@@ -508,6 +554,8 @@ class IsaacUdpRosBridge:
             )
             self.episode_active = False
             self.stop_started_sim_time = None
+            self.pending_lidar.clear()
+            self.last_lidar_time = -math.inf
             self.publish_static_tf()
         self.sim_time = sim_time
         self.last_telemetry_time = sim_time
@@ -539,19 +587,13 @@ class IsaacUdpRosBridge:
         self.robot_pose = pose
         actual_velocity = self.publish_actuation_state(payload)
         self.publish_odometry(pose, actual_velocity)
+        self.publish_ready_lidar(sim_time)
 
         if "pedestrians" in payload:
             self.publish_pedestrians(payload["pedestrians"])
         scans = payload.get("scans")
         if scans is not None:
-            if not isinstance(scans, dict):
-                raise ValueError("scans must be an object")
-            front = self.make_scan(scans["scan_01"], "base_scan_01")
-            rear = self.make_scan(scans["scan_02"], "base_scan_02")
-            self.scan_01_pub.publish(front)
-            self.scan_02_pub.publish(rear)
-            legacy = self.make_scan(scans["scan_01"], "base_scan")
-            self.scan_pub.publish(legacy)
+            self.publish_scans(scans, sim_time)
 
         self.telemetry_count += 1
         if self.telemetry_count == 1:

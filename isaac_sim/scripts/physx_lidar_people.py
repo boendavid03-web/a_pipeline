@@ -7,6 +7,7 @@ an in-memory finite capsule used only while producing LaserScan ranges.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 
 import numpy as np
@@ -15,6 +16,11 @@ import numpy as np
 PERSON_QUERY_COLLIDER_SUFFIXES = (
     "/Physics/BodyCollider",
     "/Physics/AvoidanceTrigger",
+)
+
+ROBOT_QUERY_COLLIDER_ROOTS = (
+    "/World/Robot",
+    "/World/RobotCollisionProxy",
 )
 
 
@@ -34,6 +40,61 @@ def is_ignored_person_query_collider(path: object) -> bool:
     if not isinstance(path, str) or "/World/Characters/" not in path:
         return False
     return path.endswith(PERSON_QUERY_COLLIDER_SUFFIXES)
+
+
+def is_ignored_robot_query_collider(path: object) -> bool:
+    """Return whether *path* belongs to the LiDAR-carrying robot itself."""
+    if not isinstance(path, str):
+        return False
+    return any(path == root or path.startswith(root + "/") for root in ROBOT_QUERY_COLLIDER_ROOTS)
+
+
+def ray_start_offsets_outside_box(
+    sensor_xy: object,
+    ray_directions_xy: object,
+    box_half_extents_xy: object,
+    minimum_offset: float,
+    *,
+    epsilon: float = 0.01,
+) -> np.ndarray:
+    """Return per-ray starts at or beyond the exit of an enclosing XY box.
+
+    A mobile LiDAR mount may be off-centre inside its robot collision proxy.
+    Starting every native ray at one common range can therefore leave rays
+    pointing through the chassis inside that proxy.  This helper preserves the
+    requested minimum range whenever it is already outside the box and moves
+    only the affected ray origins just beyond their exact box-exit distance.
+    """
+    sensor = np.asarray(sensor_xy, dtype=float).reshape(-1)
+    directions = np.asarray(ray_directions_xy, dtype=float)
+    half_extents = np.asarray(box_half_extents_xy, dtype=float).reshape(-1)
+    if sensor.shape != (2,) or half_extents.shape != (2,):
+        raise ValueError("sensor_xy and box_half_extents_xy must each have shape (2,)")
+    if directions.ndim != 2 or directions.shape[1] != 2:
+        raise ValueError("ray_directions_xy must have shape (N, 2)")
+    if not np.all(np.isfinite(sensor)) or not np.all(np.isfinite(directions)):
+        raise ValueError("sensor and ray directions must be finite")
+    if not np.all(np.isfinite(half_extents)) or np.any(half_extents <= 0.0):
+        raise ValueError("box half extents must be finite and positive")
+    if not math.isfinite(minimum_offset) or minimum_offset < 0.0:
+        raise ValueError("minimum_offset must be finite and non-negative")
+    if not math.isfinite(epsilon) or epsilon <= 0.0:
+        raise ValueError("epsilon must be finite and positive")
+    norms = np.linalg.norm(directions, axis=1)
+    if np.any(norms <= 1.0e-12):
+        raise ValueError("ray directions must be nonzero")
+    directions = directions / norms[:, None]
+    if np.any(np.abs(sensor) >= half_extents):
+        raise ValueError("sensor_xy must be strictly inside the box")
+
+    boundaries = np.where(directions >= 0.0, half_extents, -half_extents)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        axis_exit = (boundaries - sensor) / directions
+    axis_exit[np.abs(directions) <= 1.0e-12] = np.inf
+    exit_offsets = np.min(axis_exit, axis=1)
+    if np.any(~np.isfinite(exit_offsets)) or np.any(exit_offsets < 0.0):
+        raise ValueError("could not compute a finite forward box exit")
+    return np.maximum(float(minimum_offset), exit_offsets + float(epsilon))
 
 
 def _vectors(name: str, values: object) -> np.ndarray:

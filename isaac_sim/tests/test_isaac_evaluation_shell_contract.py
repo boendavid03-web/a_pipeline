@@ -7,6 +7,7 @@ ISAAC_RUNNER = ROOT / "isaac_sim/scripts/show_warehouse_people_robot_6_0.py"
 WAREHOUSE_LAUNCHER = (
     ROOT / "isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh"
 )
+ROS_BRIDGE = ROOT / "isaac_sim/scripts/cmd_vel_udp_relay.py"
 
 
 def test_launcher_records_complete_evaluation_contract_and_never_mass_kills():
@@ -30,6 +31,8 @@ def test_launcher_records_complete_evaluation_contract_and_never_mass_kills():
     assert "export ISAAC_MANUAL_EPISODE_EVENTS=0" in source
     assert 'ISAAC_DEMO_ACTUATION_SOURCE_TIMEOUT:-180.0' in source
     assert 'timeout "$demo_actuation_source_timeout" ros2 topic echo /isaac/actuation_state' in source
+    assert "Isaac failed while waiting for actual velocity telemetry" in source
+    assert "grep '\\[WAREHOUSE-ROBOT\\] ERROR:'" in source
     assert '| tr -d "\'\\\"" \\\n        || true' in source
     assert 'printf "%.9f", value' in source
     assert '-p capture_duration_sec:="$demo_capture_duration_sec"' in source
@@ -50,6 +53,47 @@ def test_dual_lidar_policy_contract_remains_2000_beams_at_15_hz():
     source = LAUNCHER.read_text(encoding="utf-8")
     assert "export ISAAC_LIDAR_SAMPLE_COUNT=2000" in source
     assert 'export ISAAC_LIDAR_RATE_HZ="${ISAAC_LIDAR_RATE_HZ:-15}"' in source
+    assert "if (( ISAAC_LIDAR_RATE_HZ != 15 )); then" in source
+    assert "DRL-VO dual-LiDAR input is fixed at 15 Hz" in source
+    assert "if (( ISAAC_LIDAR_SAMPLE_COUNT != 2000 )); then" in source
+    assert "fixed at 2000 beams per sensor" in source
+    assert "--verify-lidar-rate --require-realtime-lidar" in source
+
+
+def test_physx_lidar_uses_physics_clock_and_dedicated_timestamped_messages():
+    source = ISAAC_RUNNER.read_text(encoding="utf-8")
+    bridge = ROS_BRIDGE.read_text(encoding="utf-8")
+
+    assert "class PhysxDualLidarScheduler" in source
+    assert 'enable_extension("isaacsim.sensors.experimental.physics")' in source
+    assert "Raycast.create(" in source
+    assert "RaycastSensor(authoring)" in source
+    assert "ray_origins=ray_origins" in source
+    assert "ray_directions=ray_directions" in source
+    assert "report_hit_prim_paths=True" in source
+    assert 'prim.GetAttribute("enabled").Set(enabled)' in source
+    assert "self.physics_steps % self.steps_per_capture == 0" in source
+    assert "reading.depths" in source
+    assert "reading.hit_prim_paths" in source
+    assert "native PhysX raycast reading was stale/replayed" in source
+    assert "native PhysX raycast cadence is not 15 Hz" in source
+    assert "native PhysX front/rear readings were not paired" in source
+    assert "native PhysX reading time is not current" not in source
+    assert "merge_native_physx_scan(" in source
+    assert "ThreadPoolExecutor" not in source
+    assert "raycast_closest" not in source
+    assert "raycast_all" in source
+    assert "event=IsaacEvents.PRE_PHYSICS_STEP" in source
+    assert "event=IsaacEvents.POST_PHYSICS_STEP" in source
+    assert "self.physics_sim_time += step_dt" in source
+    assert "self.ros.send_lidar_telemetry(sim_time, scans)" in source
+    assert 'LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"' in source
+    assert "missed_periods" in source
+    assert "Dual-lidar simulation/wall rate validation failed" in source
+    assert 'LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"' in bridge
+    assert "self.handle_lidar_telemetry(payload)" in bridge
+    assert "self.pending_lidar.append((sim_time, scans))" in bridge
+    assert "self.publish_ready_lidar(sim_time)" in bridge
 
 
 def test_dynamic_velocity_command_is_applied_at_physx_rate():

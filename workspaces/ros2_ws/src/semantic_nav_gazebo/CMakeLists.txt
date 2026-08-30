@@ -73,6 +73,7 @@ install(
     scripts/pedestrian_point_tracker.py
     scripts/pedestrian_point_tracker_core.py
     scripts/pedestrian_tracking_evaluator.py
+    scripts/pedestrian_crowded_tracking_evaluator.py
     scripts/episode_goal_picker.py
     scripts/fixed_goal_sequence.py
     scripts/fixed_four_video_capture.py

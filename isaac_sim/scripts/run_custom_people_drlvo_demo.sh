@@ -81,9 +81,19 @@ if [[ ! "$ISAAC_LIDAR_RATE_HZ" =~ ^[0-9]+$ ]] \
     echo "ERROR: ISAAC_LIDAR_RATE_HZ must be an integer from 1 through 30." >&2
     exit 2
 fi
+if (( ISAAC_LIDAR_RATE_HZ != 15 )); then
+    echo "ERROR: DRL-VO dual-LiDAR input is fixed at 15 Hz; requested ${ISAAC_LIDAR_RATE_HZ} Hz." >&2
+    echo "Remove ISAAC_LIDAR_RATE_HZ or set ISAAC_LIDAR_RATE_HZ=15." >&2
+    exit 2
+fi
 if [[ ! "$ISAAC_LIDAR_SAMPLE_COUNT" =~ ^[0-9]+$ ]] \
     || (( ISAAC_LIDAR_SAMPLE_COUNT < 90 || ISAAC_LIDAR_SAMPLE_COUNT > 4096 )); then
     echo "ERROR: ISAAC_LIDAR_SAMPLE_COUNT must be an integer from 90 through 4096." >&2
+    exit 2
+fi
+if (( ISAAC_LIDAR_SAMPLE_COUNT != 2000 )); then
+    echo "ERROR: DRL-VO dual-LiDAR input is fixed at 2000 beams per sensor; requested ${ISAAC_LIDAR_SAMPLE_COUNT}." >&2
+    echo "Remove ISAAC_LIDAR_SAMPLE_COUNT or set ISAAC_LIDAR_SAMPLE_COUNT=2000." >&2
     exit 2
 fi
 export ISAAC_PEDESTRIAN_AVOIDANCE_MODE="${ISAAC_PEDESTRIAN_AVOIDANCE_MODE:-gentle}"
@@ -390,6 +400,16 @@ actuation_source="$(
         | tr -d "'\"" \
         || true
 )"
+if grep -q '\[WAREHOUSE-ROBOT\] ERROR:' "$log_dir/isaac.log"; then
+    echo "ERROR: Isaac failed while waiting for actual velocity telemetry. See $log_dir/isaac.log" >&2
+    grep '\[WAREHOUSE-ROBOT\] ERROR:' "$log_dir/isaac.log" | tail -n 1 >&2
+    exit 1
+fi
+if ! kill -0 "$isaac_pid" 2>/dev/null; then
+    echo "ERROR: Isaac exited while waiting for actual velocity telemetry. See $log_dir/isaac.log" >&2
+    tail -n 40 "$log_dir/isaac.log" >&2
+    exit 1
+fi
 case "$actuation_source" in
     physx_rigid_body_api|fixed_tick_pose_difference) ;;
     *)
@@ -400,7 +420,8 @@ esac
 
 sensor_preflight_log="$log_dir/sensor_preflight.log"
 if ! python3 "$SCRIPT_DIR/check_capture_ready.py" \
-    --sensor-preflight --verify-lidar-rate --timeout "${ISAAC_DEMO_SENSOR_PREFLIGHT_TIMEOUT:-180.0}" \
+    --sensor-preflight --verify-lidar-rate --require-realtime-lidar \
+    --timeout "${ISAAC_DEMO_SENSOR_PREFLIGHT_TIMEOUT:-180.0}" \
     >"$sensor_preflight_log" 2>&1; then
     echo "ERROR: Isaac sensor preflight failed. See $sensor_preflight_log" >&2
     sed -n '1,200p' "$sensor_preflight_log" >&2

@@ -221,6 +221,11 @@ bash isaac_sim/scripts/run_custom_people_drlvo_demo.sh
 策略模式默认在当次运行目录写入 `trajectory.csv` 和
 `closed_loop_demo_summary.json`；可用 `ISAAC_DEMO_RECORD_TRACE=false` 关闭。
 
+该 DRL-VO 入口把两路原始雷达合同固定为每路 `2000` 束、`15 Hz`；显式请求其他频率会在
+启动 Isaac 前失败。PhysX 模式用 Isaac 的原生批量 `RaycastSensor` 在每 4 个 60 Hz 物理步
+采集一组新的 2000 束扫描，不再受 GUI 帧率限制，也不会复制旧扫描补帧。策略或录制启动前
+同时检查 ROS header 的仿真时间频率与真实墙钟接收频率，任一路低于容差都会拒绝继续。
+
 默认不会预先发送终点。ROS 节点就绪后会自动弹出完整地图窗口：蓝色圆点是机器人，点击
 地图空闲区域会显示黄色目标，按“发布目标并隐藏窗口”后才开始导航；机器人到达并稳定停止
 后，窗口会再次自动弹出选择下一终点。
@@ -255,7 +260,7 @@ source /opt/ros/humble/setup.bash
 source workspaces/ros2_ws/install/setup.bash
 export ROS_DOMAIN_ID=78 ROS_LOCALHOST_ONLY=1 RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 python3 isaac_sim/scripts/check_capture_ready.py \
-  --timeout 60 --verify-lidar-rate --verify-motion
+  --timeout 60 --verify-lidar-rate --require-realtime-lidar --verify-motion
 ```
 
 自动策略的固定目标闭环验收可直接在入口中开启；只有收到已接受目标、非空全局路径、

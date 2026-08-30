@@ -290,29 +290,39 @@ if [[ "$ISAAC_SCENE" == "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
             exit 1
         fi
     done
-    generated_config="$LOG_DIR/custom_people_slam_free_space.yaml"
-    opposed_pair_args=()
-    if [[ "$ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" == "1" ]]; then
-        opposed_pair_args+=(--opposed-pair-test)
+    explicit_custom_config="${ISAAC_EXPLICIT_CUSTOM_IRA_CONFIG:-}"
+    if [[ -n "$explicit_custom_config" ]]; then
+        if [[ ! -f "$explicit_custom_config" ]]; then
+            echo "ERROR: explicit custom IRA config is missing: $explicit_custom_config" >&2
+            exit 1
+        fi
+        generated_config="$(realpath "$explicit_custom_config")"
+        echo "ISAAC_EXPLICIT_CUSTOM_IRA_CONFIG=$generated_config"
+    else
+        generated_config="$LOG_DIR/custom_people_slam_free_space.yaml"
+        opposed_pair_args=()
+        if [[ "$ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" == "1" ]]; then
+            opposed_pair_args+=(--opposed-pair-test)
+        fi
+        /usr/bin/python3 "$CUSTOM_ROUTE_GENERATOR" \
+            --map-yaml "$ISAAC_PEDESTRIAN_FREE_SPACE_MAP_YAML" \
+            --template "$CUSTOM_IRA_TEMPLATE" \
+            --output "$generated_config" \
+            --clearance "$ISAAC_PEDESTRIAN_FREE_SPACE_CLEARANCE_M" \
+            --spawn-clearance "$ISAAC_PEDESTRIAN_SPAWN_CLEARANCE_M" \
+            --min-patrol-segment "$ISAAC_PEDESTRIAN_MIN_PATROL_SEGMENT_M" \
+            --world "$CUSTOM_GAZEBO_WORLD" \
+            --scenario "$CUSTOM_GAZEBO_SCENARIO" \
+            --pedestrian-count "$ISAAC_PEDESTRIAN_COUNT" \
+            --seed "$ISAAC_PEDESTRIAN_SEED" \
+            --speed "$ISAAC_PEDESTRIAN_SPEED" \
+            "${opposed_pair_args[@]}"
     fi
-    /usr/bin/python3 "$CUSTOM_ROUTE_GENERATOR" \
-        --map-yaml "$ISAAC_PEDESTRIAN_FREE_SPACE_MAP_YAML" \
-        --template "$CUSTOM_IRA_TEMPLATE" \
-        --output "$generated_config" \
-        --clearance "$ISAAC_PEDESTRIAN_FREE_SPACE_CLEARANCE_M" \
-        --spawn-clearance "$ISAAC_PEDESTRIAN_SPAWN_CLEARANCE_M" \
-        --min-patrol-segment "$ISAAC_PEDESTRIAN_MIN_PATROL_SEGMENT_M" \
-        --world "$CUSTOM_GAZEBO_WORLD" \
-        --scenario "$CUSTOM_GAZEBO_SCENARIO" \
-        --pedestrian-count "$ISAAC_PEDESTRIAN_COUNT" \
-        --seed "$ISAAC_PEDESTRIAN_SEED" \
-        --speed "$ISAAC_PEDESTRIAN_SPEED" \
-        "${opposed_pair_args[@]}"
     /usr/bin/python3 "$CUSTOM_ROUTE_VALIDATOR" \
         --config "$generated_config" \
         --world "$CUSTOM_GAZEBO_WORLD" \
         --clearance "$ISAAC_PEDESTRIAN_FREE_SPACE_CLEARANCE_M" \
-        --min-start-separation "$ISAAC_PEDESTRIAN_SPAWN_CLEARANCE_M"
+        --min-start-separation "${ISAAC_EXPLICIT_CUSTOM_IRA_MIN_START_SEPARATION_M:-$ISAAC_PEDESTRIAN_SPAWN_CLEARANCE_M}"
     export ISAAC_CUSTOM_IRA_CONFIG="$generated_config"
     echo "ISAAC_SLAM_FREE_SPACE_PATROL map=$ISAAC_PEDESTRIAN_FREE_SPACE_MAP_YAML config=$generated_config"
 fi
