@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import math
+from collections import deque
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -15,6 +16,25 @@ class PointDetection:
     x: float
     y: float
     confidence: float
+
+
+@dataclass(frozen=True)
+class MeasurementSample:
+    timestamp_ns: int
+    x: float
+    y: float
+    confidence: float
+
+
+@dataclass(frozen=True)
+class CausalVelocityFit:
+    vx: float | None
+    vy: float | None
+    valid: bool
+    samples: int
+    time_span: float
+    fit_rmse: float | None
+    mean_detection_confidence: float | None
 
 
 @dataclass(frozen=True)
@@ -30,6 +50,87 @@ class TrackEstimate:
     misses: int
     state: str
     time_since_update: float
+    fit5: CausalVelocityFit
+    fit8: CausalVelocityFit
+
+
+def causal_linear_velocity_fit(
+    measurements: Sequence[MeasurementSample],
+    *,
+    window_size: int,
+    min_samples: int = 3,
+    min_time_span: float = 0.15,
+) -> CausalVelocityFit:
+    """Fit x(t), y(t) using only the newest available real measurements."""
+
+    if window_size < 1:
+        raise ValueError("window_size must be positive")
+    if min_samples < 2 or min_samples > window_size:
+        raise ValueError("min_samples must be in [2, window_size]")
+    if min_time_span <= 0.0:
+        raise ValueError("min_time_span must be positive")
+    selected = list(measurements)[-window_size:]
+    sample_count = len(selected)
+    if sample_count == 0:
+        return CausalVelocityFit(None, None, False, 0, 0.0, None, None)
+    timestamps = np.asarray(
+        [sample.timestamp_ns for sample in selected], dtype=np.int64
+    )
+    if np.any(np.diff(timestamps) <= 0):
+        raise ValueError("measurement timestamps must be strictly increasing")
+    values = np.asarray(
+        [
+            [sample.x, sample.y, sample.confidence]
+            for sample in selected
+        ],
+        dtype=np.float64,
+    )
+    if not np.isfinite(values).all():
+        raise ValueError("measurements must contain finite x/y/confidence")
+    time_span = float((timestamps[-1] - timestamps[0]) / 1.0e9)
+    mean_confidence = float(np.mean(values[:, 2]))
+    if sample_count < min_samples or time_span < min_time_span:
+        return CausalVelocityFit(
+            None,
+            None,
+            False,
+            sample_count,
+            time_span,
+            None,
+            mean_confidence,
+        )
+    times = (timestamps - timestamps[-1]).astype(np.float64) / 1.0e9
+    design = np.stack((times, np.ones_like(times)), axis=1)
+    velocity_and_intercept = np.linalg.lstsq(
+        design, values[:, :2], rcond=None
+    )[0]
+    velocity = velocity_and_intercept[0]
+    fitted_positions = design @ velocity_and_intercept
+    residuals = values[:, :2] - fitted_positions
+    fit_rmse = float(np.sqrt(np.mean(np.sum(residuals * residuals, axis=1))))
+    if (
+        velocity.shape != (2,)
+        or not np.isfinite(velocity).all()
+        or not math.isfinite(fit_rmse)
+    ):
+        return CausalVelocityFit(
+            None,
+            None,
+            False,
+            sample_count,
+            time_span,
+            None,
+            mean_confidence,
+        )
+    return CausalVelocityFit(
+        float(velocity[0]),
+        float(velocity[1]),
+        True,
+        sample_count,
+        time_span,
+        fit_rmse,
+        mean_confidence,
+    )
 
 
 def linear_sum_assignment(cost_matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -112,6 +213,9 @@ class _Track:
         timestamp_ns: int,
         initial_position_sigma: float,
         initial_velocity_sigma: float,
+        measurement_history_size: int,
+        velocity_fit_min_samples: int,
+        velocity_fit_min_span: float,
     ) -> None:
         self.track_id = int(track_id)
         self.state = np.asarray(
@@ -134,6 +238,19 @@ class _Track:
         self.consecutive_hits = 1
         self.misses = 0
         self.confirmed = False
+        self.measurement_history: deque[MeasurementSample] = deque(
+            [
+                MeasurementSample(
+                    int(timestamp_ns),
+                    float(detection.x),
+                    float(detection.y),
+                    float(detection.confidence),
+                )
+            ],
+            maxlen=measurement_history_size,
+        )
+        self.velocity_fit_min_samples = int(velocity_fit_min_samples)
+        self.velocity_fit_min_span = float(velocity_fit_min_span)
 
     def predict(
         self,
@@ -213,6 +330,14 @@ class _Track:
                 1.0,
             )
         )
+        self.measurement_history.append(
+            MeasurementSample(
+                int(timestamp_ns),
+                float(detection.x),
+                float(detection.y),
+                float(detection.confidence),
+            )
+        )
 
     def miss(self) -> None:
         self.misses += 1
@@ -229,6 +354,18 @@ class _Track:
             if self.confirmed
             else "TENTATIVE"
         )
+        fit5 = causal_linear_velocity_fit(
+            self.measurement_history,
+            window_size=5,
+            min_samples=self.velocity_fit_min_samples,
+            min_time_span=self.velocity_fit_min_span,
+        )
+        fit8 = causal_linear_velocity_fit(
+            self.measurement_history,
+            window_size=8,
+            min_samples=self.velocity_fit_min_samples,
+            min_time_span=self.velocity_fit_min_span,
+        )
         return TrackEstimate(
             track_id=self.track_id,
             x=float(self.state[0]),
@@ -241,6 +378,8 @@ class _Track:
             misses=self.misses,
             state=state,
             time_since_update=time_since_update,
+            fit5=fit5,
+            fit8=fit8,
         )
 
 
@@ -260,6 +399,9 @@ class PointCVKalmanTracker:
         initial_velocity_sigma: float = 1.0,
         max_prediction_dt: float = 0.50,
         confidence_alpha: float = 0.35,
+        measurement_history_size: int = 8,
+        velocity_fit_min_samples: int = 3,
+        velocity_fit_min_span: float = 0.15,
     ) -> None:
         self.association_threshold = float(association_threshold)
         self.min_hits = int(min_hits)
@@ -271,6 +413,9 @@ class PointCVKalmanTracker:
         self.initial_velocity_sigma = float(initial_velocity_sigma)
         self.max_prediction_dt = float(max_prediction_dt)
         self.confidence_alpha = float(confidence_alpha)
+        self.measurement_history_size = int(measurement_history_size)
+        self.velocity_fit_min_samples = int(velocity_fit_min_samples)
+        self.velocity_fit_min_span = float(velocity_fit_min_span)
         if self.association_threshold <= 0.0:
             raise ValueError("association_threshold must be positive")
         if self.min_hits < 1 or self.max_age < 0:
@@ -286,6 +431,12 @@ class PointCVKalmanTracker:
             raise ValueError("tracker noise and time parameters must be positive")
         if not 0.0 <= self.confidence_alpha <= 1.0:
             raise ValueError("confidence_alpha must be in [0,1]")
+        if self.measurement_history_size < 8:
+            raise ValueError("measurement_history_size must be at least 8")
+        if not 2 <= self.velocity_fit_min_samples <= 5:
+            raise ValueError("velocity_fit_min_samples must be in [2,5]")
+        if self.velocity_fit_min_span <= 0.0:
+            raise ValueError("velocity_fit_min_span must be positive")
         self.tracks: list[_Track] = []
         self.next_track_id = 1
         self.last_timestamp_ns: int | None = None
@@ -393,6 +544,9 @@ class PointCVKalmanTracker:
                 timestamp_ns,
                 self.initial_position_sigma,
                 self.initial_velocity_sigma,
+                self.measurement_history_size,
+                self.velocity_fit_min_samples,
+                self.velocity_fit_min_span,
             )
             new_track.confirmed = self.min_hits == 1
             self.tracks.append(new_track)

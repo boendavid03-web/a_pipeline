@@ -101,6 +101,9 @@ detector_pid=$!
     -p acceleration_sigma:=2.0 \
     -p measurement_sigma:=0.10 \
     -p max_prediction_dt:=0.50 \
+    -p measurement_history_size:=8 \
+    -p velocity_fit_min_samples:=3 \
+    -p velocity_fit_min_span:=0.15 \
     >"$RUN_DIR/tracker.log" 2>&1 &
 tracker_pid=$!
 
@@ -111,12 +114,14 @@ tracker_pid=$!
     -p max_sync_offset:=0.08 \
     -p match_threshold:=0.5 \
     -p gt_velocity_fit_half_window:=0.30 \
+    -p gt_velocity_fit_half_windows:="[0.20, 0.30, 0.40]" \
     -p gt_velocity_fit_min_samples:=5 \
     >"$RUN_DIR/evaluator.log" 2>&1 &
 evaluator_pid=$!
 
 ros2 bag record -o "$RUN_DIR/rosbag" \
     /dr_spaam_detections_scored /pedestrian_tracks \
+    /pedestrian_track_velocity_diagnostics \
     /pedestrian_ground_truth /odom /tf /tf_static /clock \
     /scan_01 /scan_02 /scan_merged /isaac/reset_event \
     >"$RUN_DIR/rosbag.log" 2>&1 &
@@ -131,8 +136,8 @@ bag_pid=$!
                 >/dev/null 2>&1
             {
                 echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
-                echo "TRACKER_PARAMETERS association_threshold=0.8 min_hits=3 max_age=8 max_coast_time=0.75 acceleration_sigma=2.0 measurement_sigma=0.10 max_prediction_dt=0.50"
-                for topic in /scan_merged /pedestrian_ground_truth /odom /cmd_vel /dr_spaam_detections_scored /pedestrian_tracks; do
+                echo "TRACKER_PARAMETERS association_threshold=0.8 min_hits=3 max_age=8 max_coast_time=0.75 acceleration_sigma=2.0 measurement_sigma=0.10 max_prediction_dt=0.50 measurement_history_size=8 velocity_fit_min_samples=3 velocity_fit_min_span=0.15"
+                for topic in /scan_merged /pedestrian_ground_truth /odom /cmd_vel /dr_spaam_detections_scored /pedestrian_tracks /pedestrian_track_velocity_diagnostics; do
                     echo "TOPIC $topic"
                     ros2 topic info "$topic" -v 2>&1 || true
                 done

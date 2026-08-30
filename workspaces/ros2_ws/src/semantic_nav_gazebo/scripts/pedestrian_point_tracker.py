@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import struct
 
@@ -75,6 +76,12 @@ class PedestrianPointTrackerNode(Node):
         self.output_topic = str(
             self.declare_parameter("output_topic", "/pedestrian_tracks").value
         )
+        self.velocity_diagnostics_topic = str(
+            self.declare_parameter(
+                "velocity_diagnostics_topic",
+                "/pedestrian_track_velocity_diagnostics",
+            ).value
+        )
         self.reset_topic = str(
             self.declare_parameter("reset_topic", "/isaac/reset_event").value
         )
@@ -109,6 +116,15 @@ class PedestrianPointTrackerNode(Node):
             confidence_alpha=float(
                 self.declare_parameter("confidence_alpha", 0.35).value
             ),
+            measurement_history_size=int(
+                self.declare_parameter("measurement_history_size", 8).value
+            ),
+            velocity_fit_min_samples=int(
+                self.declare_parameter("velocity_fit_min_samples", 3).value
+            ),
+            velocity_fit_min_span=float(
+                self.declare_parameter("velocity_fit_min_span", 0.15).value
+            ),
         )
         if not self.tracking_frame:
             raise ValueError("tracking_frame cannot be empty")
@@ -118,6 +134,9 @@ class PedestrianPointTrackerNode(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.publisher = self.create_publisher(
             TrackedPedestrianArray, self.output_topic, 20
+        )
+        self.velocity_diagnostics_publisher = self.create_publisher(
+            String, self.velocity_diagnostics_topic, 20
         )
         self.subscription = self.create_subscription(
             PointCloud2, self.input_topic, self.detections_callback, 20
@@ -134,7 +153,8 @@ class PedestrianPointTrackerNode(Node):
         self.get_logger().info(
             f"point tracker ready: {self.input_topic} -> {self.output_topic}; "
             f"frame={self.tracking_frame}, gate={self.tracker.association_threshold:.3f} m, "
-            f"min_hits={self.tracker.min_hits}, max_age={self.tracker.max_age}"
+            f"min_hits={self.tracker.min_hits}, max_age={self.tracker.max_age}, "
+            f"velocity_diagnostics={self.velocity_diagnostics_topic}"
         )
 
     def reset_callback(self, _message: String) -> None:
@@ -217,6 +237,50 @@ class PedestrianPointTrackerNode(Node):
             track.state = estimate.state
             track.time_since_update = estimate.time_since_update
             output.tracks.append(track)
+
+        diagnostics = String()
+        diagnostics.data = json.dumps(
+            {
+                "schema": "pedestrian_track_velocity_diagnostics/v1",
+                "timestamp_ns": timestamp_ns,
+                "frame": self.tracking_frame,
+                "detection_count": len(detections),
+                "tracks": [
+                    {
+                        "track_id": estimate.track_id,
+                        "state": estimate.state,
+                        "kalman_vx": estimate.vx,
+                        "kalman_vy": estimate.vy,
+                        "fit5": {
+                            "vx": estimate.fit5.vx,
+                            "vy": estimate.fit5.vy,
+                            "valid": estimate.fit5.valid,
+                            "velocity_samples": estimate.fit5.samples,
+                            "velocity_time_span": estimate.fit5.time_span,
+                            "velocity_fit_rmse": estimate.fit5.fit_rmse,
+                            "mean_detection_confidence": (
+                                estimate.fit5.mean_detection_confidence
+                            ),
+                        },
+                        "fit8": {
+                            "vx": estimate.fit8.vx,
+                            "vy": estimate.fit8.vy,
+                            "valid": estimate.fit8.valid,
+                            "velocity_samples": estimate.fit8.samples,
+                            "velocity_time_span": estimate.fit8.time_span,
+                            "velocity_fit_rmse": estimate.fit8.fit_rmse,
+                            "mean_detection_confidence": (
+                                estimate.fit8.mean_detection_confidence
+                            ),
+                        },
+                    }
+                    for estimate in estimates
+                ],
+            },
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        self.velocity_diagnostics_publisher.publish(diagnostics)
         self.publisher.publish(output)
         self.published_frames += 1
         if self.published_frames % 100 == 0:

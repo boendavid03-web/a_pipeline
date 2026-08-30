@@ -9,8 +9,10 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from pedestrian_point_tracker_core import (  # noqa: E402
+    MeasurementSample,
     PointCVKalmanTracker,
     PointDetection,
+    causal_linear_velocity_fit,
     linear_sum_assignment,
 )
 
@@ -113,3 +115,123 @@ def test_confirmed_track_has_priority_over_nearby_tentative_duplicate():
     assert confirmed.state == "CONFIRMED"
     assert confirmed.misses == 0
     assert abs(confirmed.x - 1.3) < 0.2
+
+
+def measurement(timestamp: float, x: float, y: float, confidence: float = 0.95):
+    return MeasurementSample(int(round(timestamp * 1.0e9)), x, y, confidence)
+
+
+def test_causal_fit_exact_constant_velocity_fit5_and_fit8():
+    samples = [
+        measurement(t, 1.2 + 0.7 * t, -0.4 - 0.3 * t)
+        for t in np.arange(0.0, 0.8, 0.1)
+    ]
+    fit5 = causal_linear_velocity_fit(samples, window_size=5)
+    fit8 = causal_linear_velocity_fit(samples, window_size=8)
+    assert fit5.valid and fit8.valid
+    assert fit5.vx == pytest.approx(0.7, abs=1.0e-10)
+    assert fit5.vy == pytest.approx(-0.3, abs=1.0e-10)
+    assert fit8.vx == pytest.approx(0.7, abs=1.0e-10)
+    assert fit8.vy == pytest.approx(-0.3, abs=1.0e-10)
+
+
+def test_causal_fit_uses_irregular_real_timestamps():
+    times = [0.0, 0.071, 0.155, 0.239, 0.402, 0.491]
+    samples = [measurement(t, -0.2 + 1.1 * t, 2.0 + 0.25 * t) for t in times]
+    fit = causal_linear_velocity_fit(samples, window_size=5)
+    assert fit.valid
+    assert fit.samples == 5
+    assert fit.time_span == pytest.approx(times[-1] - times[-5])
+    assert fit.vx == pytest.approx(1.1, abs=1.0e-9)
+    assert fit.vy == pytest.approx(0.25, abs=1.0e-9)
+
+
+def test_causal_fit_reduces_zero_mean_position_noise():
+    times = np.arange(0.0, 0.8, 0.1)
+    x_noise = [0.01, -0.01, 0.006, -0.006, 0.008, -0.008, 0.004, -0.004]
+    y_noise = [-0.006, 0.006, -0.004, 0.004, -0.008, 0.008, -0.002, 0.002]
+    samples = [
+        measurement(t, 0.6 * t + x_noise[index], -0.2 * t + y_noise[index])
+        for index, t in enumerate(times)
+    ]
+    fit = causal_linear_velocity_fit(samples, window_size=8)
+    assert fit.valid
+    assert abs(fit.vx - 0.6) < 0.03
+    assert abs(fit.vy + 0.2) < 0.03
+    assert fit.fit_rmse is not None and fit.fit_rmse < 0.02
+
+
+def test_one_or_two_misses_do_not_add_coast_predictions_to_history():
+    tracker = PointCVKalmanTracker(min_hits=2, max_coast_time=1.0)
+    tracker.update([PointDetection(0.0, 0.0, 0.99)], 1_000_000_000)
+    tracker.update([PointDetection(0.1, 0.0, 0.99)], 1_100_000_000)
+    one_miss = tracker.update([], 1_200_000_000)[0]
+    two_misses = tracker.update([], 1_300_000_000)[0]
+    resumed = tracker.update([PointDetection(0.4, 0.0, 0.99)], 1_400_000_000)[0]
+    assert one_miss.fit5.samples == 2
+    assert two_misses.fit5.samples == 2
+    assert resumed.fit5.samples == 3
+    assert resumed.fit5.time_span == pytest.approx(0.4)
+    assert resumed.fit5.valid
+    assert resumed.fit5.vx == pytest.approx(1.0, abs=1.0e-9)
+
+
+def test_causal_fit_insufficient_samples_is_invalid():
+    fit = causal_linear_velocity_fit(
+        [measurement(0.0, 0.0, 0.0), measurement(0.2, 0.2, 0.0)],
+        window_size=5,
+    )
+    assert not fit.valid
+    assert fit.samples == 2
+    assert fit.vx is None and fit.vy is None
+
+
+def test_causal_fit_enforces_minimum_time_span():
+    samples = [
+        measurement(0.00, 0.0, 0.0),
+        measurement(0.02, 0.2, 0.0),
+        measurement(0.04, 0.4, 0.0),
+    ]
+    fit = causal_linear_velocity_fit(
+        samples, window_size=5, min_samples=3, min_time_span=0.15
+    )
+    assert not fit.valid
+    assert fit.samples == 3
+    assert fit.time_span == pytest.approx(0.04)
+
+
+def test_plain_fit_exposes_single_outlier_sensitivity():
+    samples = [measurement(t, t, 0.0) for t in np.arange(0.0, 0.8, 0.1)]
+    samples[-2] = measurement(0.6, 1.6, 0.0)
+    fit = causal_linear_velocity_fit(samples, window_size=8)
+    assert fit.valid
+    assert abs(fit.vx - 1.0) > 0.1
+    assert fit.fit_rmse is not None and fit.fit_rmse > 0.25
+
+
+def test_reset_clears_velocity_measurement_history():
+    tracker = PointCVKalmanTracker(min_hits=1)
+    tracker.update([PointDetection(0.0, 0.0, 0.99)], 1_000_000_000)
+    tracker.update([PointDetection(0.2, 0.0, 0.99)], 1_200_000_000)
+    before_reset = tracker.update(
+        [PointDetection(0.4, 0.0, 0.99)], 1_400_000_000
+    )[0]
+    assert before_reset.fit5.valid and before_reset.fit5.samples == 3
+    tracker.reset()
+    after_reset = tracker.update(
+        [PointDetection(10.0, 4.0, 0.99)], 2_000_000_000
+    )[0]
+    assert after_reset.track_id == 1
+    assert after_reset.fit5.samples == 1
+    assert not after_reset.fit5.valid
+
+
+def test_causal_output_at_k_is_independent_of_future_measurements():
+    history = [measurement(t, 0.5 * t, -0.1 * t) for t in np.arange(0.0, 0.8, 0.1)]
+    prefix = history[:5]
+    at_k_before_future = causal_linear_velocity_fit(prefix, window_size=5)
+    history.append(measurement(0.8, 100.0, -100.0))
+    at_k_after_future_exists = causal_linear_velocity_fit(prefix, window_size=5)
+    assert at_k_before_future == at_k_after_future_exists
+    assert at_k_before_future.vx == pytest.approx(0.5, abs=1.0e-10)
+    assert at_k_before_future.vy == pytest.approx(-0.1, abs=1.0e-10)
