@@ -67,6 +67,7 @@ install(
     scripts/navigation_episode_evaluator.py
     scripts/navigation_evaluation_core.py
     scripts/drl_vo_online_ppo_training_node.py
+    scripts/dr_spaam_detection_evaluator.py
     scripts/episode_goal_picker.py
     scripts/fixed_goal_sequence.py
     scripts/fixed_four_video_capture.py
