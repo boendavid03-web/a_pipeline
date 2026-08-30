@@ -15,6 +15,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DrlVoTrainingState.msg"
   "msg/PedestrianState.msg"
   "msg/PedestrianStateArray.msg"
+  "msg/TrackedPedestrian.msg"
+  "msg/TrackedPedestrianArray.msg"
   DEPENDENCIES geometry_msgs std_msgs
 )
 
@@ -68,6 +70,9 @@ install(
     scripts/navigation_evaluation_core.py
     scripts/drl_vo_online_ppo_training_node.py
     scripts/dr_spaam_detection_evaluator.py
+    scripts/pedestrian_point_tracker.py
+    scripts/pedestrian_point_tracker_core.py
+    scripts/pedestrian_tracking_evaluator.py
     scripts/episode_goal_picker.py
     scripts/fixed_goal_sequence.py
     scripts/fixed_four_video_capture.py
@@ -127,6 +132,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_fixed_four_video_contract
     test/test_fixed_four_video_contract.py
+  )
+  ament_add_pytest_test(
+    test_pedestrian_point_tracker
+    test/test_pedestrian_point_tracker.py
   )
   set(semantic_cnn_test_site_packages
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../..//.venvs/train/lib/python3.10/site-packages"
