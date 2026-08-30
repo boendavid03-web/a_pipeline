@@ -121,7 +121,7 @@ def test_multi_episode_rolls_over_and_indexes_outputs(tmp_path, monkeypatch):
             "multi_episode": True,
         }
         assert first["episode"]["termination_reason"] == "superseded_by_new_goal"
-        assert first["schema"]["version"] == 4
+        assert first["schema"]["version"] == 5
         assert first["episode"]["strict_success_proxy"] is False
         assert first["episode"]["success"] is False
         assert set(("goal_reached", "termination_reason", "navigation_time_sec")) <= set(first["episode"])
@@ -328,7 +328,8 @@ def test_reset_jump_is_not_integrated_as_extreme_speed_or_path(tmp_path, monkeyp
         assert summary["data_quality"]["reset_jump_detected"] == 1
         assert summary["navigation"]["path_length_m"] == 0.0
         assert summary["navigation"]["path_irregularity"]["turning_rad_per_m"] is None
-        assert summary["speed"]["max_mps"] == 0.0
+        assert summary["speed"]["max_mps"] is None
+        assert summary["data_quality"]["pose_derived_invalid_reset_or_teleport"] == 1
     finally:
         node.destroy_node()
         if rclpy.ok():
@@ -344,6 +345,8 @@ def test_actuation_episode_and_session_schema_contains_three_stage_metrics(
     node = NavigationEpisodeEvaluator()
     try:
         node.goal_callback(goal_message(5.0, 0.0, 1.0))
+        position_x = 0.0
+        node.odom_callback(odom_message(position_x, 0.0, 1.0))
         for index, (raw, command, actual) in enumerate(
             ((0.8, 0.7, 0.6), (0.5, 0.5, 0.45), (0.2, 0.2, 0.18)), start=1
         ):
@@ -354,19 +357,30 @@ def test_actuation_episode_and_session_schema_contains_three_stage_metrics(
             node.simulator_actuation_callback(
                 actuation_state_message(stamp, index, command, actual)
             )
+            position_x += actual / 15.0
+            node.odom_callback(odom_message(position_x, 0.0, stamp))
         node.finish("test_complete", 2.0)
         summary = json.loads((output_root / "episode_summary.json").read_text())
         tracking = summary["velocity_tracking"]
-        assert tracking["actual_velocity_sources"] == ["physx_rigid_body_api"]
+        assert tracking["actual_velocity_sources"] == ["pose_derived_velocity"]
         assert tracking["raw_model_to_final_command"]["sample_count"] == 3
         assert tracking["final_command_to_actual_velocity"]["sample_count"] == 3
         assert tracking["angular_final_command_to_actual_velocity"]["sample_count"] == 3
         assert tracking["safety_gated"]["sample_count"] == 1
         assert tracking["safety_ungated"]["sample_count"] == 2
-        assert summary["schema"]["version"] == 4
+        assert tracking["physx_reported_velocity_diagnostic"][
+            "actual_velocity_sources"
+        ] == ["physx_rigid_body_api"]
+        assert tracking["physx_reported_velocity_diagnostic"][
+            "final_command_to_physx_reported_velocity"
+        ]["sample_count"] == 3
+        assert summary["schema"]["version"] == 5
         alignment = (output_root / "actuation_alignment.csv").read_text()
         assert "received_command_angular_z_radps" in alignment
         assert "simulator_gated" in alignment
+        assert (output_root / "physx_actuation_alignment.csv").is_file()
+        assert "pose_derived_velocity" in summary["velocity_tracking"]["source"]
+        assert summary["navigation"]["pose_integration_consistency"]["consistent"]
     finally:
         node.destroy_node()
         if rclpy.ok():

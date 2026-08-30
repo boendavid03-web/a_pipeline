@@ -20,37 +20,14 @@
         </inertia>
       </inertial>
       <collision name="base_collision">
-        <pose>0 0 0 0 0 0</pose>
+        <pose>0 0 0.30 0 0 0</pose>
         <geometry>
-          <!-- Convex top-view envelope of the visual mesh below z=0.60 m,
-               simplified and expanded outward by 0.01 m. -->
-          <polyline>
-            <point>-0.3024 0.0462</point>
-            <point>-0.3024 -0.0462</point>
-            <point>-0.2829 -0.1786</point>
-            <point>-0.2755 -0.1966</point>
-            <point>-0.2531 -0.2173</point>
-            <point>-0.2185 -0.2266</point>
-            <point>-0.1324 -0.2335</point>
-            <point>0.1126 -0.2331</point>
-            <point>0.1936 -0.2270</point>
-            <point>0.2403 -0.2137</point>
-            <point>0.2544 -0.1997</point>
-            <point>0.2631 -0.1818</point>
-            <point>0.2722 -0.1288</point>
-            <point>0.2737 0.1049</point>
-            <point>0.2674 0.1657</point>
-            <point>0.2523 0.2026</point>
-            <point>0.2402 0.2138</point>
-            <point>0.2219 0.2216</point>
-            <point>0.1126 0.2330</point>
-            <point>-0.1324 0.2335</point>
-            <point>-0.1946 0.2296</point>
-            <point>-0.2554 0.2161</point>
-            <point>-0.2729 0.2004</point>
-            <point>-0.2879 0.1560</point>
-            <height>0.60</height>
-          </polyline>
+          <!-- A standard primitive is required here. In Gazebo Fortress 6.18
+               with DART, the dynamic polyline prism accepted mixed velocity
+               commands but suppressed angular-only VelocityControl commands. -->
+          <box>
+            <size>0.6048 0.4670 0.60</size>
+          </box>
         </geometry>
         <surface>
           <friction>

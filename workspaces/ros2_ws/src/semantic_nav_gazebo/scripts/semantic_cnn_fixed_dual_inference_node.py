@@ -74,6 +74,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 IMG_SIZE = 80
 SEQ_LEN = 10
 IGNORE_LABEL = -1
+NUM_SEMANTIC_CLASSES = 7
 POOL_MODES = ("global_virtual_angle_80", "sensor_split_40x2")
 POOL_ANGLE_MIN = -math.pi / 2.0
 POOL_ANGLE_MAX = math.pi / 2.0
@@ -224,6 +225,51 @@ def float_image(array: np.ndarray, stamp, frame_id: str) -> ImageMsg:
     return msg
 
 
+def decode_s3net_label_image(
+    message: ImageMsg,
+    expected_beams_01: int,
+    expected_beams_02: int,
+) -> np.ndarray:
+    """Decode the synchronized S3-Net ``2 x beams`` signed-label image."""
+
+    if str(message.encoding).upper() != "16SC1":
+        raise ValueError(
+            f"S3-Net labels must use 16SC1 encoding, got {message.encoding!r}"
+        )
+    if int(message.height) != 2:
+        raise ValueError(
+            f"S3-Net labels must have two sensor rows, got height={message.height}"
+        )
+    if expected_beams_01 != expected_beams_02:
+        raise ValueError(
+            "online S3-Net requires equal scan sizes, got "
+            f"{expected_beams_01} and {expected_beams_02}"
+        )
+    if int(message.width) != int(expected_beams_01):
+        raise ValueError(
+            "S3-Net label width does not match the dual scans: "
+            f"labels={message.width}, scans={expected_beams_01}"
+        )
+    item_size = np.dtype(np.int16).itemsize
+    row_bytes = int(message.step)
+    if row_bytes < int(message.width) * item_size or row_bytes % item_size:
+        raise ValueError(f"invalid S3-Net label row step: {message.step}")
+    required_bytes = int(message.height) * row_bytes
+    if len(message.data) < required_bytes:
+        raise ValueError(
+            "S3-Net label payload is truncated: "
+            f"have={len(message.data)}, need={required_bytes}"
+        )
+    dtype = np.dtype(">i2" if bool(message.is_bigendian) else "<i2")
+    padded = np.frombuffer(message.data, dtype=dtype, count=required_bytes // item_size)
+    labels = padded.reshape(int(message.height), row_bytes // item_size)[
+        :, : int(message.width)
+    ].astype(np.int64)
+    if np.any(labels < IGNORE_LABEL) or np.any(labels >= NUM_SEMANTIC_CLASSES):
+        raise ValueError("S3-Net labels must be in [-1, 6]")
+    return np.ascontiguousarray(labels.reshape(-1))
+
+
 class FixedDualSemanticCnnInference(Node):
     def __init__(self) -> None:
         super().__init__("semantic_cnn_fixed_dual_inference")
@@ -234,6 +280,8 @@ class FixedDualSemanticCnnInference(Node):
         self.declare_parameter("model_code", "")
         self.declare_parameter("scan_01_topic", "/scan_01")
         self.declare_parameter("scan_02_topic", "/scan_02")
+        self.declare_parameter("use_online_s3net", False)
+        self.declare_parameter("s3net_labels_topic", "/s3net/labels")
         self.declare_parameter("odom_topic", "/odom")
         self.declare_parameter("local_subgoal_topic", "/semantic_cnn/local_subgoal")
         self.declare_parameter("final_goal_topic", "/semantic_cnn/final_goal")
@@ -297,6 +345,9 @@ class FixedDualSemanticCnnInference(Node):
         self.pool_mode = str(self.get_parameter("pool_mode").value)
         if self.pool_mode not in POOL_MODES:
             raise ValueError(f"pool_mode must be one of {POOL_MODES}")
+        self.use_online_s3net = bool(
+            self.get_parameter("use_online_s3net").value
+        )
         for parameter_name in (
             "subgoal_timeout",
             "scan_timeout",
@@ -311,12 +362,19 @@ class FixedDualSemanticCnnInference(Node):
                     f"{parameter_name} must be a positive finite number"
                 )
 
-        self.resolution, self.origin_x, self.origin_y = load_map_info(
-            Path(str(self.get_parameter("map_yaml").value))
-        )
-        label_img = np.asarray(Image.open(str(self.get_parameter("semantic_label").value)))
-        self.label_img = label_img[:, :, 0] if label_img.ndim == 3 else label_img
-        self.label_img = self.label_img.astype(np.int64)
+        self.resolution = None
+        self.origin_x = None
+        self.origin_y = None
+        self.label_img = None
+        if not self.use_online_s3net:
+            self.resolution, self.origin_x, self.origin_y = load_map_info(
+                Path(str(self.get_parameter("map_yaml").value))
+            )
+            label_img = np.asarray(
+                Image.open(str(self.get_parameter("semantic_label").value))
+            )
+            self.label_img = label_img[:, :, 0] if label_img.ndim == 3 else label_img
+            self.label_img = self.label_img.astype(np.int64)
         self.pose = None
         self.pose_stamp_ns = None
         self.subgoal = None
@@ -389,14 +447,26 @@ class FixedDualSemanticCnnInference(Node):
         scan_02_sub = message_filters.Subscriber(
             self, LaserScan, str(self.get_parameter("scan_02_topic").value), qos_profile=qos_profile_sensor_data
         )
+        synchronized_inputs = [scan_01_sub, scan_02_sub]
+        if self.use_online_s3net:
+            self.s3net_labels_sub = message_filters.Subscriber(
+                self,
+                ImageMsg,
+                str(self.get_parameter("s3net_labels_topic").value),
+                qos_profile=10,
+            )
+            synchronized_inputs.append(self.s3net_labels_sub)
         self.sync = message_filters.ApproximateTimeSynchronizer(
-            [scan_01_sub, scan_02_sub], queue_size=10, slop=float(self.get_parameter("sync_slop").value)
+            synchronized_inputs,
+            queue_size=20,
+            slop=float(self.get_parameter("sync_slop").value),
         )
         self.sync.registerCallback(self.scan_callback)
         self.create_timer(0.1, self.command_watchdog)
         self.get_logger().info(
             "fixed-dual SemanticCNN loaded on "
             f"{self.device}: {scan_01_sub.topic} + {scan_02_sub.topic}; "
+            f"semantics={'online_s3net' if self.use_online_s3net else 'static_map'}; "
             f"sub-goal normalization={self.normalization_source} "
             f"mean={self.goal_mean.tolist()} std={self.goal_std.tolist()}"
         )
@@ -840,6 +910,8 @@ class FixedDualSemanticCnnInference(Node):
         return ranges, angles, valid
 
     def semantic_for_points(self, ranges, angles, valid_mask):
+        if self.label_img is None:
+            raise RuntimeError("static semantic map is unavailable in online S3-Net mode")
         height, width = self.label_img.shape[:2]
         x, y, yaw = self.pose
         world_x = x + ranges * np.cos(yaw + angles)
@@ -875,16 +947,34 @@ class FixedDualSemanticCnnInference(Node):
         row_repeat = IMG_SIZE // (SEQ_LEN * 2)
         return np.repeat(scan_rows, row_repeat, axis=0), np.repeat(semantic_rows, row_repeat, axis=0)
 
-    def scan_callback(self, scan_01: LaserScan, scan_02: LaserScan) -> None:
+    def scan_callback(
+        self,
+        scan_01: LaserScan,
+        scan_02: LaserScan,
+        s3net_labels: ImageMsg | None = None,
+    ) -> None:
         now_ns = self.observe_clock()
         self.scan_count += 1
         scan_01_stamp_ns = stamp_to_nanoseconds(scan_01.header.stamp)
         scan_02_stamp_ns = stamp_to_nanoseconds(scan_02.header.stamp)
+        s3net_stamp_ns = (
+            None
+            if s3net_labels is None
+            else stamp_to_nanoseconds(s3net_labels.header.stamp)
+        )
+        sync_slop_ns = int(
+            float(self.get_parameter("sync_slop").value)
+            * NANOSECONDS_PER_SECOND
+        )
         if (
             abs(scan_01_stamp_ns - scan_02_stamp_ns)
-            > int(
-                float(self.get_parameter("sync_slop").value)
-                * NANOSECONDS_PER_SECOND
+            > sync_slop_ns
+            or (
+                self.use_online_s3net
+                and (
+                    s3net_stamp_ns is None
+                    or abs(scan_01_stamp_ns - s3net_stamp_ns) > sync_slop_ns
+                )
             )
             or not time_is_fresh(
                 now_ns,
@@ -898,7 +988,9 @@ class FixedDualSemanticCnnInference(Node):
             )
         ):
             self.clear_temporal_history()
-            self.publish_stop()
+            self.publish_stop(
+                "stale_or_unsynchronized_scan", input_stamp=scan_01.header.stamp
+            )
             self.get_logger().warning(
                 "dual scan timestamps are stale, future-dated, or unsynchronized",
                 throttle_duration_sec=2.0,
@@ -932,7 +1024,7 @@ class FixedDualSemanticCnnInference(Node):
             return
         if causal_subgoal_sample is None:
             self.clear_temporal_history()
-            self.publish_stop()
+            self.publish_stop("stale_subgoal", input_stamp=scan_01.header.stamp)
             return
         causal_subgoal, _causal_subgoal_stamp_ns = causal_subgoal_sample
         try:
@@ -941,7 +1033,7 @@ class FixedDualSemanticCnnInference(Node):
         except (RuntimeError, ValueError) as exc:
             self.get_logger().warning(str(exc), throttle_duration_sec=2.0)
             self.clear_temporal_history()
-            self.publish_stop()
+            self.publish_stop("scan_preprocess_error", input_stamp=scan_01.header.stamp)
             return
         ranges = np.concatenate((ranges_01, ranges_02))
         angles = np.concatenate((angles_01, angles_02))
@@ -949,7 +1041,26 @@ class FixedDualSemanticCnnInference(Node):
         self.debug_ranges = ranges
         self.debug_angles = angles
         self.debug_valid = valid
-        semantic = self.semantic_for_points(ranges, angles, valid)
+        try:
+            if self.use_online_s3net:
+                if s3net_labels is None:
+                    raise ValueError("online S3-Net labels are missing")
+                semantic = decode_s3net_label_image(
+                    s3net_labels,
+                    len(ranges_01),
+                    len(ranges_02),
+                )
+                semantic[~valid] = IGNORE_LABEL
+            else:
+                semantic = self.semantic_for_points(ranges, angles, valid)
+        except (TypeError, ValueError) as exc:
+            self.clear_temporal_history()
+            self.publish_stop("semantic_input_error", input_stamp=scan_01.header.stamp)
+            self.get_logger().warning(
+                f"semantic input rejected: {exc}",
+                throttle_duration_sec=2.0,
+            )
+            return
         self.scan_history.append(ranges)
         self.angle_history.append(angles)
         self.semantic_history.append(semantic)
@@ -966,7 +1077,7 @@ class FixedDualSemanticCnnInference(Node):
             and bool(self.get_parameter("stop_on_empty_front").value)
         ):
             self.clear_temporal_history()
-            self.publish_stop()
+            self.publish_stop("empty_scan", input_stamp=scan_01.header.stamp)
             self.get_logger().warning(
                 "dual scan has no valid returns; fail-safe stop",
                 throttle_duration_sec=2.0,
@@ -976,12 +1087,12 @@ class FixedDualSemanticCnnInference(Node):
         self.front_stop = False
         self.goal_stop = False
         if len(self.scan_history) < SEQ_LEN:
-            self.publish_stop()
+            self.publish_stop("temporal_warmup", input_stamp=scan_01.header.stamp)
             self.publish_debug_markers()
             return
         if float(np.linalg.norm(causal_subgoal)) <= float(self.get_parameter("goal_tolerance").value):
             self.goal_stop = True
-            self.publish_stop()
+            self.publish_stop("goal_tolerance", input_stamp=scan_01.header.stamp)
             self.publish_debug_markers()
             return
         inference_started = time.perf_counter()
@@ -991,7 +1102,7 @@ class FixedDualSemanticCnnInference(Node):
             and np.isfinite(semantic_map).all()
         ):
             self.clear_temporal_history()
-            self.publish_stop()
+            self.publish_stop("nonfinite_input", input_stamp=scan_01.header.stamp)
             self.get_logger().error(
                 "non-finite SemanticCNN input; fail-safe stop"
             )

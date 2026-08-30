@@ -87,6 +87,12 @@ if [[ ! "$ISAAC_LIDAR_SAMPLE_COUNT" =~ ^[0-9]+$ ]] \
     exit 2
 fi
 export ISAAC_PEDESTRIAN_AVOIDANCE_MODE="${ISAAC_PEDESTRIAN_AVOIDANCE_MODE:-gentle}"
+export ISAAC_PEDESTRIAN_SOCIAL_MODE="${ISAAC_PEDESTRIAN_SOCIAL_MODE:-legacy}"
+export ISAAC_PEDESTRIAN_SOCIAL_MODE="${ISAAC_PEDESTRIAN_SOCIAL_MODE,,}"
+case "$ISAAC_PEDESTRIAN_SOCIAL_MODE" in
+    legacy|gazebo_social) ;;
+    *) echo "ERROR: ISAAC_PEDESTRIAN_SOCIAL_MODE must be legacy or gazebo_social." >&2; exit 2 ;;
+esac
 if (( ISAAC_PEDESTRIAN_COUNT == 0 )); then
     export ISAAC_ENABLE_PEOPLE=0
     export ISAAC_PEDESTRIAN_AVOIDANCE_MODE=off
@@ -336,7 +342,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "Starting Isaac walking-people scene (ROS domain $ROS_DOMAIN_ID)..."
-echo "Control mode: $demo_control_mode; LiDAR: $ISAAC_LIDAR_MODE ${ISAAC_LIDAR_SAMPLE_COUNT}x2 @ ${ISAAC_LIDAR_RATE_HZ} Hz"
+echo "Control mode: $demo_control_mode; LiDAR: $ISAAC_LIDAR_MODE ${ISAAC_LIDAR_SAMPLE_COUNT}x2 @ ${ISAAC_LIDAR_RATE_HZ} Hz; pedestrian social: $ISAAC_PEDESTRIAN_SOCIAL_MODE"
 setsid "$ISAAC_LAUNCHER" "$@" >"$log_dir/isaac.log" 2>&1 &
 isaac_pid=$!
 

@@ -356,6 +356,15 @@ case "${ISAAC_PEDESTRIAN_AVOIDANCE_MODE}" in
         exit 2
         ;;
 esac
+export ISAAC_PEDESTRIAN_SOCIAL_MODE="${ISAAC_PEDESTRIAN_SOCIAL_MODE:-legacy}"
+export ISAAC_PEDESTRIAN_SOCIAL_MODE="${ISAAC_PEDESTRIAN_SOCIAL_MODE,,}"
+case "$ISAAC_PEDESTRIAN_SOCIAL_MODE" in
+    legacy|gazebo_social) ;;
+    *)
+        echo "ERROR: ISAAC_PEDESTRIAN_SOCIAL_MODE must be legacy or gazebo_social." >&2
+        exit 2
+        ;;
+esac
 if [[ "$ISAAC_ENABLE_PEOPLE" == "0" && "$ISAAC_PEDESTRIAN_AVOIDANCE_MODE" != "off" ]]; then
     echo "ERROR: pedestrian avoidance must be off when ISAAC_ENABLE_PEOPLE=0." >&2
     exit 2
@@ -482,7 +491,7 @@ echo "People enabled: $ISAAC_ENABLE_PEOPLE"
 if [[ "$ISAAC_SCENE" == "custom" ]]; then
     echo "Gazebo-compatible pedestrians: count=$ISAAC_EXPECTED_PEDESTRIAN_COUNT seed=$ISAAC_PEDESTRIAN_SEED base_speed=$ISAAC_PEDESTRIAN_SPEED m/s"
 fi
-echo "A/B mode: robot collision protection=$ISAAC_ROBOT_COLLISION_PROTECTION; pedestrian avoidance=$ISAAC_PEDESTRIAN_AVOIDANCE_MODE"
+echo "A/B mode: robot collision protection=$ISAAC_ROBOT_COLLISION_PROTECTION; pedestrian avoidance=$ISAAC_PEDESTRIAN_AVOIDANCE_MODE; pedestrian social=$ISAAC_PEDESTRIAN_SOCIAL_MODE"
 echo "Robot physics: $ISAAC_ROBOT_PHYSICS (dynamic rigid body in the custom scene)"
 echo "LiDAR mode: $ISAAC_LIDAR_MODE (rtx=native material/angle intensity; physx=range-only fallback)"
 echo "RTX LiDAR profile: ${ISAAC_RTX_LIDAR_PROFILE}"

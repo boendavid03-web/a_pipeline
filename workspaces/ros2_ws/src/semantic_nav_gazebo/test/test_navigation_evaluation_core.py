@@ -2,6 +2,8 @@ import math
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from navigation_evaluation_core import (
     align_actuation_series,
@@ -14,10 +16,38 @@ from navigation_evaluation_core import (
     path_irregularity_summary,
     personal_space_integral,
     planner_reference_metadata,
+    pose_derived_twist,
     time_milestones,
     ttc_statistics,
     threshold_exposure,
 )
+
+
+def test_pose_derived_twist_uses_planar_displacement_and_shortest_yaw_delta():
+    twist, reason = pose_derived_twist(
+        (1.0, 0.0, 0.0, math.radians(179.0)),
+        (1.5, -0.5, 0.0, math.radians(-179.0)),
+    )
+    assert reason is None
+    assert twist[0] == pytest.approx(1.0, abs=0.02)
+    assert abs(twist[1]) < 0.02
+    assert twist[2] == pytest.approx(math.radians(2.0) / 0.5)
+
+
+@pytest.mark.parametrize(
+    ("previous", "current", "kwargs", "reason"),
+    (
+        (None, (1.0, 0.0, 0.0, 0.0), {}, "first_sample"),
+        ((1.0, 0.0, 0.0, 0.0), (1.0, 0.0, 0.0, 0.0), {}, "nonpositive_dt"),
+        ((1.0, 0.0, 0.0, 0.0), (4.0, 0.1, 0.0, 0.0), {"max_dt_sec": 2.0}, "abnormal_dt"),
+        ((1.0, 0.0, 0.0, 0.0), (1.1, 10.0, 0.0, 0.0), {}, "reset_or_teleport"),
+        ((1.0, 0.0, 0.0, 0.0), (1.1, 0.0, 0.0, float("nan")), {}, "nonfinite"),
+    ),
+)
+def test_pose_derived_twist_rejects_invalid_intervals(previous, current, kwargs, reason):
+    twist, invalid_reason = pose_derived_twist(previous, current, **kwargs)
+    assert twist is None
+    assert invalid_reason == reason
 
 
 def test_actuation_alignment_is_causal_and_reports_gates_and_low_variance():

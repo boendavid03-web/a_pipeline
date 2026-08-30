@@ -45,6 +45,7 @@ from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
     IncludeLaunchDescription,
+    SetEnvironmentVariable,
     SetLaunchConfiguration,
     Shutdown,
     TimerAction,
@@ -89,6 +90,30 @@ def generate_launch_description():
         "SEMANTIC_CNN_MODEL_CODE",
         str(Path(default_model).parent / "model_code_scripts"),
     )
+    default_s3net_dir = (
+        project_root
+        / "runs"
+        / "20260808_gazebo_play"
+        / "training"
+        / "s3net_formal_auto_teacher"
+        / "20260827_234825_s3net_native_stats_81epoch"
+    )
+    default_s3net_model = os.environ.get(
+        "SEMANTIC_CNN_S3NET_MODEL",
+        str(default_s3net_dir / "s3net_native_stats_best_dev.pth"),
+    )
+    default_s3net_model_code = os.environ.get(
+        "SEMANTIC_CNN_S3NET_MODEL_CODE",
+        str(Path(default_s3net_model).parent / "model_code_scripts"),
+    )
+    default_s3net_stats = os.environ.get(
+        "SEMANTIC_CNN_S3NET_STATS_JSON",
+        str(Path(default_s3net_model).parent / "s3net_native_lidar_train_stats.json"),
+    )
+    transport_partition = os.environ.get(
+        "IGN_PARTITION",
+        os.environ.get("GZ_PARTITION", f"semantic_nav_fixed_{os.getpid()}"),
+    )
 
     return LaunchDescription([
         DeclareLaunchArgument("start_bringup", default_value="true"),
@@ -115,6 +140,10 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument("fixed_test_start_delay_sec", default_value="2.0"),
         DeclareLaunchArgument("fixed_test_inter_goal_delay_sec", default_value="1.0"),
+        DeclareLaunchArgument("fixed_test_readiness_timeout_sec", default_value="60.0"),
+        DeclareLaunchArgument("fixed_test_auto_shutdown_delay_sec", default_value="2.0"),
+        DeclareLaunchArgument("fixed_test_max_linear", default_value="0.8"),
+        DeclareLaunchArgument("fixed_test_max_angular", default_value="1.8"),
         DeclareLaunchArgument(
             "auto_set_initial_goal",
             default_value="false",
@@ -131,6 +160,29 @@ def generate_launch_description():
         DeclareLaunchArgument("semantic_label", default_value=str(run_root / "maps" / "semantic_label" / "label.png")),
         DeclareLaunchArgument("semantic_cnn_model", default_value=default_model),
         DeclareLaunchArgument("semantic_cnn_model_code", default_value=default_model_code),
+        DeclareLaunchArgument(
+            "use_online_s3net",
+            default_value="false",
+            description=(
+                "Use synchronized /s3net/labels predictions instead of static "
+                "label.png lookup, and launch the S3-Net producer."
+            ),
+        ),
+        DeclareLaunchArgument("s3net_labels_topic", default_value="/s3net/labels"),
+        DeclareLaunchArgument("s3net_model", default_value=default_s3net_model),
+        DeclareLaunchArgument(
+            "s3net_model_code", default_value=default_s3net_model_code
+        ),
+        DeclareLaunchArgument("s3net_stats_json", default_value=default_s3net_stats),
+        DeclareLaunchArgument(
+            "s3net_sampling_strategy",
+            default_value="contract",
+            choices=("contract", "seeded_sequence", "frame_seeded"),
+        ),
+        DeclareLaunchArgument("s3net_sampling_seed", default_value="1337"),
+        DeclareLaunchArgument(
+            "s3net_enforce_message_layout", default_value="true"
+        ),
         DeclareLaunchArgument("device", default_value="cuda"),
         DeclareLaunchArgument(
             "semantic_cnn_pool_mode",
@@ -165,6 +217,13 @@ def generate_launch_description():
         DeclareLaunchArgument("record_trace", default_value="false"),
         DeclareLaunchArgument("trace_path", default_value=""),
         DeclareLaunchArgument("trace_timeout_sec", default_value="90.0"),
+        DeclareLaunchArgument(
+            "record_video",
+            default_value="false",
+            description="Capture real dual lidar and published path for later synchronized MP4 rendering.",
+        ),
+        DeclareLaunchArgument("video_output_dir", default_value=""),
+        DeclareLaunchArgument("video_simulator_name", default_value="gazebo"),
         DeclareLaunchArgument("evaluate_episode", default_value="false"),
         DeclareLaunchArgument("evaluation_output_dir", default_value=""),
         DeclareLaunchArgument("evaluation_timeout_sec", default_value="180.0"),
@@ -184,6 +243,44 @@ def generate_launch_description():
         DeclareLaunchArgument("pedestrian_radius", default_value="0.125"),
         DeclareLaunchArgument("personal_space_radius", default_value="0.8"),
         DeclareLaunchArgument("stopped_speed_threshold", default_value="0.02"),
+        DeclareLaunchArgument(
+            "semantic_input_source", default_value="semantic_map_lookup"
+        ),
+        SetEnvironmentVariable(
+            "IGN_IP",
+            os.environ.get("IGN_IP", "127.0.0.1"),
+            condition=IfCondition(LaunchConfiguration("start_bringup")),
+        ),
+        SetEnvironmentVariable(
+            "GZ_IP",
+            os.environ.get("GZ_IP", "127.0.0.1"),
+            condition=IfCondition(LaunchConfiguration("start_bringup")),
+        ),
+        SetEnvironmentVariable(
+            "IGN_PARTITION",
+            transport_partition,
+            condition=IfCondition(LaunchConfiguration("start_bringup")),
+        ),
+        SetEnvironmentVariable(
+            "GZ_PARTITION",
+            os.environ.get("GZ_PARTITION", transport_partition),
+            condition=IfCondition(LaunchConfiguration("start_bringup")),
+        ),
+        SetLaunchConfiguration(
+            "max_linear",
+            LaunchConfiguration("fixed_test_max_linear"),
+            condition=IfCondition(LaunchConfiguration("fixed_test")),
+        ),
+        SetLaunchConfiguration(
+            "max_angular",
+            LaunchConfiguration("fixed_test_max_angular"),
+            condition=IfCondition(LaunchConfiguration("fixed_test")),
+        ),
+        SetLaunchConfiguration(
+            "semantic_input_source",
+            "online_s3net",
+            condition=IfCondition(LaunchConfiguration("use_online_s3net")),
+        ),
         SetLaunchConfiguration("fixed_dual_start_rviz", LaunchConfiguration("start_rviz")),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(bringup_launch),
@@ -232,10 +329,20 @@ def generate_launch_description():
             parameters=[{"use_sim_time": ParameterValue(LaunchConfiguration("use_sim_time"), value_type=bool),
                          "yaml_filename": LaunchConfiguration("map_yaml")}],
         ),
-        TimerAction(condition=IfCondition(LaunchConfiguration("start_aux_map")), period=2.0, actions=[ExecuteProcess(
-            cmd=["ros2", "lifecycle", "set", "/map_server", "configure"], output="screen")]),
-        TimerAction(condition=IfCondition(LaunchConfiguration("start_aux_map")), period=3.0, actions=[ExecuteProcess(
-            cmd=["ros2", "lifecycle", "set", "/map_server", "activate"], output="screen")]),
+        Node(
+            condition=IfCondition(LaunchConfiguration("start_aux_map")),
+            package="nav2_lifecycle_manager",
+            executable="lifecycle_manager",
+            name="semantic_cnn_aux_map_lifecycle_manager",
+            output="screen",
+            parameters=[{
+                "use_sim_time": ParameterValue(
+                    LaunchConfiguration("use_sim_time"), value_type=bool
+                ),
+                "autostart": True,
+                "node_names": ["map_server"],
+            }],
+        ),
         Node(
             condition=IfCondition(LaunchConfiguration("start_aux_map")),
             package="tf2_ros", executable="static_transform_publisher", name="map_to_odom_static_tf_publisher", output="screen",
@@ -245,6 +352,19 @@ def generate_launch_description():
             package="semantic_nav_gazebo", executable="odom_path_node.py", name="semantic_cnn_actual_trajectory", output="screen",
             parameters=[{"use_sim_time": ParameterValue(LaunchConfiguration("use_sim_time"), value_type=bool),
                          "odom_topic": "/odom", "path_topic": "/semantic_cnn/actual_trajectory"}],
+        ),
+        Node(
+            condition=IfCondition(LaunchConfiguration("record_video")),
+            package="semantic_nav_gazebo",
+            executable="fixed_four_video_capture.py",
+            name="semantic_cnn_fixed_four_video_capture",
+            output="screen",
+            parameters=[{
+                "use_sim_time": ParameterValue(LaunchConfiguration("use_sim_time"), value_type=bool),
+                "video_output_dir": LaunchConfiguration("video_output_dir"),
+                "method_name": "SemanticCNN",
+                "simulator_name": LaunchConfiguration("video_simulator_name"),
+            }],
         ),
         Node(
             condition=IfCondition(LaunchConfiguration("record_trace")),
@@ -334,11 +454,40 @@ def generate_launch_description():
                 "policy_mode": "best_dev",
                 "checkpoint": LaunchConfiguration("semantic_cnn_model"),
                 "device": LaunchConfiguration("device"),
-                "pedestrian_source": "semantic_map_lookup",
+                "pedestrian_source": LaunchConfiguration("semantic_input_source"),
                 "oracle_pedestrian_velocity": False,
             }],
         ),
         TimerAction(period=7.0, actions=[
+            Node(
+                condition=IfCondition(LaunchConfiguration("use_online_s3net")),
+                package="semantic_nav_gazebo",
+                executable="s3net_fixed_dual_inference_node.py",
+                name="s3net_fixed_dual_inference",
+                output="screen",
+                prefix=[train_python],
+                on_exit=[Shutdown(reason="online S3-Net inference node exited")],
+                parameters=[{
+                    "use_sim_time": ParameterValue(
+                        LaunchConfiguration("use_sim_time"), value_type=bool
+                    ),
+                    "model": LaunchConfiguration("s3net_model"),
+                    "model_code": LaunchConfiguration("s3net_model_code"),
+                    "stats_json": LaunchConfiguration("s3net_stats_json"),
+                    "labels_topic": LaunchConfiguration("s3net_labels_topic"),
+                    "device": LaunchConfiguration("device"),
+                    "sampling_strategy": LaunchConfiguration(
+                        "s3net_sampling_strategy"
+                    ),
+                    "sampling_seed": ParameterValue(
+                        LaunchConfiguration("s3net_sampling_seed"), value_type=int
+                    ),
+                    "enforce_message_layout": ParameterValue(
+                        LaunchConfiguration("s3net_enforce_message_layout"),
+                        value_type=bool,
+                    ),
+                }],
+            ),
             Node(
                 package="semantic_nav_gazebo", executable="semantic_start_goal_path_node.py", name="semantic_start_goal_path", output="screen",
                 on_exit=[Shutdown(reason="SemanticCNN start/goal path node exited")],
@@ -356,6 +505,8 @@ def generate_launch_description():
                 on_exit=[Shutdown(reason="SemanticCNN inference node exited")],
                 parameters=[{"use_sim_time": ParameterValue(LaunchConfiguration("use_sim_time"), value_type=bool),
                              "map_yaml": LaunchConfiguration("map_yaml"), "semantic_label": LaunchConfiguration("semantic_label"),
+                             "use_online_s3net": ParameterValue(LaunchConfiguration("use_online_s3net"), value_type=bool),
+                             "s3net_labels_topic": LaunchConfiguration("s3net_labels_topic"),
                              "model": LaunchConfiguration("semantic_cnn_model"), "model_code": LaunchConfiguration("semantic_cnn_model_code"),
                              "device": LaunchConfiguration("device"),
                              "inference_metrics_topic": LaunchConfiguration("inference_metrics_topic"),
@@ -428,7 +579,14 @@ def generate_launch_description():
                     "inter_goal_delay_sec": ParameterValue(
                         LaunchConfiguration("fixed_test_inter_goal_delay_sec"), value_type=float
                     ),
+                    "readiness_timeout_sec": ParameterValue(
+                        LaunchConfiguration("fixed_test_readiness_timeout_sec"), value_type=float
+                    ),
+                    "auto_shutdown_delay_sec": ParameterValue(
+                        LaunchConfiguration("fixed_test_auto_shutdown_delay_sec"), value_type=float
+                    ),
                 }],
+                on_exit=[Shutdown(reason="Fixed goal sequence exited")],
             ),
         ]),
     ])

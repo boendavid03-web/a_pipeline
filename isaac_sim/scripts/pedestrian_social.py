@@ -1,8 +1,10 @@
-"""Lightweight pairwise quality metrics for pedestrian simulations.
+"""Pure social-motion logic and pairwise pedestrian quality metrics.
 
-The module deliberately has no Isaac Sim or ROS dependency so that the metric
-contract can be unit-tested and reused by both interactive demos and offline
-analysis.  One ``update`` call represents one sampled simulation frame.
+The module deliberately has no Isaac Sim or ROS dependency.  The continuous
+controller mirrors the interaction-direction force used by the Gazebo
+pedestrian controller, but returns a bounded desired velocity for an external
+adapter instead of integrating or teleporting a simulated character itself.
+One tracker ``update`` call represents one sampled simulation frame.
 """
 
 from __future__ import annotations
@@ -13,6 +15,432 @@ from typing import Mapping, Sequence
 
 
 Pair = tuple[str, str]
+Vector2 = tuple[float, float]
+
+
+@dataclass(frozen=True)
+class PedestrianMotionState:
+    """Planar state and current patrol intent for one pedestrian."""
+
+    position_m: Vector2
+    velocity_mps: Vector2
+    desired_direction: Vector2
+    preferred_speed_mps: float
+
+
+@dataclass(frozen=True)
+class RobotMotionState:
+    """True robot state plus its oriented collision-proxy half extents."""
+
+    position_m: Vector2
+    velocity_mps: Vector2
+    yaw_rad: float
+    half_extents_m: Vector2
+
+
+@dataclass(frozen=True)
+class SocialForceParameters:
+    """Numerical contract for Gazebo-style force-to-steering conversion."""
+
+    neighbor_range_m: float = 10.0
+    relaxation_time_sec: float = 0.5
+    human_social_force_weight: float = 5.1
+    robot_social_force_weight: float = 5.1
+    robot_personal_space_force_weight: float = 6.0
+    agent_radius_m: float = 0.35
+    robot_radius_m: float = 0.47
+    robot_clearance_m: float = 1.0
+    robot_personal_space_sigma_m: float = 0.2
+    interaction_lambda: float = 2.0
+    interaction_gamma: float = 0.35
+    interaction_n: float = 2.0
+    interaction_n_prime: float = 3.0
+    head_on_bias_rad: float = 0.02
+    smoothing_time_sec: float = 0.35
+    max_total_social_accel_mps2: float = 4.0
+    max_speed_correction_mps: float = 0.65
+    max_lateral_speed_mps: float = 0.45
+    max_steering_angle_rad: float = math.radians(35.0)
+    minimum_command_speed_mps: float = 0.15
+    maximum_dt_sec: float = 0.2
+
+    def __post_init__(self) -> None:
+        positive = (
+            "neighbor_range_m",
+            "relaxation_time_sec",
+            "agent_radius_m",
+            "robot_radius_m",
+            "robot_clearance_m",
+            "robot_personal_space_sigma_m",
+            "interaction_lambda",
+            "interaction_gamma",
+            "interaction_n",
+            "interaction_n_prime",
+            "smoothing_time_sec",
+            "max_total_social_accel_mps2",
+            "max_speed_correction_mps",
+            "max_lateral_speed_mps",
+            "max_steering_angle_rad",
+            "maximum_dt_sec",
+        )
+        for name in positive:
+            _finite_positive(name, getattr(self, name))
+        nonnegative = (
+            "human_social_force_weight",
+            "robot_social_force_weight",
+            "robot_personal_space_force_weight",
+            "head_on_bias_rad",
+            "minimum_command_speed_mps",
+        )
+        for name in nonnegative:
+            value = float(getattr(self, name))
+            if not math.isfinite(value) or value < 0.0:
+                raise ValueError(f"{name} must be finite and non-negative")
+        if self.robot_clearance_m < self.robot_radius_m + self.agent_radius_m:
+            raise ValueError(
+                "robot_clearance_m must be at least robot_radius_m + agent_radius_m"
+            )
+        if self.max_steering_angle_rad >= 0.5 * math.pi:
+            raise ValueError("max_steering_angle_rad must be smaller than pi/2")
+
+
+@dataclass(frozen=True)
+class SocialMotionOutput:
+    """Bounded continuous social correction for one pedestrian."""
+
+    desired_component_mps: Vector2
+    human_social_component_mps2: Vector2
+    robot_social_component_mps2: Vector2
+    robot_personal_space_component_mps2: Vector2
+    applied_social_accel_mps2: Vector2
+    final_desired_velocity_mps: Vector2
+    speed_command_mps: float
+    robot_footprint_clearance_m: float | None
+    robot_personal_space_violation: bool
+
+
+def resolve_social_mode(value: str) -> str:
+    """Validate the opt-in controller mode without depending on Isaac."""
+
+    normalized = str(value).strip().lower()
+    if normalized not in {"legacy", "gazebo_social"}:
+        raise ValueError("social mode must be legacy or gazebo_social")
+    return normalized
+
+
+def oriented_box_clearance(
+    point_m: Sequence[float],
+    center_m: Sequence[float],
+    yaw_rad: float,
+    half_extents_m: Sequence[float],
+) -> tuple[float, Vector2, Vector2]:
+    """Return signed OBB clearance, outward normal, and nearest footprint point.
+
+    Positive clearance is outside the footprint, zero is on its boundary, and
+    negative clearance is inside.  The returned normal always points from the
+    robot footprint toward the pedestrian, including for interior points.
+    """
+
+    px, py = _finite_vector2("point_m", point_m)
+    cx, cy = _finite_vector2("center_m", center_m)
+    half_x, half_y = _finite_vector2("half_extents_m", half_extents_m)
+    if half_x <= 0.0 or half_y <= 0.0:
+        raise ValueError("half_extents_m must be positive")
+    yaw = float(yaw_rad)
+    if not math.isfinite(yaw):
+        raise ValueError("yaw_rad must be finite")
+    cosine, sine = math.cos(yaw), math.sin(yaw)
+    rel_x, rel_y = px - cx, py - cy
+    local_x = cosine * rel_x + sine * rel_y
+    local_y = -sine * rel_x + cosine * rel_y
+    clamped_x = max(-half_x, min(half_x, local_x))
+    clamped_y = max(-half_y, min(half_y, local_y))
+    delta_x, delta_y = local_x - clamped_x, local_y - clamped_y
+    outside = math.hypot(delta_x, delta_y)
+    if outside > 1.0e-12:
+        normal_local = (delta_x / outside, delta_y / outside)
+        signed_clearance = outside
+    else:
+        distance_x = half_x - abs(local_x)
+        distance_y = half_y - abs(local_y)
+        if distance_x <= distance_y:
+            sign_x = 1.0 if local_x >= 0.0 else -1.0
+            clamped_x = sign_x * half_x
+            normal_local = (sign_x, 0.0)
+            signed_clearance = -distance_x
+        else:
+            sign_y = 1.0 if local_y >= 0.0 else -1.0
+            clamped_y = sign_y * half_y
+            normal_local = (0.0, sign_y)
+            signed_clearance = -distance_y
+    nearest_world = (
+        cx + cosine * clamped_x - sine * clamped_y,
+        cy + sine * clamped_x + cosine * clamped_y,
+    )
+    normal_world = (
+        cosine * normal_local[0] - sine * normal_local[1],
+        sine * normal_local[0] + cosine * normal_local[1],
+    )
+    return signed_clearance, normal_world, nearest_world
+
+
+class PedestrianSocialForceController:
+    """Convert Gazebo-style social forces into stable desired velocities.
+
+    The controller does not own a simulator task.  It keeps only a low-pass
+    state per pedestrian and can therefore be unit-tested with ordinary Python.
+    """
+
+    def __init__(self, parameters: SocialForceParameters | None = None) -> None:
+        self.parameters = parameters or SocialForceParameters()
+        self._smoothed_velocity: dict[str, Vector2] = {}
+        self.update_count = 0
+        self.personal_space_violation_samples = 0
+        self.minimum_robot_footprint_clearance_m: float | None = None
+
+    def reset(self) -> None:
+        self._smoothed_velocity.clear()
+        self.update_count = 0
+        self.personal_space_violation_samples = 0
+        self.minimum_robot_footprint_clearance_m = None
+
+    def update(
+        self,
+        pedestrians: Mapping[str, PedestrianMotionState],
+        robot: RobotMotionState | None,
+        dt_sec: float,
+    ) -> dict[str, SocialMotionOutput]:
+        states = _validated_motion_states(pedestrians)
+        robot_state = _validated_robot_state(robot)
+        dt = float(dt_sec)
+        if not math.isfinite(dt) or dt <= 0.0:
+            raise ValueError("dt_sec must be a finite positive number")
+        dt = min(dt, self.parameters.maximum_dt_sec)
+        self._smoothed_velocity = {
+            name: value
+            for name, value in self._smoothed_velocity.items()
+            if name in states
+        }
+        outputs: dict[str, SocialMotionOutput] = {}
+        for name in sorted(states):
+            state = states[name]
+            desired_direction = _unit(state.desired_direction)
+            desired_velocity = _scale(desired_direction, state.preferred_speed_mps)
+            human_social = (0.0, 0.0)
+            for other_name in sorted(states):
+                if other_name == name:
+                    continue
+                other = states[other_name]
+                separation_fallback = (
+                    (1.0, 0.0) if name < other_name else (-1.0, 0.0)
+                )
+                pair_force = self._interaction_force(
+                    state.position_m,
+                    state.velocity_mps,
+                    other.position_m,
+                    other.velocity_mps,
+                    separation_fallback,
+                )
+                human_social = _add(human_social, pair_force)
+            human_social = _scale(
+                human_social, self.parameters.human_social_force_weight
+            )
+
+            robot_social = (0.0, 0.0)
+            robot_personal = (0.0, 0.0)
+            robot_clearance = None
+            robot_violation = False
+            if robot_state is not None:
+                robot_clearance, outward, nearest = oriented_box_clearance(
+                    state.position_m,
+                    robot_state.position_m,
+                    robot_state.yaw_rad,
+                    robot_state.half_extents_m,
+                )
+                if robot_clearance <= self.parameters.neighbor_range_m:
+                    if robot_clearance <= 1.0e-6:
+                        nearest = _add(
+                            state.position_m,
+                            _scale(outward, -1.0e-6),
+                        )
+                    robot_social = _scale(
+                        self._interaction_force(
+                            state.position_m,
+                            state.velocity_mps,
+                            nearest,
+                            robot_state.velocity_mps,
+                            _scale(outward, -1.0),
+                        ),
+                        self.parameters.robot_social_force_weight,
+                    )
+                    personal_clearance = max(
+                        self.parameters.agent_radius_m,
+                        self.parameters.robot_clearance_m
+                        - self.parameters.robot_radius_m,
+                    )
+                    exponent = -(
+                        robot_clearance - personal_clearance
+                    ) / self.parameters.robot_personal_space_sigma_m
+                    amount = math.exp(max(-60.0, min(12.0, exponent)))
+                    robot_personal = _scale(
+                        outward,
+                        amount
+                        * self.parameters.robot_personal_space_force_weight,
+                    )
+                    robot_violation = robot_clearance < personal_clearance
+                    if robot_violation:
+                        self.personal_space_violation_samples += 1
+                if (
+                    self.minimum_robot_footprint_clearance_m is None
+                    or robot_clearance
+                    < self.minimum_robot_footprint_clearance_m
+                ):
+                    self.minimum_robot_footprint_clearance_m = robot_clearance
+
+            social_accel = _limit_norm(
+                _add(human_social, robot_social, robot_personal),
+                self.parameters.max_total_social_accel_mps2,
+            )
+            desired_accel = _scale(
+                _sub(desired_velocity, state.velocity_mps),
+                1.0 / self.parameters.relaxation_time_sec,
+            )
+            raw_velocity = _add(
+                state.velocity_mps,
+                _scale(_add(desired_accel, social_accel), dt),
+            )
+            correction = _limit_norm(
+                _sub(raw_velocity, desired_velocity),
+                self.parameters.max_speed_correction_mps,
+            )
+            bounded_velocity = _add(desired_velocity, correction)
+            lateral_direction = (-desired_direction[1], desired_direction[0])
+            forward = max(0.0, _dot(bounded_velocity, desired_direction))
+            forward = min(state.preferred_speed_mps, forward)
+            lateral = max(
+                -self.parameters.max_lateral_speed_mps,
+                min(
+                    self.parameters.max_lateral_speed_mps,
+                    _dot(bounded_velocity, lateral_direction),
+                ),
+            )
+            angle_lateral_limit = math.tan(
+                self.parameters.max_steering_angle_rad
+            ) * max(forward, self.parameters.minimum_command_speed_mps)
+            lateral = max(
+                -angle_lateral_limit, min(angle_lateral_limit, lateral)
+            )
+            bounded_velocity = _add(
+                _scale(desired_direction, forward),
+                _scale(lateral_direction, lateral),
+            )
+            bounded_velocity = _limit_norm(
+                bounded_velocity, state.preferred_speed_mps
+            )
+            previous = self._smoothed_velocity.get(name, desired_velocity)
+            alpha = 1.0 - math.exp(-dt / self.parameters.smoothing_time_sec)
+            smoothed = _add(previous, _scale(_sub(bounded_velocity, previous), alpha))
+            smoothed = _limit_norm(smoothed, state.preferred_speed_mps)
+            self._smoothed_velocity[name] = smoothed
+            command_speed = max(0.0, _dot(smoothed, desired_direction))
+            if state.preferred_speed_mps > 0.0:
+                command_speed = min(
+                    state.preferred_speed_mps,
+                    max(
+                        min(
+                            self.parameters.minimum_command_speed_mps,
+                            state.preferred_speed_mps,
+                        ),
+                        command_speed,
+                    ),
+                )
+            outputs[name] = SocialMotionOutput(
+                desired_component_mps=desired_velocity,
+                human_social_component_mps2=human_social,
+                robot_social_component_mps2=robot_social,
+                robot_personal_space_component_mps2=robot_personal,
+                applied_social_accel_mps2=social_accel,
+                final_desired_velocity_mps=smoothed,
+                speed_command_mps=command_speed,
+                robot_footprint_clearance_m=robot_clearance,
+                robot_personal_space_violation=robot_violation,
+            )
+        self.update_count += 1
+        return outputs
+
+    def summary(self) -> dict[str, object]:
+        return {
+            "update_count": self.update_count,
+            "personal_space_violation_samples": (
+                self.personal_space_violation_samples
+            ),
+            "minimum_robot_footprint_clearance_m": (
+                self.minimum_robot_footprint_clearance_m
+            ),
+        }
+
+    def _interaction_force(
+        self,
+        position: Vector2,
+        velocity: Vector2,
+        other_position: Vector2,
+        other_velocity: Vector2,
+        zero_distance_direction: Vector2,
+    ) -> Vector2:
+        parameters = self.parameters
+        difference = _sub(other_position, position)
+        distance = _norm(difference)
+        if distance > parameters.neighbor_range_m:
+            return (0.0, 0.0)
+        if distance < 1.0e-6:
+            difference_direction = _unit(zero_distance_direction)
+            distance = 1.0e-6
+        else:
+            difference_direction = _scale(difference, 1.0 / distance)
+        velocity_difference = _sub(velocity, other_velocity)
+        interaction = _add(
+            _scale(velocity_difference, parameters.interaction_lambda),
+            difference_direction,
+        )
+        interaction_length = _norm(interaction)
+        if interaction_length < 1.0e-9:
+            return (0.0, 0.0)
+        interaction_direction = _scale(interaction, 1.0 / interaction_length)
+        theta = _normalize_angle(
+            math.atan2(difference_direction[1], difference_direction[0])
+            - math.atan2(interaction_direction[1], interaction_direction[0])
+        )
+        closing = _dot(velocity_difference, difference_direction) > 1.0e-4
+        if closing and abs(theta) < parameters.head_on_bias_rad:
+            # Exact mirror encounters have no mathematical side preference.
+            # A small stable right-hand bias avoids frame-to-frame sign flips.
+            theta = parameters.head_on_bias_rad
+        b = max(1.0e-6, parameters.interaction_gamma * interaction_length)
+        common = -distance / b
+        velocity_amount = -math.exp(
+            max(
+                -60.0,
+                min(
+                    12.0,
+                    common
+                    - (parameters.interaction_n_prime * b * theta) ** 2,
+                ),
+            )
+        )
+        angle_amount = -_sign(theta) * math.exp(
+            max(
+                -60.0,
+                min(
+                    12.0,
+                    common - (parameters.interaction_n * b * theta) ** 2,
+                ),
+            )
+        )
+        perpendicular = (-interaction_direction[1], interaction_direction[0])
+        return _add(
+            _scale(interaction_direction, velocity_amount),
+            _scale(perpendicular, angle_amount),
+        )
 
 
 @dataclass(frozen=True)
@@ -256,6 +684,112 @@ def _finite_positive(name: str, value: float) -> float:
     if not math.isfinite(numeric) or numeric <= 0.0:
         raise ValueError(f"{name} must be a finite positive number")
     return numeric
+
+
+def _finite_vector2(name: str, value: Sequence[float]) -> Vector2:
+    if isinstance(value, (str, bytes)):
+        raise ValueError(f"{name} must contain finite x and y values")
+    try:
+        x, y = float(value[0]), float(value[1])
+    except (IndexError, KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must contain finite x and y values") from exc
+    if not math.isfinite(x) or not math.isfinite(y):
+        raise ValueError(f"{name} must contain finite x and y values")
+    return x, y
+
+
+def _validated_motion_states(
+    pedestrians: Mapping[str, PedestrianMotionState],
+) -> dict[str, PedestrianMotionState]:
+    if not isinstance(pedestrians, Mapping):
+        raise TypeError("pedestrians must be a mapping")
+    validated: dict[str, PedestrianMotionState] = {}
+    for name, state in pedestrians.items():
+        if not isinstance(name, str) or not name:
+            raise ValueError("pedestrian names must be non-empty strings")
+        if not isinstance(state, PedestrianMotionState):
+            raise TypeError(f"motion state for {name!r} is invalid")
+        position = _finite_vector2(f"position for {name!r}", state.position_m)
+        velocity = _finite_vector2(f"velocity for {name!r}", state.velocity_mps)
+        direction = _finite_vector2(
+            f"desired direction for {name!r}", state.desired_direction
+        )
+        if _norm(direction) < 1.0e-9:
+            raise ValueError(f"desired direction for {name!r} must be non-zero")
+        speed = float(state.preferred_speed_mps)
+        if not math.isfinite(speed) or speed <= 0.0:
+            raise ValueError(f"preferred speed for {name!r} must be positive")
+        validated[name] = PedestrianMotionState(
+            position_m=position,
+            velocity_mps=velocity,
+            desired_direction=_unit(direction),
+            preferred_speed_mps=speed,
+        )
+    return validated
+
+
+def _validated_robot_state(
+    robot: RobotMotionState | None,
+) -> RobotMotionState | None:
+    if robot is None:
+        return None
+    if not isinstance(robot, RobotMotionState):
+        raise TypeError("robot must be a RobotMotionState or None")
+    position = _finite_vector2("robot position", robot.position_m)
+    velocity = _finite_vector2("robot velocity", robot.velocity_mps)
+    half_extents = _finite_vector2("robot half extents", robot.half_extents_m)
+    if half_extents[0] <= 0.0 or half_extents[1] <= 0.0:
+        raise ValueError("robot half extents must be positive")
+    yaw = float(robot.yaw_rad)
+    if not math.isfinite(yaw):
+        raise ValueError("robot yaw must be finite")
+    return RobotMotionState(position, velocity, yaw, half_extents)
+
+
+def _add(*vectors: Vector2) -> Vector2:
+    return sum(vector[0] for vector in vectors), sum(vector[1] for vector in vectors)
+
+
+def _sub(left: Vector2, right: Vector2) -> Vector2:
+    return left[0] - right[0], left[1] - right[1]
+
+
+def _scale(vector: Vector2, factor: float) -> Vector2:
+    return vector[0] * factor, vector[1] * factor
+
+
+def _dot(left: Vector2, right: Vector2) -> float:
+    return left[0] * right[0] + left[1] * right[1]
+
+
+def _norm(vector: Vector2) -> float:
+    return math.hypot(vector[0], vector[1])
+
+
+def _unit(vector: Vector2) -> Vector2:
+    length = _norm(vector)
+    if length < 1.0e-12:
+        raise ValueError("cannot normalize a zero-length vector")
+    return vector[0] / length, vector[1] / length
+
+
+def _limit_norm(vector: Vector2, maximum: float) -> Vector2:
+    length = _norm(vector)
+    if length <= maximum or length < 1.0e-12:
+        return vector
+    return _scale(vector, maximum / length)
+
+
+def _normalize_angle(value: float) -> float:
+    return math.atan2(math.sin(value), math.cos(value))
+
+
+def _sign(value: float) -> float:
+    if value > 0.0:
+        return 1.0
+    if value < 0.0:
+        return -1.0
+    return 0.0
 
 
 def _validated_planar_positions(

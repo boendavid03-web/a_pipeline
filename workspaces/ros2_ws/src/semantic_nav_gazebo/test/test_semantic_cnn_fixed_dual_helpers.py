@@ -34,6 +34,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -152,6 +153,37 @@ class SemanticCnnFixedDualHelperTests(unittest.TestCase):
     def test_clock_rollback_detection(self):
         self.assertTrue(MODULE.clock_rolled_back(101, 100))
         self.assertFalse(MODULE.clock_rolled_back(100, 100))
+
+    def test_online_s3net_label_image_decodes_signed_sensor_rows(self):
+        rows = np.asarray(
+            [[-1, 0, 6, 2], [5, 4, 3, 1]],
+            dtype=np.int16,
+        )
+        message = SimpleNamespace(
+            encoding="16SC1",
+            height=2,
+            width=4,
+            step=8,
+            is_bigendian=False,
+            data=rows.astype("<i2").tobytes(),
+        )
+        decoded = MODULE.decode_s3net_label_image(message, 4, 4)
+        np.testing.assert_array_equal(decoded, rows.reshape(-1))
+
+    def test_online_s3net_label_image_rejects_mismatched_contract(self):
+        message = SimpleNamespace(
+            encoding="16SC1",
+            height=2,
+            width=4,
+            step=8,
+            is_bigendian=False,
+            data=np.zeros((2, 4), dtype="<i2").tobytes(),
+        )
+        with self.assertRaisesRegex(ValueError, "equal scan sizes"):
+            MODULE.decode_s3net_label_image(message, 4, 3)
+        message.encoding = "mono16"
+        with self.assertRaisesRegex(ValueError, "16SC1"):
+            MODULE.decode_s3net_label_image(message, 4, 4)
 
 
 if __name__ == "__main__":

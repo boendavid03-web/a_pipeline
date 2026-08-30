@@ -46,6 +46,7 @@ from launch.actions import (
     ExecuteProcess,
     IncludeLaunchDescription,
     OpaqueFunction,
+    SetEnvironmentVariable,
     SetLaunchConfiguration,
     Shutdown,
     TimerAction,
@@ -196,6 +197,10 @@ def generate_launch_description():
         / "checkpoints"
         / "best.pt"
     )
+    transport_partition = os.environ.get(
+        "IGN_PARTITION",
+        os.environ.get("GZ_PARTITION", f"semantic_nav_fixed_{os.getpid()}"),
+    )
 
     return LaunchDescription(
         [
@@ -285,6 +290,14 @@ def generate_launch_description():
                 ),
             ),
             DeclareLaunchArgument(
+                "start_drl_vo_policy",
+                default_value="true",
+                description=(
+                    "Start the DRL-VO inference node. The default preserves the "
+                    "original demo; independent policy adapters may disable it."
+                ),
+            ),
+            DeclareLaunchArgument(
                 "start_online_ppo_training",
                 default_value="false",
             ),
@@ -338,6 +351,10 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("fixed_test_start_delay_sec", default_value="2.0"),
             DeclareLaunchArgument("fixed_test_inter_goal_delay_sec", default_value="1.0"),
+            DeclareLaunchArgument("fixed_test_readiness_timeout_sec", default_value="60.0"),
+            DeclareLaunchArgument("fixed_test_auto_shutdown_delay_sec", default_value="2.0"),
+            DeclareLaunchArgument("fixed_test_max_linear", default_value="0.8"),
+            DeclareLaunchArgument("fixed_test_max_angular", default_value="1.8"),
             DeclareLaunchArgument(
                 "auto_set_initial_goal",
                 default_value="false",
@@ -473,6 +490,13 @@ def generate_launch_description():
             DeclareLaunchArgument("record_trace", default_value="false"),
             DeclareLaunchArgument("trace_path", default_value=""),
             DeclareLaunchArgument("trace_timeout_sec", default_value="360.0"),
+            DeclareLaunchArgument(
+                "record_video",
+                default_value="false",
+                description="Capture real dual lidar and published path for later synchronized MP4 rendering.",
+            ),
+            DeclareLaunchArgument("video_output_dir", default_value=""),
+            DeclareLaunchArgument("video_simulator_name", default_value="gazebo"),
             DeclareLaunchArgument("evaluate_episode", default_value="false"),
             DeclareLaunchArgument("evaluation_output_dir", default_value=""),
             DeclareLaunchArgument("evaluation_timeout_sec", default_value="360.0"),
@@ -501,7 +525,37 @@ def generate_launch_description():
             DeclareLaunchArgument("pedestrian_radius", default_value="0.125"),
             DeclareLaunchArgument("stopped_speed_threshold", default_value="0.02"),
             DeclareLaunchArgument("experiment_scene_id", default_value=""),
+            SetEnvironmentVariable(
+                "IGN_IP",
+                os.environ.get("IGN_IP", "127.0.0.1"),
+                condition=IfCondition(LaunchConfiguration("start_simulator")),
+            ),
+            SetEnvironmentVariable(
+                "GZ_IP",
+                os.environ.get("GZ_IP", "127.0.0.1"),
+                condition=IfCondition(LaunchConfiguration("start_simulator")),
+            ),
+            SetEnvironmentVariable(
+                "IGN_PARTITION",
+                transport_partition,
+                condition=IfCondition(LaunchConfiguration("start_simulator")),
+            ),
+            SetEnvironmentVariable(
+                "GZ_PARTITION",
+                os.environ.get("GZ_PARTITION", transport_partition),
+                condition=IfCondition(LaunchConfiguration("start_simulator")),
+            ),
             OpaqueFunction(function=select_policy_model),
+            SetLaunchConfiguration(
+                "max_linear",
+                LaunchConfiguration("fixed_test_max_linear"),
+                condition=IfCondition(LaunchConfiguration("fixed_test")),
+            ),
+            SetLaunchConfiguration(
+                "max_angular",
+                LaunchConfiguration("fixed_test_max_angular"),
+                condition=IfCondition(LaunchConfiguration("fixed_test")),
+            ),
             SetLaunchConfiguration(
                 "drl_vo_start_rviz",
                 LaunchConfiguration("start_rviz"),
@@ -601,34 +655,19 @@ def generate_launch_description():
                     }
                 ],
             ),
-            TimerAction(
-                period=2.0,
-                actions=[
-                    ExecuteProcess(
-                        cmd=[
-                            "ros2",
-                            "lifecycle",
-                            "set",
-                            "/map_server",
-                            "configure",
-                        ],
-                        output="screen",
-                    )
-                ],
-            ),
-            TimerAction(
-                period=3.0,
-                actions=[
-                    ExecuteProcess(
-                        cmd=[
-                            "ros2",
-                            "lifecycle",
-                            "set",
-                            "/map_server",
-                            "activate",
-                        ],
-                        output="screen",
-                    )
+            Node(
+                package="nav2_lifecycle_manager",
+                executable="lifecycle_manager",
+                name="drl_vo_aux_map_lifecycle_manager",
+                output="screen",
+                parameters=[
+                    {
+                        "use_sim_time": ParameterValue(
+                            LaunchConfiguration("use_sim_time"), value_type=bool
+                        ),
+                        "autostart": True,
+                        "node_names": ["map_server"],
+                    }
                 ],
             ),
             Node(
@@ -694,6 +733,23 @@ def generate_launch_description():
                         ),
                         "start_on_goal": True,
                         "clear_on_goal": True,
+                    }
+                ],
+            ),
+            Node(
+                condition=IfCondition(LaunchConfiguration("record_video")),
+                package="semantic_nav_gazebo",
+                executable="fixed_four_video_capture.py",
+                name="drl_vo_fixed_four_video_capture",
+                output="screen",
+                parameters=[
+                    {
+                        "use_sim_time": ParameterValue(
+                            LaunchConfiguration("use_sim_time"), value_type=bool
+                        ),
+                        "video_output_dir": LaunchConfiguration("video_output_dir"),
+                        "method_name": "DRL-VO",
+                        "simulator_name": LaunchConfiguration("video_simulator_name"),
                     }
                 ],
             ),
@@ -867,6 +923,9 @@ def generate_launch_description():
                         ],
                     ),
                     Node(
+                        condition=IfCondition(
+                            LaunchConfiguration("start_drl_vo_policy")
+                        ),
                         package="semantic_nav_gazebo",
                         executable="drl_vo_fixed_dual_inference_node.py",
                         name="drl_vo_fixed_dual_inference",
@@ -1253,8 +1312,15 @@ def generate_launch_description():
                                 "inter_goal_delay_sec": ParameterValue(
                                     LaunchConfiguration("fixed_test_inter_goal_delay_sec"), value_type=float
                                 ),
+                                "readiness_timeout_sec": ParameterValue(
+                                    LaunchConfiguration("fixed_test_readiness_timeout_sec"), value_type=float
+                                ),
+                                "auto_shutdown_delay_sec": ParameterValue(
+                                    LaunchConfiguration("fixed_test_auto_shutdown_delay_sec"), value_type=float
+                                ),
                             }
                         ],
+                        on_exit=[Shutdown(reason="Fixed goal sequence exited")],
                     ),
                 ],
             ),

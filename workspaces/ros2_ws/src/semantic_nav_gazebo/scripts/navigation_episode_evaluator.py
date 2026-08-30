@@ -43,6 +43,7 @@ from navigation_evaluation_core import (
     path_length,
     planner_reference_metadata,
     planner_reference_path_length,
+    pose_derived_twist,
     personal_space_integral,
     path_irregularity_summary,
     threshold_exposure,
@@ -244,6 +245,8 @@ class NavigationEpisodeEvaluator(Node):
         self.accepted_goal = self.actual_start = None
         self.trajectory, self.commands, self.human_samples, self.human_body_samples, self.ttc_samples = [], [], [], [], []
         self.actuation_decisions, self.simulator_actuation = [], []
+        self.pose_derived_velocity = []
+        self.last_pose_derivation_sample = None
         self.crowd_density_samples = []
         self.inference_latencies, self.inference_timestamps = [], []
         self.latest_inference_metadata = None
@@ -318,8 +321,10 @@ class NavigationEpisodeEvaluator(Node):
             "pedestrian_trace.csv": ("simulation_time_sec", "pedestrian_id", "x", "y", "yaw", "vx_mps", "vy_mps"),
             "inference_trace.csv": ("header_time_sec", "input_time_sec", "producer_id", "sequence_id", "success", "preprocessing_ms", "policy_ms", "postprocessing_ms", "total_ms", "action_encoding", "action", "device", "model_parameters", "cuda_memory_allocated_bytes", "cuda_peak_memory_bytes"),
             "actuation_decisions.csv": ("simulation_time_sec", "decision_sequence_id", "inference_sequence_id", "has_raw_action", "raw_linear_x_mps", "raw_angular_z_radps", "final_linear_x_mps", "final_angular_z_radps", "gated", "gate_reasons", "front_min_range_m"),
-            "simulator_actuation.csv": ("simulation_time_sec", "telemetry_sequence_id", "command_received", "command_sequence_id", "bridge_receive_time_sec", "received_linear_x_mps", "received_angular_z_radps", "applied_linear_x_mps", "applied_angular_z_radps", "actual_linear_x_mps", "actual_angular_z_radps", "actual_velocity_source", "command_age_sec", "watchdog_active", "collision_protection_active", "control_reasons"),
+            "simulator_actuation.csv": ("simulation_time_sec", "telemetry_sequence_id", "command_received", "command_sequence_id", "bridge_receive_time_sec", "received_linear_x_mps", "received_angular_z_radps", "applied_linear_x_mps", "applied_angular_z_radps", "physx_reported_linear_x_mps", "physx_reported_angular_z_radps", "actual_linear_x_mps", "actual_angular_z_radps", "actual_velocity_source", "command_age_sec", "watchdog_active", "collision_protection_active", "control_reasons"),
+            "pose_derived_velocity.csv": ("simulation_time_sec", "dt_sec", "planar_displacement_m", "shortest_yaw_delta_rad", "linear_x_mps", "linear_y_mps", "planar_speed_mps", "angular_z_radps", "valid", "invalid_reason"),
             "actuation_alignment.csv": ("simulation_time_sec", "raw_model_linear_x_mps", "raw_model_angular_z_radps", "final_command_linear_x_mps", "final_command_angular_z_radps", "received_command_linear_x_mps", "received_command_angular_z_radps", "applied_command_linear_x_mps", "applied_command_angular_z_radps", "actual_linear_x_mps", "actual_angular_z_radps", "policy_gated", "simulator_gated", "gated", "decision_age_sec", "state_age_sec"),
+            "physx_actuation_alignment.csv": ("simulation_time_sec", "raw_model_linear_x_mps", "raw_model_angular_z_radps", "final_command_linear_x_mps", "final_command_angular_z_radps", "received_command_linear_x_mps", "received_command_angular_z_radps", "applied_command_linear_x_mps", "applied_command_angular_z_radps", "actual_linear_x_mps", "actual_angular_z_radps", "policy_gated", "simulator_gated", "gated", "decision_age_sec", "state_age_sec"),
         }
         for name, fieldnames in fields.items():
             stream = (self.output_dir / name).open("w", newline="", encoding="utf-8")
@@ -334,6 +339,8 @@ class NavigationEpisodeEvaluator(Node):
         self.accepted_goal = self.actual_start = None
         self.trajectory, self.commands, self.actuation_decisions, self.simulator_actuation = [], [], [], []
         self.last_accepted_odom = None
+        self.pose_derived_velocity = []
+        self.last_pose_derivation_sample = None
         self.human_samples, self.human_body_samples, self.ttc_samples = [], [], []
         self.crowd_density_samples = []
         self.current_pedestrians = []
@@ -350,8 +357,16 @@ class NavigationEpisodeEvaluator(Node):
             "missing_pedestrian_snapshots": 0,
             "rejected_pedestrian_snapshots": 0,
             "rejected_nonfinite_odom": 0,
+            "rejected_nonfinite_odom_twist": 0,
             "rejected_nonfinite_cmd": 0,
             "rejected_nonfinite_pedestrian_snapshots": 0,
+            "accepted_pose_derived_velocity": 0,
+            "rejected_pose_derived_velocity": 0,
+            "pose_derived_invalid_first_sample": 0,
+            "pose_derived_invalid_nonfinite": 0,
+            "pose_derived_invalid_nonpositive_dt": 0,
+            "pose_derived_invalid_abnormal_dt": 0,
+            "pose_derived_invalid_reset_or_teleport": 0,
         }
         self.inference_latencies, self.inference_timestamps = [], []
         self.latest_inference_metadata = None
@@ -723,6 +738,8 @@ class NavigationEpisodeEvaluator(Node):
             "received_linear_x_mps": values[1], "applied_linear_x_mps": values[2],
             "received_angular_z_radps": values[4],
             "applied_angular_z_radps": values[5],
+            "physx_reported_linear_x_mps": values[3],
+            "physx_reported_angular_z_radps": values[6],
             "actual_linear_x_mps": values[3],
             "actual_angular_z_radps": values[6],
             "actual_velocity_source": source, "command_age_sec": finite_or_none(message.command_age_sec),
@@ -754,6 +771,86 @@ class NavigationEpisodeEvaluator(Node):
             return None
         return finite_or_none(self.clearance_field[row, col] - self.robot_radius)
 
+    def _record_pose_derived_velocity(self, current, *, forced_reason=None,
+                                      update_previous=True):
+        previous = self.last_pose_derivation_sample
+        twist, invalid_reason = pose_derived_twist(
+            previous,
+            current,
+            max_dt_sec=self.derivative_max_dt,
+            max_speed_mps=float(
+                self.get_parameter("maximum_actual_linear_speed_mps").value
+            ),
+            max_angular_speed_radps=float(
+                self.get_parameter("maximum_actual_angular_speed_radps").value
+            ),
+        )
+        if forced_reason is not None:
+            twist, invalid_reason = None, forced_reason
+        timestamp, x, y, yaw = current
+        dt = displacement = yaw_delta = None
+        if previous is not None and all(
+            math.isfinite(float(value)) for value in (*previous, *current)
+        ):
+            dt = timestamp - previous[0]
+            displacement = math.hypot(x - previous[1], y - previous[2])
+            yaw_delta = math.atan2(
+                math.sin(yaw - previous[3]), math.cos(yaw - previous[3])
+            )
+        valid = twist is not None
+        row = {
+            "simulation_time_sec": timestamp,
+            "dt_sec": dt,
+            "planar_displacement_m": displacement,
+            "shortest_yaw_delta_rad": yaw_delta,
+            "linear_x_mps": twist[0] if valid else None,
+            "linear_y_mps": twist[1] if valid else None,
+            "planar_speed_mps": math.hypot(twist[0], twist[1]) if valid else None,
+            "angular_z_radps": twist[2] if valid else None,
+            "valid": valid,
+            "invalid_reason": None if valid else invalid_reason,
+        }
+        self._write("pose_derived_velocity.csv", row)
+        self.pose_derived_velocity.append(row)
+        self._count(
+            "accepted_pose_derived_velocity"
+            if valid
+            else "rejected_pose_derived_velocity"
+        )
+        if invalid_reason is not None:
+            self._count(f"pose_derived_invalid_{invalid_reason}")
+        if update_previous:
+            self.last_pose_derivation_sample = current
+        return twist
+
+    def _pose_derived_actuation_states(self, freshness_sec):
+        """Attach pose truth to the simultaneous applied-command state."""
+        states = self.simulator_actuation
+        if not states:
+            return []
+        result = []
+        state_index = 0
+        for pose in self.pose_derived_velocity:
+            if not pose["valid"]:
+                continue
+            timestamp = pose["simulation_time_sec"]
+            while (
+                state_index + 1 < len(states)
+                and states[state_index + 1]["time"] <= timestamp + 1.0e-9
+            ):
+                state_index += 1
+            state = states[state_index]
+            age = timestamp - state["time"]
+            if age < -1.0e-9 or age > freshness_sec:
+                continue
+            merged = dict(state)
+            merged["time"] = timestamp
+            merged["actual"] = pose["linear_x_mps"]
+            merged["actual_angular"] = pose["angular_z_radps"]
+            merged["actual_velocity_source"] = "pose_derived_velocity"
+            result.append(merged)
+        return result
+
     def odom_callback(self, message):
         if not self.active or self.finished:
             return
@@ -762,14 +859,23 @@ class NavigationEpisodeEvaluator(Node):
         orientation = message.pose.pose.orientation
         linear_x, linear_y = float(message.twist.twist.linear.x), float(message.twist.twist.linear.y)
         angular_z = float(message.twist.twist.angular.z)
-        raw_values = (timestamp, x, y, float(orientation.x), float(orientation.y),
-                      float(orientation.z), float(orientation.w), linear_x, linear_y, angular_z)
-        if not all(math.isfinite(value) for value in raw_values):
+        pose_values = (timestamp, x, y, float(orientation.x), float(orientation.y),
+                       float(orientation.z), float(orientation.w))
+        if not all(math.isfinite(value) for value in pose_values):
             self._count("rejected_nonfinite_odom")
             return
+        twist_values = (linear_x, linear_y, angular_z)
+        if not all(math.isfinite(value) for value in twist_values):
+            self._count("rejected_nonfinite_odom_twist")
+            linear_x = linear_y = angular_z = 0.0
+        yaw = yaw_from_quaternion(orientation)
+        current_pose_sample = (timestamp, x, y, yaw)
         if self.last_accepted_odom is not None:
             previous_time, previous_x, previous_y = self.last_accepted_odom
             if timestamp <= previous_time:
+                self._record_pose_derived_velocity(
+                    current_pose_sample, update_previous=False
+                )
                 self._count("rejected_nonpositive_odom_timestamp")
                 return
             if math.hypot(x - previous_x, y - previous_y) > float(
@@ -778,22 +884,27 @@ class NavigationEpisodeEvaluator(Node):
                 # A reset is an episode boundary, never a high-speed path
                 # segment.  Preserve the existing trace and report why it is
                 # incomplete instead of integrating the teleport.
+                self._record_pose_derived_velocity(
+                    current_pose_sample,
+                    forced_reason="reset_or_teleport",
+                    update_previous=False,
+                )
                 self._count("reset_jump_detected")
                 self.finish("sim_reset_detected", timestamp)
                 return
-        if (
+        if all(math.isfinite(value) for value in twist_values) and (
             math.hypot(linear_x, linear_y)
             > float(self.get_parameter("maximum_actual_linear_speed_mps").value)
             or abs(angular_z)
             > float(self.get_parameter("maximum_actual_angular_speed_radps").value)
         ):
             self._count("rejected_implausible_odom_twist")
-            return
+            linear_x = linear_y = angular_z = 0.0
+        pose_derived = self._record_pose_derived_velocity(current_pose_sample)
         self.last_accepted_odom = (timestamp, x, y)
         self.source_received["odom"] = True
         self._count("accepted_odom")
         self.last_odom_frame_id = normalized_frame_id(message.header.frame_id)
-        yaw = yaw_from_quaternion(orientation)
         if self.actual_start is None:
             self.actual_start = (x, y, yaw)
             self.first_odom_time = timestamp
@@ -821,7 +932,13 @@ class NavigationEpisodeEvaluator(Node):
             distances = [math.hypot(px - x, py - y) for _, px, py, _, _, _ in sync_people]
             nearest_center = min(distances)
             nearest_body = nearest_center - self.robot_radius - self.pedestrian_radius
-            robot_world_velocity = (math.cos(yaw) * linear_x - math.sin(yaw) * linear_y, math.sin(yaw) * linear_x + math.cos(yaw) * linear_y)
+            truth_linear_x, truth_linear_y = (
+                pose_derived[:2] if pose_derived is not None else (linear_x, linear_y)
+            )
+            robot_world_velocity = (
+                math.cos(yaw) * truth_linear_x - math.sin(yaw) * truth_linear_y,
+                math.sin(yaw) * truth_linear_x + math.cos(yaw) * truth_linear_y,
+            )
             candidates = [constant_velocity_ttc((x, y), robot_world_velocity, (px, py), (vx, vy), self.robot_radius + self.pedestrian_radius) for _, px, py, _, vx, vy in sync_people]
             future = [candidate for candidate in candidates if candidate is not None]
             minimum_ttc = min(future) if future else None
@@ -902,27 +1019,38 @@ class NavigationEpisodeEvaluator(Node):
             math.hypot(self.accepted_goal[0] - self.actual_start[0], self.accepted_goal[1] - self.actual_start[1])
             if self.accepted_goal is not None and self.actual_start is not None else None
         )
-        linear_speed_samples = [(row["simulation_time_sec"], math.hypot(row["odom_linear_x_mps"], row["odom_linear_y_mps"])) for row in self.trajectory]
+        valid_pose_velocity = [
+            row for row in self.pose_derived_velocity if row["valid"]
+        ]
+        linear_speed_samples = [
+            (row["simulation_time_sec"], row["planar_speed_mps"])
+            for row in valid_pose_velocity
+        ]
         speed_values = [value for _, value in linear_speed_samples]
-        angular_values = [row["odom_angular_z_radps"] for row in self.trajectory]
+        angular_values = [row["angular_z_radps"] for row in valid_pose_velocity]
         stopped_seconds = total_seconds = weighted_speed = 0.0
-        for (t0, speed), (t1, _) in zip(linear_speed_samples, linear_speed_samples[1:]):
-            if 0.0 < t1 - t0 <= self.derivative_max_dt:
-                total_seconds += t1 - t0
-                weighted_speed += speed * (t1 - t0)
+        for row in valid_pose_velocity:
+            dt = row["dt_sec"]
+            speed = row["planar_speed_mps"]
+            if dt is not None and 0.0 < dt <= self.derivative_max_dt:
+                total_seconds += dt
+                weighted_speed += speed * dt
                 if speed < self.stopped_threshold:
-                    stopped_seconds += t1 - t0
-        odom_linear_samples = [(row["simulation_time_sec"], row["odom_linear_x_mps"]) for row in self.trajectory]
+                    stopped_seconds += dt
+        pose_linear_samples = [
+            (row["simulation_time_sec"], row["linear_x_mps"])
+            for row in valid_pose_velocity
+        ]
         cmd_linear_samples = [(row["simulation_time_sec"], row["linear_x_mps"]) for row in self.commands]
         cmd_angular_samples = [(row["simulation_time_sec"], row["angular_z_radps"]) for row in self.commands]
         acceleration = motion_derivative_block(
-            derivative_summary(odom_linear_samples, order=1, max_dt=self.derivative_max_dt),
+            derivative_summary(pose_linear_samples, order=1, max_dt=self.derivative_max_dt),
             derivative_summary(cmd_linear_samples, order=1, max_dt=self.derivative_max_dt),
             derivative_summary(cmd_angular_samples, order=1, max_dt=self.derivative_max_dt),
             "2",
         )
         jerk = motion_derivative_block(
-            derivative_summary(odom_linear_samples, order=2, max_dt=self.derivative_max_dt),
+            derivative_summary(pose_linear_samples, order=2, max_dt=self.derivative_max_dt),
             derivative_summary(cmd_linear_samples, order=2, max_dt=self.derivative_max_dt),
             derivative_summary(cmd_angular_samples, order=2, max_dt=self.derivative_max_dt),
             "3",
@@ -991,17 +1119,50 @@ class NavigationEpisodeEvaluator(Node):
         quality = {"odom_received": self.source_received["odom"], "goal_received": self.source_received["goal"], "map_loaded": self.map_loaded, "pedestrian_ground_truth_received": self.source_received["pedestrian_ground_truth"], "inference_metrics_received": self.source_received["inference_metrics"], "missing_sources": [name for name, received in self.source_received.items() if not received], **self.sync_counters}
         quality["pedestrian_sync_coverage"] = (self.sync_counters.get("synchronized_pedestrian_snapshots", 0) / self.sync_counters.get("accepted_odom", 0)
                                                 if self.sync_counters.get("accepted_odom", 0) else None)
-        alignment = align_actuation_series(
+        alignment_kwargs = {
+            "rate_hz": float(params("alignment_rate_hz").value),
+            "freshness_sec": float(params("alignment_freshness_sec").value),
+            "max_delay_sec": float(params("alignment_max_delay_sec").value),
+        }
+        physx_alignment = align_actuation_series(
             self.actuation_decisions,
             self.simulator_actuation,
-            rate_hz=float(params("alignment_rate_hz").value),
-            freshness_sec=float(params("alignment_freshness_sec").value),
-            max_delay_sec=float(params("alignment_max_delay_sec").value),
+            **alignment_kwargs,
+        )
+        pose_states = self._pose_derived_actuation_states(
+            alignment_kwargs["freshness_sec"]
+        )
+        alignment = align_actuation_series(
+            self.actuation_decisions,
+            pose_states,
+            **alignment_kwargs,
         )
         for row in alignment["rows"]:
             self._write("actuation_alignment.csv", row)
+        for row in physx_alignment["rows"]:
+            self._write("physx_actuation_alignment.csv", row)
         quality["actuation_alignment_coverage"] = alignment["coverage"]
         quality["actuation_alignment_diagnostics"] = alignment["diagnostics"]
+        quality["physx_actuation_alignment_coverage"] = physx_alignment["coverage"]
+        quality["physx_actuation_alignment_diagnostics"] = physx_alignment["diagnostics"]
+        pose_integrated_path = sum(
+            row["planar_displacement_m"]
+            for row in valid_pose_velocity
+            if row["planar_displacement_m"] is not None
+        )
+        path_difference = (
+            abs(path - pose_integrated_path) if path is not None else None
+        )
+        path_consistency = {
+            "trajectory_path_length_m": path,
+            "pose_velocity_integrated_path_length_m": pose_integrated_path,
+            "absolute_difference_m": path_difference,
+            "consistent": (
+                bool(valid_pose_velocity)
+                and path_difference is not None
+                and path_difference <= 1.0e-6
+            ),
+        }
         advisory = alignment["stable_straight_ungated"]
         advisory_criteria = {
             "absolute_bias_max_mps": 0.05,
@@ -1018,7 +1179,7 @@ class NavigationEpisodeEvaluator(Node):
                 "correlation": advisory["correlation"] >= 0.90,
             }
         return {
-            "schema": {"name": "navigation_episode_evaluation", "version": 4},
+            "schema": {"name": "navigation_episode_evaluation", "version": 5},
             "episode_sequence": {
                 "index": self.episode_index,
                 "multi_episode": self.multi_episode,
@@ -1029,19 +1190,22 @@ class NavigationEpisodeEvaluator(Node):
             "episode": {"goal_reached": reached, "success": strict_success, "timeout": timeout,
                         "strict_success_proxy": strict_success, "termination_reason": reason,
                         "navigation_time_sec": navigation_time,
-                        "samples": {"odom": len(self.trajectory), "cmd_vel": len(self.commands), "inference": len(self.inference_latencies), "actuation_decisions": len(self.actuation_decisions), "simulator_actuation": len(self.simulator_actuation)}},
+                        "samples": {"odom": len(self.trajectory), "pose_derived_velocity": len(valid_pose_velocity), "cmd_vel": len(self.commands), "inference": len(self.inference_latencies), "actuation_decisions": len(self.actuation_decisions), "simulator_actuation": len(self.simulator_actuation)}},
             "time_metrics": time_milestones(self.goal_start_time, reach_time, self.first_odom_time, self.first_policy_action_time, self.first_nonzero_cmd_time),
             "navigation": {"path_length_m": path, "euclidean_start_goal_distance_m": start_goal_euclidean,
                            "planner_reference_path_length_m": planner_reference_length, "planner_reference": planner_reference,
                            "goal_spl": {"value": goal_spl(strict_success, planner_reference_length, path), "status": "provisional", "reason": "A* reference is not asserted to be a strict shortest path; strict success may be unknown"},
                            "planner_reference_path_efficiency": planner_reference_length / path if planner_reference_length is not None and path is not None and path >= 1.0e-3 else None,
                            "minimum_goal_distance_m": min((row["goal_distance_m"] for row in self.trajectory), default=None),
-                           "path_irregularity": path_irregularity},
+                           "path_irregularity": path_irregularity,
+                           "pose_integration_consistency": path_consistency},
             "speed": {"mean_mps": weighted_speed / total_seconds if total_seconds > 0.0 else None, "max_mps": float(np.max(speed_values)) if speed_values else None,
-                      "statistics": distribution_summary(speed_values), "stopped_time_ratio": stopped_seconds / total_seconds if total_seconds > 0.0 else None},
+                      "statistics": distribution_summary(speed_values), "stopped_time_ratio": stopped_seconds / total_seconds if total_seconds > 0.0 else None,
+                      "source": "pose_derived_velocity"},
             "angular_velocity": {"statistics_radps": distribution_summary(angular_values),
                                   "mean_absolute_radps": float(np.mean(np.abs(angular_values))) if angular_values else None,
-                                  "maximum_absolute_radps": float(np.max(np.abs(angular_values))) if angular_values else None},
+                                  "maximum_absolute_radps": float(np.max(np.abs(angular_values))) if angular_values else None,
+                                  "source": "pose_derived_velocity"},
             "motion_quality": {"acceleration": acceleration, "jerk": jerk},
             "static_clearance": {"minimum_m": static["minimum"], "mean_m": static["mean"],
                                  "statistics": distribution_summary([row["static_clearance_m"] for row in self.trajectory]),
@@ -1061,12 +1225,12 @@ class NavigationEpisodeEvaluator(Node):
             "frequency": {"cmd_vel_hz": self._rate([row["simulation_time_sec"] for row in self.commands]), "policy_inference_hz": self._rate(self.inference_timestamps)},
             "inference_latency_ms": percentile_summary(self.inference_latencies),
             "velocity_tracking": {
-                "source": "simulator_actuation.actual_velocity; /odom twist is actual velocity when this source is present",
-                "actual_velocity_sources": sorted({
-                    row["actual_velocity_source"]
-                    for row in self.simulator_actuation
-                    if row.get("actual_velocity_source")
-                }),
+                "source": "pose_derived_velocity from consecutive /odom.pose samples and simulation time",
+                "actual_velocity_sources": (
+                    ["pose_derived_velocity"] if valid_pose_velocity else []
+                ),
+                "commanded_velocity_source": "ActuationDecision.final_command",
+                "applied_velocity_source": "SimulatorActuationState.applied_command",
                 "watchdog_sample_count": sum(
                     bool(row.get("watchdog_active"))
                     for row in self.simulator_actuation
@@ -1084,9 +1248,9 @@ class NavigationEpisodeEvaluator(Node):
                 "resample_rate_hz": float(params("alignment_rate_hz").value),
                 "freshness_sec": float(params("alignment_freshness_sec").value),
                 "maximum_causal_delay_sec": float(params("alignment_max_delay_sec").value),
-                "raw_model_to_final_command": alignment["raw_to_final"],
+                "raw_model_to_final_command": physx_alignment["raw_to_final"],
                 "final_command_to_actual_velocity": alignment["final_to_actual"],
-                "angular_raw_model_to_final_command": alignment["raw_to_final_angular"],
+                "angular_raw_model_to_final_command": physx_alignment["raw_to_final_angular"],
                 "angular_final_command_to_actual_velocity": alignment["final_to_actual_angular"],
                 "safety_gated": alignment["gated"], "safety_ungated": alignment["ungated"],
                 "raw_model_to_final_safety_gated": alignment["raw_to_final_gated"],
@@ -1109,6 +1273,20 @@ class NavigationEpisodeEvaluator(Node):
                 },
                 "best_causal_delay_sec": alignment["best_causal_delay_sec"],
                 "delay_reason": alignment["delay_reason"], "coverage": alignment["coverage"],
+                "physx_reported_velocity_diagnostic": {
+                    "source": "SimulatorActuationState.actual_velocity",
+                    "actual_velocity_sources": sorted({
+                        row["actual_velocity_source"]
+                        for row in self.simulator_actuation
+                        if row.get("actual_velocity_source")
+                    }),
+                    "final_command_to_physx_reported_velocity": physx_alignment["final_to_actual"],
+                    "angular_final_command_to_physx_reported_velocity": physx_alignment["final_to_actual_angular"],
+                    "stable_straight_ungated": physx_alignment["stable_straight_ungated"],
+                    "coverage": physx_alignment["coverage"],
+                    "best_causal_delay_sec": physx_alignment["best_causal_delay_sec"],
+                    "delay_reason": physx_alignment["delay_reason"],
+                },
             },
             "metric_validity": {"velocity_tracking": {
                 "status": "available" if alignment["final_to_actual"].get("valid") else "unavailable",

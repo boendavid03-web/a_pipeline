@@ -362,6 +362,44 @@ def align_actuation_series(decisions, states, *, rate_hz=15.0, freshness_sec=0.2
             "delay_reason": delay_reason}
 
 
+def pose_derived_twist(previous, current, *, max_dt_sec=2.0,
+                       max_speed_mps=5.0, max_angular_speed_radps=10.0):
+    """Derive planar body twist from adjacent world poses and simulation time.
+
+    Samples are ``(time, x, y, yaw)``.  Invalid intervals are reported instead
+    of being converted into velocities, so startup, reset/teleport, duplicate
+    time and a long telemetry gap cannot contaminate command tracking.
+    """
+    if previous is None:
+        return None, "first_sample"
+    try:
+        t0, x0, y0, yaw0 = (float(value) for value in previous)
+        t1, x1, y1, yaw1 = (float(value) for value in current)
+    except (TypeError, ValueError):
+        return None, "nonfinite"
+    if not all(math.isfinite(value) for value in (t0, x0, y0, yaw0, t1, x1, y1, yaw1)):
+        return None, "nonfinite"
+    dt = t1 - t0
+    if dt <= 0.0:
+        return None, "nonpositive_dt"
+    if not math.isfinite(max_dt_sec) or max_dt_sec <= 0.0 or dt > max_dt_sec:
+        return None, "abnormal_dt"
+    world_x, world_y = (x1 - x0) / dt, (y1 - y0) / dt
+    yaw_delta = math.atan2(math.sin(yaw1 - yaw0), math.cos(yaw1 - yaw0))
+    yaw_rate = yaw_delta / dt
+    if (
+        math.hypot(world_x, world_y) > max_speed_mps
+        or abs(yaw_rate) > max_angular_speed_radps
+    ):
+        return None, "reset_or_teleport"
+    cosine, sine = math.cos(yaw1), math.sin(yaw1)
+    return (
+        cosine * world_x + sine * world_y,
+        -sine * world_x + cosine * world_y,
+        yaw_rate,
+    ), None
+
+
 def goal_spl(goal_reached, reference_length, actual):
     """Compute the SPL-shaped score for a planner reference (not formal SPL)."""
     if goal_reached is None:

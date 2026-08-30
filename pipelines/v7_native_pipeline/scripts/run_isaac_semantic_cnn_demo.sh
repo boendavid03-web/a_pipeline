@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 ROS_WS="$PROJECT_ROOT/workspaces/ros2_ws"
 ISAAC_LAUNCHER="$PROJECT_ROOT/isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh"
+VIDEO_RENDERER="$PROJECT_ROOT/pipelines/v7_native_pipeline/scripts/render_fixed_four_evaluation_video.py"
 
 ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-78}"
 export ROS_DOMAIN_ID
@@ -31,14 +32,40 @@ MODEL="${SEMANTIC_CNN_MODEL:-$PROJECT_ROOT/runs/20260808_gazebo_play/training/se
 MODEL_CODE="${SEMANTIC_CNN_MODEL_CODE:-$(dirname "$MODEL")/model_code_scripts}"
 MAP_YAML="${ISAAC_DEMO_MAP_YAML:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/map.yaml}"
 SEMANTIC_LABEL="${ISAAC_DEMO_SEMANTIC_LABEL:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/label.png}"
+ONLINE_S3NET="${SEMANTIC_CNN_USE_ONLINE_S3NET:-false}"
+S3NET_DIR="$PROJECT_ROOT/runs/20260808_gazebo_play/training/s3net_formal_auto_teacher/20260827_234825_s3net_native_stats_81epoch"
+S3NET_MODEL="${SEMANTIC_CNN_S3NET_MODEL:-$S3NET_DIR/s3net_native_stats_best_dev.pth}"
+S3NET_MODEL_CODE="${SEMANTIC_CNN_S3NET_MODEL_CODE:-$(dirname "$S3NET_MODEL")/model_code_scripts}"
+S3NET_STATS_JSON="${SEMANTIC_CNN_S3NET_STATS_JSON:-$(dirname "$S3NET_MODEL")/s3net_native_lidar_train_stats.json}"
+S3NET_ENFORCE_LAYOUT="${SEMANTIC_CNN_S3NET_ENFORCE_MESSAGE_LAYOUT:-false}"
 RVIZ_ENABLED="${ISAAC_DEMO_RVIZ:-false}"
 FIXED_TEST="${SEMANTIC_CNN_FIXED_TEST:-false}"
 FIXED_GOALS_FILE="${SEMANTIC_CNN_FIXED_GOALS_FILE:-$PROJECT_ROOT/configs/evaluation/fixed_four_goals.yaml}"
+RECORD_VIDEO="${SEMANTIC_CNN_RECORD_VIDEO:-false}"
 case "${FIXED_TEST,,}" in
     1|true|yes|on) FIXED_TEST=true; GOAL_PICKER_ENABLED=false ;;
     0|false|no|off) FIXED_TEST=false; GOAL_PICKER_ENABLED=true ;;
     *) echo "ERROR: SEMANTIC_CNN_FIXED_TEST must be a boolean value." >&2; exit 2 ;;
 esac
+case "${RECORD_VIDEO,,}" in
+    1|true|yes|on) RECORD_VIDEO=true ;;
+    0|false|no|off) RECORD_VIDEO=false ;;
+    *) echo "ERROR: SEMANTIC_CNN_RECORD_VIDEO must be a boolean value." >&2; exit 2 ;;
+esac
+case "${ONLINE_S3NET,,}" in
+    1|true|yes|on) ONLINE_S3NET=true ;;
+    0|false|no|off) ONLINE_S3NET=false ;;
+    *) echo "ERROR: SEMANTIC_CNN_USE_ONLINE_S3NET must be a boolean value." >&2; exit 2 ;;
+esac
+case "${S3NET_ENFORCE_LAYOUT,,}" in
+    1|true|yes|on) S3NET_ENFORCE_LAYOUT=true ;;
+    0|false|no|off) S3NET_ENFORCE_LAYOUT=false ;;
+    *) echo "ERROR: SEMANTIC_CNN_S3NET_ENFORCE_MESSAGE_LAYOUT must be a boolean value." >&2; exit 2 ;;
+esac
+if [[ "$RECORD_VIDEO" == "true" && "$FIXED_TEST" != "true" ]]; then
+    echo "ERROR: SEMANTIC_CNN_RECORD_VIDEO=true requires SEMANTIC_CNN_FIXED_TEST=true." >&2
+    exit 2
+fi
 
 for required in "$ISAAC_LAUNCHER" "$MODEL" "$MODEL_CODE/model.py" "$MAP_YAML" "$SEMANTIC_LABEL"; do
     if [[ ! -e "$required" ]]; then
@@ -46,6 +73,14 @@ for required in "$ISAAC_LAUNCHER" "$MODEL" "$MODEL_CODE/model.py" "$MAP_YAML" "$
         exit 1
     fi
 done
+if [[ "$ONLINE_S3NET" == "true" ]]; then
+    for required in "$S3NET_MODEL" "$S3NET_MODEL_CODE/model.py" "$S3NET_STATS_JSON"; do
+        if [[ ! -f "$required" ]]; then
+            echo "ERROR: required online S3-Net input is missing: $required" >&2
+            exit 1
+        fi
+    done
+fi
 if [[ "$FIXED_TEST" == "true" && ! -f "$FIXED_GOALS_FILE" ]]; then
     echo "ERROR: fixed goals file is missing: $FIXED_GOALS_FILE" >&2
     exit 1
@@ -64,9 +99,13 @@ export ROS_DOMAIN_ID ISAAC_ROS_DOMAIN_ID ROS_LOCALHOST_ONLY RMW_IMPLEMENTATION
 ros2 daemon stop >/dev/null 2>&1 || true
 
 run_tag="$(date +%Y%m%d_%H%M%S)"
-output_root="$PROJECT_ROOT/runs/isaac_custom_semantic_cnn_demo/$run_tag"
-mkdir -p "$output_root"
+output_root="${SEMANTIC_CNN_DEMO_OUTPUT_DIR:-$PROJECT_ROOT/runs/isaac_custom_semantic_cnn_demo/$run_tag}"
+if ! mkdir "$output_root"; then
+    echo "ERROR: refusing to overwrite existing run directory: $output_root" >&2
+    exit 1
+fi
 evaluation_dir="$output_root/evaluation"
+video_dir="$evaluation_dir/video"
 trace_path="$output_root/trajectory.csv"
 isaac_log="$output_root/isaac.log"
 
@@ -74,6 +113,10 @@ echo "Run output: $output_root"
 echo "Evaluation: $evaluation_dir"
 echo "Trajectory: $trace_path"
 echo "Isaac log: $isaac_log"
+echo "Semantic input: $([[ "$ONLINE_S3NET" == "true" ]] && echo online_s3net || echo static_map)"
+if [[ "$RECORD_VIDEO" == "true" ]]; then
+    echo "Video: $video_dir/evaluation_video.mp4"
+fi
 
 isaac_pid=""
 cleanup() {
@@ -121,9 +164,23 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     enable_goal_picker:="$GOAL_PICKER_ENABLED" \
     fixed_test:="$FIXED_TEST" \
     fixed_goals_file:="$FIXED_GOALS_FILE" \
+    fixed_test_readiness_timeout_sec:="${SEMANTIC_CNN_FIXED_TEST_READINESS_TIMEOUT_SEC:-60.0}" \
+    fixed_test_auto_shutdown_delay_sec:="${SEMANTIC_CNN_FIXED_TEST_AUTO_SHUTDOWN_DELAY_SEC:-2.0}" \
+    fixed_test_max_linear:="${SEMANTIC_CNN_FIXED_TEST_MAX_LINEAR:-0.8}" \
+    fixed_test_max_angular:="${SEMANTIC_CNN_FIXED_TEST_MAX_ANGULAR:-1.8}" \
+    record_video:="$RECORD_VIDEO" \
+    video_output_dir:="$video_dir" \
+    video_simulator_name:=isaac \
     auto_set_initial_goal:=false \
     semantic_cnn_model:="$MODEL" \
     semantic_cnn_model_code:="$MODEL_CODE" \
+    use_online_s3net:="$ONLINE_S3NET" \
+    s3net_model:="$S3NET_MODEL" \
+    s3net_model_code:="$S3NET_MODEL_CODE" \
+    s3net_stats_json:="$S3NET_STATS_JSON" \
+    s3net_sampling_strategy:="${SEMANTIC_CNN_S3NET_SAMPLING_STRATEGY:-contract}" \
+    s3net_sampling_seed:="${SEMANTIC_CNN_S3NET_SAMPLING_SEED:-1337}" \
+    s3net_enforce_message_layout:="$S3NET_ENFORCE_LAYOUT" \
     map_yaml:="$MAP_YAML" \
     semantic_label:="$SEMANTIC_LABEL" \
     device:="${SEMANTIC_CNN_DEVICE:-cuda}" \
@@ -157,4 +214,18 @@ ros2 launch semantic_nav_gazebo semantic_cnn_fixed_dual_start_goal_demo.launch.p
     pedestrian_seed:="$ISAAC_PEDESTRIAN_SEED"
 status=$?
 set -e
+if [[ "$RECORD_VIDEO" == "true" && -f "$evaluation_dir/session_summary.json" ]]; then
+    mkdir -p "$video_dir"
+    if ! python3 "$VIDEO_RENDERER" \
+        --evaluation-dir "$evaluation_dir" \
+        --map-yaml "$MAP_YAML" \
+        --capture-dir "$video_dir/sync" \
+        --output-mp4 "$video_dir/evaluation_video.mp4" \
+        --save-episode-screenshots \
+        >"$video_dir/render.log" 2>&1; then
+        echo "ERROR: video rendering failed. See $video_dir/render.log" >&2
+        exit 1
+    fi
+    echo "FIXED_FOUR_VIDEO_READY path=$video_dir/evaluation_video.mp4"
+fi
 exit "$status"

@@ -23,11 +23,18 @@ import sys
 import threading
 import time
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from pedestrian_free_space_guard import SustainedIntrusionTracker
-from pedestrian_social import SocialQualityTracker, SocialYieldPlanner
+from pedestrian_social import (
+    PedestrianMotionState,
+    PedestrianSocialForceController,
+    RobotMotionState,
+    SocialForceParameters,
+    SocialQualityTracker,
+    SocialYieldPlanner,
+)
 from rtx_lidar_scan import project_rtx_returns
 from udp_telemetry import COMPRESSED_MAGIC, TelemetryEncoder
 from isaac_actuation_contract import (
@@ -302,6 +309,11 @@ MIN_SIMULATION_FRAME_RATE_HZ = environment_integer(
     unit="Hz",
 )
 LIDAR_PUBLISH_PERIOD_SEC = 1.0 / float(LIDAR_RATE_HZ)
+PEDESTRIAN_SOCIAL_MODE = environment_choice(
+    "ISAAC_PEDESTRIAN_SOCIAL_MODE",
+    "legacy",
+    {"gazebo_social", "legacy"},
+)
 PEDESTRIAN_SOCIAL_MASS_KG = environment_float(
     "ISAAC_PEDESTRIAN_SOCIAL_MASS_KG", 20.0, 0.1, 1000.0, unit="kg"
 )
@@ -320,6 +332,91 @@ PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M = environment_float(
 PEDESTRIAN_SOCIAL_YIELD_RESUME_M = environment_float(
     "ISAAC_PEDESTRIAN_SOCIAL_YIELD_RESUME_M", 1.50, 0.46, 3.0, unit="m"
 )
+PEDESTRIAN_SOCIAL_NEIGHBOR_RANGE_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_NEIGHBOR_RANGE_M", 10.0, 0.1, 30.0, unit="m"
+)
+PEDESTRIAN_SOCIAL_FORCE_WEIGHT = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_FORCE_WEIGHT", 5.1, 0.0, 30.0
+)
+PEDESTRIAN_ROBOT_SOCIAL_FORCE_WEIGHT = environment_float(
+    "ISAAC_PEDESTRIAN_ROBOT_SOCIAL_FORCE_WEIGHT", 5.1, 0.0, 30.0
+)
+PEDESTRIAN_ROBOT_PERSONAL_SPACE_FORCE_WEIGHT = environment_float(
+    "ISAAC_PEDESTRIAN_ROBOT_PERSONAL_SPACE_FORCE_WEIGHT", 6.0, 0.0, 50.0
+)
+PEDESTRIAN_SOCIAL_RELAXATION_TIME_SEC = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_RELAXATION_TIME_SEC", 0.5, 0.05, 5.0, unit="s"
+)
+PEDESTRIAN_SOCIAL_SMOOTHING_TIME_SEC = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_SMOOTHING_TIME_SEC", 0.35, 0.02, 5.0, unit="s"
+)
+PEDESTRIAN_SOCIAL_MAX_ACCEL_MPS2 = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_MAX_ACCEL_MPS2", 4.0, 0.1, 30.0, unit="m/s^2"
+)
+PEDESTRIAN_SOCIAL_MAX_STEERING_CORRECTION_MPS = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_MAX_STEERING_CORRECTION_MPS",
+    0.65,
+    0.05,
+    3.0,
+    unit="m/s",
+)
+PEDESTRIAN_SOCIAL_MAX_LATERAL_STEERING_MPS = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_MAX_LATERAL_STEERING_MPS",
+    0.45,
+    0.01,
+    2.0,
+    unit="m/s",
+)
+PEDESTRIAN_SOCIAL_MAX_STEERING_ANGLE_DEG = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_MAX_STEERING_ANGLE_DEG",
+    35.0,
+    1.0,
+    80.0,
+    unit="deg",
+)
+PEDESTRIAN_SOCIAL_MIN_SPEED_MPS = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_MIN_SPEED_MPS", 0.15, 0.0, 1.5, unit="m/s"
+)
+PEDESTRIAN_AGENT_RADIUS_M = environment_float(
+    "ISAAC_PEDESTRIAN_AGENT_RADIUS_M", 0.35, 0.05, 1.0, unit="m"
+)
+PEDESTRIAN_ROBOT_RADIUS_M = environment_float(
+    "ISAAC_PEDESTRIAN_ROBOT_RADIUS_M", 0.47, 0.05, 2.0, unit="m"
+)
+PEDESTRIAN_ROBOT_CLEARANCE_M = environment_float(
+    "ISAAC_PEDESTRIAN_ROBOT_CLEARANCE_M", 1.0, 0.1, 5.0, unit="m"
+)
+PEDESTRIAN_ROBOT_PERSONAL_SPACE_SIGMA_M = environment_float(
+    "ISAAC_PEDESTRIAN_ROBOT_PERSONAL_SPACE_SIGMA_M",
+    0.2,
+    0.01,
+    2.0,
+    unit="m",
+)
+PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M",
+    0.50,
+    0.30,
+    1.5,
+    unit="m",
+)
+PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M",
+    0.80,
+    0.31,
+    2.0,
+    unit="m",
+)
+PEDESTRIAN_SOCIAL_EMERGENCY_DODGE_CLEARANCE_M = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_DODGE_CLEARANCE_M",
+    0.20,
+    0.05,
+    1.0,
+    unit="m",
+)
+PEDESTRIAN_SOCIAL_DEBUG_PERIOD_SEC = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_DEBUG_PERIOD_SEC", 5.0, 0.5, 60.0, unit="s"
+)
 if PEDESTRIAN_VISUAL_OVERLAP_M >= PEDESTRIAN_PERSONAL_SPACE_M:
     raise SystemExit(
         "ERROR: ISAAC_PEDESTRIAN_VISUAL_OVERLAP_M must be smaller than "
@@ -334,6 +431,22 @@ if PEDESTRIAN_SOCIAL_YIELD_RESUME_M <= PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M:
     raise SystemExit(
         "ERROR: ISAAC_PEDESTRIAN_SOCIAL_YIELD_RESUME_M must be greater than "
         "ISAAC_PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M"
+    )
+if (
+    PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M
+    <= PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M
+):
+    raise SystemExit(
+        "ERROR: ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M must be "
+        "greater than ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M"
+    )
+if (
+    PEDESTRIAN_ROBOT_CLEARANCE_M
+    < PEDESTRIAN_ROBOT_RADIUS_M + PEDESTRIAN_AGENT_RADIUS_M
+):
+    raise SystemExit(
+        "ERROR: ISAAC_PEDESTRIAN_ROBOT_CLEARANCE_M must be at least "
+        "ISAAC_PEDESTRIAN_ROBOT_RADIUS_M + ISAAC_PEDESTRIAN_AGENT_RADIUS_M"
     )
 
 
@@ -417,12 +530,30 @@ PEDESTRIAN_DODGE_PROFILE = (
     if PEOPLE_ENABLED
     else None
 )
+if PEDESTRIAN_SOCIAL_MODE == "gazebo_social" and PEDESTRIAN_DODGE_PROFILE is not None:
+    # Continuous footprint-aware avoidance owns normal encounters.  Preserve
+    # the validated dodge task only for a genuinely dangerous residual state.
+    PEDESTRIAN_DODGE_PROFILE = replace(
+        PEDESTRIAN_DODGE_PROFILE,
+        trigger_clearance_m=PEDESTRIAN_SOCIAL_EMERGENCY_DODGE_CLEARANCE_M,
+    )
 if not PEOPLE_ENABLED and PEDESTRIAN_AVOIDANCE_MODE != "off":
     raise SystemExit(
         "ERROR: ISAAC_PEDESTRIAN_AVOIDANCE_MODE must be off when "
         "ISAAC_ENABLE_PEOPLE=0"
     )
 LIDAR_MODE = environment_choice("ISAAC_LIDAR_MODE", "rtx", {"physx", "rtx"})
+PHYSX_ANALYTIC_LEGS_ENABLED = (
+    LIDAR_MODE == "physx"
+    and PEOPLE_ENABLED
+    and environment_flag("ISAAC_PHYSX_ANALYTIC_LEGS", True)
+)
+PHYSX_ANALYTIC_LEG_RADIUS_M = environment_float(
+    "ISAAC_PHYSX_ANALYTIC_LEG_RADIUS_M", 0.065, 0.03, 0.12, unit="m"
+)
+PHYSX_ANALYTIC_LEGS_DEBUG = environment_flag(
+    "ISAAC_PHYSX_ANALYTIC_LEGS_DEBUG", False
+)
 RTX_LIDAR_PROFILE = environment_choice(
     "ISAAC_RTX_LIDAR_PROFILE",
     "rplidar_s2e",
@@ -619,6 +750,11 @@ from isaacsim.core.simulation_manager import IsaacEvents, SimulationManager  # n
 from isaacsim.core.utils import stage as stage_utils  # noqa: E402
 from isaacsim.core.utils.extensions import enable_extension  # noqa: E402
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, UsdSkel  # noqa: E402
+from physx_lidar_people import (  # noqa: E402
+    is_ignored_person_query_collider,
+    nearest_ray_capsule_intersections,
+    scene_query_hit_value,
+)
 
 
 def clamp_twist(vx: float, vy: float, wz: float) -> tuple[float, float, float]:
@@ -778,6 +914,195 @@ def character_positions(
     return positions
 
 
+@dataclass(frozen=True)
+class AnalyticLegSnapshot:
+    """One scan-time snapshot of all animated lower-leg capsule axes."""
+
+    sim_time: float
+    segment_starts: np.ndarray
+    segment_ends: np.ndarray
+    radii: np.ndarray
+    labels: tuple[str, ...]
+    joint_debug: dict[str, dict[str, list[float]]]
+
+
+@dataclass(frozen=True)
+class BehaviorAgentLegBinding:
+    path: str
+    agent: object
+    joint_indices: tuple[int, int, int, int]
+
+
+class PhysxAnalyticPeopleLidar:
+    """Cache BehaviorAgent joints and collect analytic-LiDAR diagnostics."""
+
+    JOINT_TAGS = ("LeftFoot", "LeftShin", "RightFoot", "RightShin")
+
+    def __init__(self, stage: Usd.Stage, radius_m: float, *, debug: bool = False):
+        import omni.anim.behavior.core as behavior_core
+
+        behavior_interface = behavior_core.acquire_interface()
+        bindings: list[BehaviorAgentLegBinding] = []
+        for prim in character_roots(stage):
+            path = str(prim.GetPath())
+            agent = behavior_interface.get_agent(path)
+            if agent is None:
+                raise RuntimeError(
+                    f"BehaviorAgent runtime missing while binding analytic legs: {path}"
+                )
+            indices = tuple(int(agent.get_joint_index(tag)) for tag in self.JOINT_TAGS)
+            missing = [tag for tag, index in zip(self.JOINT_TAGS, indices) if index < 0]
+            if missing:
+                raise RuntimeError(
+                    f"BehaviorAgent joints missing for analytic legs: {path}: {missing}"
+                )
+            bindings.append(
+                BehaviorAgentLegBinding(
+                    path=path,
+                    agent=agent,
+                    joint_indices=indices,
+                )
+            )
+        if not bindings:
+            raise RuntimeError("analytic pedestrian legs enabled but no characters were found")
+
+        self.bindings = tuple(bindings)
+        self.radius_m = float(radius_m)
+        self.radius_stage = self.radius_m / STAGE_METERS_PER_UNIT
+        self.debug = bool(debug)
+        self.scan_pairs = 0
+        self.total_beams = 0
+        self.fallback_beams = 0
+        self.ignored_closest_hits = 0
+        self.ignored_all_hits = 0
+        self.analytic_accepted_beams = 0
+        self.physx_accepted_beams = 0
+        self.no_return_beams = 0
+        self.unknown_character_hit_paths: set[str] = set()
+        self.pair_compute_ms: deque[float] = deque(maxlen=4096)
+        self.latest_diagnostics: dict[str, object] = {}
+
+    @staticmethod
+    def _joint_world_position(agent, index: int, path: str, tag: str) -> np.ndarray:
+        translation = carb.Float3(0.0, 0.0, 0.0)
+        rotation = carb.Float4(0.0, 0.0, 0.0, 1.0)
+        if not agent.get_joint_world_transform(index, translation, rotation):
+            raise RuntimeError(
+                f"BehaviorAgent joint transform failed for analytic legs: {path}: {tag}"
+            )
+        point = np.asarray(
+            [float(translation.x), float(translation.y), float(translation.z)],
+            dtype=float,
+        )
+        if not np.all(np.isfinite(point)):
+            raise RuntimeError(
+                f"BehaviorAgent joint transform is non-finite: {path}: {tag}: {point}"
+            )
+        return point
+
+    def snapshot(self, sim_time: float) -> AnalyticLegSnapshot:
+        starts: list[np.ndarray] = []
+        ends: list[np.ndarray] = []
+        labels: list[str] = []
+        joint_debug: dict[str, dict[str, list[float]]] = {}
+        for binding in self.bindings:
+            points = {
+                tag: self._joint_world_position(
+                    binding.agent,
+                    index,
+                    binding.path,
+                    tag,
+                )
+                for tag, index in zip(self.JOINT_TAGS, binding.joint_indices)
+            }
+            for side in ("Left", "Right"):
+                foot = points[f"{side}Foot"]
+                shin = points[f"{side}Shin"]
+                length_m = float(np.linalg.norm(shin - foot) * STAGE_METERS_PER_UNIT)
+                if not 0.25 <= length_m <= 0.65:
+                    raise RuntimeError(
+                        "implausible animated lower-leg length for analytic LiDAR: "
+                        f"{binding.path}: {side}: {length_m:.6f} m"
+                    )
+                starts.append(foot)
+                ends.append(shin)
+                labels.append(f"{binding.path}:{side.lower()}")
+            if self.debug:
+                joint_debug[binding.path] = {
+                    tag: (point * STAGE_METERS_PER_UNIT).round(6).tolist()
+                    for tag, point in points.items()
+                }
+
+        return AnalyticLegSnapshot(
+            sim_time=float(sim_time),
+            segment_starts=np.asarray(starts, dtype=float),
+            segment_ends=np.asarray(ends, dtype=float),
+            radii=np.full(len(starts), self.radius_stage, dtype=float),
+            labels=tuple(labels),
+            joint_debug=joint_debug,
+        )
+
+    def record_pair(
+        self,
+        snapshot: AnalyticLegSnapshot,
+        scan_stats: dict[str, dict[str, object]],
+        compute_ms: float,
+    ) -> None:
+        self.scan_pairs += 1
+        self.pair_compute_ms.append(float(compute_ms))
+        for stats in scan_stats.values():
+            self.total_beams += int(stats["total_beams"])
+            self.fallback_beams += int(stats["fallback_beams"])
+            self.ignored_closest_hits += int(stats["ignored_closest_hits"])
+            self.ignored_all_hits += int(stats["ignored_all_hits"])
+            self.analytic_accepted_beams += int(stats["analytic_accepted_beams"])
+            self.physx_accepted_beams += int(stats["physx_accepted_beams"])
+            self.no_return_beams += int(stats["no_return_beams"])
+            self.unknown_character_hit_paths.update(
+                str(path) for path in stats["unknown_character_hit_paths"]
+            )
+        self.latest_diagnostics = {
+            "schema": "physx_analytic_people_lidar/v1",
+            "sim_time": snapshot.sim_time,
+            "radius_m": self.radius_m,
+            "people": len(self.bindings),
+            "legs": len(snapshot.labels),
+            "pair_compute_ms": float(compute_ms),
+            "scans": scan_stats,
+            "joint_world_xyz_m": snapshot.joint_debug,
+        }
+
+    def summary(self) -> dict[str, object]:
+        durations = np.asarray(self.pair_compute_ms, dtype=float)
+        return {
+            "schema": "physx_analytic_people_lidar_summary/v1",
+            "enabled": True,
+            "radius_m": self.radius_m,
+            "people": len(self.bindings),
+            "legs": len(self.bindings) * 2,
+            "scan_pairs": self.scan_pairs,
+            "total_beams": self.total_beams,
+            "fallback_beams": self.fallback_beams,
+            "fallback_ratio": (
+                self.fallback_beams / self.total_beams if self.total_beams else 0.0
+            ),
+            "ignored_closest_hits": self.ignored_closest_hits,
+            "ignored_all_hits": self.ignored_all_hits,
+            "accepted_body_collider_hits": 0,
+            "analytic_accepted_beams": self.analytic_accepted_beams,
+            "physx_accepted_beams": self.physx_accepted_beams,
+            "no_return_beams": self.no_return_beams,
+            "unknown_character_hit_paths": sorted(self.unknown_character_hit_paths),
+            "pair_compute_ms_median": (
+                float(np.median(durations)) if durations.size else None
+            ),
+            "pair_compute_ms_p95": (
+                float(np.percentile(durations, 95.0)) if durations.size else None
+            ),
+            "pair_compute_ms_max": float(np.max(durations)) if durations.size else None,
+        }
+
+
 def custom_patrol_start_anchors() -> dict[str, tuple[float, float, float]]:
     """Read each generated one-person group's deterministic spawn anchor."""
     import yaml
@@ -881,9 +1206,9 @@ def observe_custom_people_free_space(
 
 
 def configure_pedestrian_robot_avoidance(
-    stage: Usd.Stage, mode: str
+    stage: Usd.Stage, mode: str, social_mode: str
 ) -> dict[str, dict[str, object]]:
-    """Enable crowd avoidance and select whether the robot participates."""
+    """Enable continuous avoidance and select whether the robot participates."""
     import omni.anim.behavior.core as behavior_core
 
     behavior_interface = behavior_core.acquire_interface()
@@ -895,12 +1220,13 @@ def configure_pedestrian_robot_avoidance(
         if agent is None:
             missing.append(path)
             continue
-        # Do not rely on extension defaults here.  Person/person reciprocal
-        # avoidance is part of this demo's contract in every mode, including
-        # the robot-excluded A/B mode.  A common, explicit mass also prevents
-        # version-local settings from changing the crowd response silently.
+        # Obstacle avoidance is the continuous NavMesh/velocity layer and
+        # remains enabled in both social modes.  BehaviorAgent auto avoidance
+        # may launch a discrete task of its own, so gazebo_social disables it;
+        # the explicit close-clearance dodge below is then the sole emergency
+        # task replacement.  Legacy behavior remains selectable.
         agent.set_obstacle_avoidance_enabled(True)
-        agent.set_auto_avoidance_enabled(True)
+        agent.set_auto_avoidance_enabled(social_mode == "legacy")
         agent.set_auto_avoidance_mass(PEDESTRIAN_SOCIAL_MASS_KG)
         object_avoidance_enabled = mode != "off"
         if object_avoidance_enabled:
@@ -916,12 +1242,22 @@ def configure_pedestrian_robot_avoidance(
                 agent.add_auto_avoidance_ignored_object(robot_path)
         configured[path] = {
             "mode": mode,
+            "social_mode": social_mode,
             "person_person_avoidance_enabled": True,
             "auto_avoidance_mass_kg": float(agent.get_auto_avoidance_mass()),
             "robot_object_avoidance_enabled": object_avoidance_enabled,
             "robot_dodge_enabled": mode in PEDESTRIAN_DODGE_PROFILES,
+            "robot_dodge_role": (
+                "emergency_fallback"
+                if social_mode == "gazebo_social"
+                and mode in PEDESTRIAN_DODGE_PROFILES
+                else "legacy"
+            ),
             "obstacle_avoidance": bool(agent.is_obstacle_avoidance_enabled()),
             "auto_avoidance": bool(agent.is_auto_avoidance_enabled()),
+            "robot_obstacle_avoidance_ignored": bool(
+                agent.is_obstacle_avoidance_ignored_object(ROBOT_COLLISION_PRIM)
+            ),
             "robot_collision_proxy_ignored": bool(
                 agent.is_auto_avoidance_ignored_object(ROBOT_COLLISION_PRIM)
             ),
@@ -963,7 +1299,14 @@ def signed_planar_box_clearance_m(
 class PedestrianSocialYielding:
     """Temporarily govern one agent's speed so an approaching peer can pass."""
 
-    def __init__(self, initial_positions: dict[str, np.ndarray]) -> None:
+    def __init__(
+        self,
+        initial_positions: dict[str, np.ndarray],
+        *,
+        trigger_distance_m: float,
+        resume_distance_m: float,
+        role: str,
+    ) -> None:
         import omni.anim.behavior.core as behavior_core
         from isaacsim.replicator.agent.core.character import IRA_Character
         from omni.metropolis.pipeline.agent import AgentsManager
@@ -1006,9 +1349,12 @@ class PedestrianSocialYielding:
                 speed_mps / STAGE_METERS_PER_UNIT
             )
         self.planner = SocialYieldPlanner(
-            trigger_distance_m=PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M,
-            resume_distance_m=PEDESTRIAN_SOCIAL_YIELD_RESUME_M,
+            trigger_distance_m=trigger_distance_m,
+            resume_distance_m=resume_distance_m,
         )
+        self.trigger_distance_m = float(trigger_distance_m)
+        self.resume_distance_m = float(resume_distance_m)
+        self.role = str(role)
         self.yielded_restore_speeds: dict[str, float] = {}
         self.yield_count = 0
         self.yield_count_by_person = {path: 0 for path in initial_positions}
@@ -1060,7 +1406,7 @@ class PedestrianSocialYielding:
             print(
                 "[WAREHOUSE-ROBOT] Pedestrian social yield started: "
                 f"person={path.rsplit('/', 1)[-1]} "
-                f"trigger_m={PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M:.2f}",
+                f"role={self.role} trigger_m={self.trigger_distance_m:.2f}",
                 flush=True,
             )
         self.max_active_yielders = max(
@@ -1069,13 +1415,259 @@ class PedestrianSocialYielding:
 
     def summary(self) -> dict[str, object]:
         return {
-            "trigger_distance_m": PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M,
-            "resume_distance_m": PEDESTRIAN_SOCIAL_YIELD_RESUME_M,
+            "role": self.role,
+            "trigger_distance_m": self.trigger_distance_m,
+            "resume_distance_m": self.resume_distance_m,
             "yield_count": self.yield_count,
             "yield_count_by_person": self.yield_count_by_person,
             "max_active_yielders": self.max_active_yielders,
             "patrol_speeds_stage_units": self.patrol_speeds_stage_units,
             "active_yielders": sorted(self.yielded_restore_speeds),
+        }
+
+
+def pedestrian_social_force_parameters() -> SocialForceParameters:
+    """Build the pure controller contract from validated environment values."""
+
+    return SocialForceParameters(
+        neighbor_range_m=PEDESTRIAN_SOCIAL_NEIGHBOR_RANGE_M,
+        relaxation_time_sec=PEDESTRIAN_SOCIAL_RELAXATION_TIME_SEC,
+        human_social_force_weight=PEDESTRIAN_SOCIAL_FORCE_WEIGHT,
+        robot_social_force_weight=PEDESTRIAN_ROBOT_SOCIAL_FORCE_WEIGHT,
+        robot_personal_space_force_weight=(
+            PEDESTRIAN_ROBOT_PERSONAL_SPACE_FORCE_WEIGHT
+        ),
+        agent_radius_m=PEDESTRIAN_AGENT_RADIUS_M,
+        robot_radius_m=PEDESTRIAN_ROBOT_RADIUS_M,
+        robot_clearance_m=PEDESTRIAN_ROBOT_CLEARANCE_M,
+        robot_personal_space_sigma_m=(
+            PEDESTRIAN_ROBOT_PERSONAL_SPACE_SIGMA_M
+        ),
+        smoothing_time_sec=PEDESTRIAN_SOCIAL_SMOOTHING_TIME_SEC,
+        max_total_social_accel_mps2=PEDESTRIAN_SOCIAL_MAX_ACCEL_MPS2,
+        max_speed_correction_mps=(
+            PEDESTRIAN_SOCIAL_MAX_STEERING_CORRECTION_MPS
+        ),
+        max_lateral_speed_mps=PEDESTRIAN_SOCIAL_MAX_LATERAL_STEERING_MPS,
+        max_steering_angle_rad=math.radians(
+            PEDESTRIAN_SOCIAL_MAX_STEERING_ANGLE_DEG
+        ),
+        minimum_command_speed_mps=PEDESTRIAN_SOCIAL_MIN_SPEED_MPS,
+    )
+
+
+class BehaviorAgentSocialMotion:
+    """Apply pure social-force output without replacing IRA patrol tasks.
+
+    Isaac Sim 6.0.1 exposes a read-only locomotion target and a mutable scalar
+    speed.  Starting another ``move_to``/``move_along`` task would cancel the
+    native patrol move task, so this adapter continuously modulates speed while
+    native NavMesh/obstacle avoidance remains the sole directional owner.  The
+    vector output is retained for diagnostics, while its forward projection is
+    applied through ``set_speed`` because the active patrol target is read-only.
+    """
+
+    def __init__(self, initial_positions: dict[str, np.ndarray]) -> None:
+        import omni.anim.behavior.core as behavior_core
+        from isaacsim.replicator.agent.core.character import IRA_Character
+        from omni.metropolis.pipeline.agent import AgentsManager
+
+        behavior_interface = behavior_core.acquire_interface()
+        self.agents = {
+            path: behavior_interface.get_agent(path) for path in initial_positions
+        }
+        missing = [path for path, agent in self.agents.items() if agent is None]
+        if missing:
+            raise RuntimeError(
+                "BehaviorAgent runtime missing for Gazebo social motion: "
+                + ", ".join(missing)
+            )
+        runtime_agents = {
+            str(runtime_agent.prim.GetPath()): runtime_agent
+            for runtime_agent in AgentsManager.get_instance().get_agents_by_type(
+                IRA_Character
+            )
+        }
+        self.preferred_speeds_mps: dict[str, float] = {}
+        for path in initial_positions:
+            runtime_agent = runtime_agents.get(path)
+            selectors = [
+                routine.walk_speed_selector
+                for routine in (runtime_agent.routines if runtime_agent else [])
+                if getattr(routine, "walk_speed_selector", None) is not None
+            ]
+            if not selectors:
+                raise RuntimeError(
+                    f"IRA patrol speed missing for Gazebo social motion: {path}"
+                )
+            selector = selectors[0]
+            authored_midpoint_mps = 0.5 * (
+                float(selector.min) + float(selector.max)
+            )
+            # Preserve IRA's seeded per-agent patrol-speed sample.  The
+            # authored midpoint is only a setup-transition fallback.
+            live_speed_mps = (
+                float(self.agents[path].get_speed()) * STAGE_METERS_PER_UNIT
+            )
+            self.preferred_speeds_mps[path] = (
+                live_speed_mps
+                if math.isfinite(live_speed_mps) and live_speed_mps > 1.0e-4
+                else authored_midpoint_mps
+            )
+        self.controller = PedestrianSocialForceController(
+            pedestrian_social_force_parameters()
+        )
+        self.last_sim_time: float | None = None
+        self.speed_update_count = 0
+        self.inhibited_update_count = 0
+        self.latest_debug: dict[str, dict[str, object]] = {}
+        self.next_debug_sim_time = -math.inf
+
+    @staticmethod
+    def _desired_direction(agent, position_stage: np.ndarray) -> tuple[float, float]:
+        target = agent.get_target_location()
+        target_stage = np.asarray(
+            [float(target.x), float(target.y), float(target.z)], dtype=float
+        )
+        direction = stage_to_ros_vector(target_stage - position_stage)[:2]
+        if float(np.linalg.norm(direction)) < 1.0e-5:
+            velocity = agent.get_linear_velocity(True)
+            velocity_stage = np.asarray(
+                [float(velocity.x), float(velocity.y), float(velocity.z)],
+                dtype=float,
+            )
+            direction = stage_to_ros_vector(velocity_stage)[:2]
+        if float(np.linalg.norm(direction)) < 1.0e-5:
+            facing = agent.get_facing_direction()
+            facing_stage = np.asarray(
+                [float(facing.x), float(facing.y), float(facing.z)], dtype=float
+            )
+            direction = stage_to_ros_vector(facing_stage)[:2]
+        length = float(np.linalg.norm(direction))
+        if length < 1.0e-9:
+            return 1.0, 0.0
+        return float(direction[0] / length), float(direction[1] / length)
+
+    def update(
+        self,
+        positions: dict[str, np.ndarray],
+        robot_collision_center_stage: np.ndarray,
+        robot_yaw: float,
+        robot_collision_dimensions_m: np.ndarray,
+        robot_world_velocity_mps: tuple[float, float],
+        sim_time: float,
+        inhibited_paths=(),
+    ) -> None:
+        dt = (
+            PEDESTRIAN_PUBLISH_PERIOD_SEC
+            if self.last_sim_time is None
+            else max(1.0e-6, sim_time - self.last_sim_time)
+        )
+        self.last_sim_time = sim_time
+        states: dict[str, PedestrianMotionState] = {}
+        for path, position_stage in positions.items():
+            agent = self.agents[path]
+            # The previous-frame navigation-agent velocity is the locomotion
+            # state; the default current-frame value comes from motion matching
+            # and can contain animation-level variation unsuitable for forces.
+            velocity = agent.get_linear_velocity(True)
+            velocity_stage = np.asarray(
+                [float(velocity.x), float(velocity.y), float(velocity.z)],
+                dtype=float,
+            )
+            states[path] = PedestrianMotionState(
+                position_m=tuple(
+                    float(value)
+                    for value in stage_to_ros_vector(position_stage)[:2]
+                ),
+                velocity_mps=tuple(
+                    float(value)
+                    for value in stage_to_ros_vector(velocity_stage)[:2]
+                ),
+                desired_direction=self._desired_direction(agent, position_stage),
+                preferred_speed_mps=self.preferred_speeds_mps[path],
+            )
+        planar_dimension_index = 1 if STAGE_UP_AXIS == "Z" else 2
+        robot_state = RobotMotionState(
+            position_m=tuple(
+                float(value)
+                for value in stage_to_ros_vector(robot_collision_center_stage)[:2]
+            ),
+            velocity_mps=robot_world_velocity_mps,
+            yaw_rad=float(robot_yaw),
+            half_extents_m=(
+                0.5 * float(robot_collision_dimensions_m[0]),
+                0.5
+                * float(robot_collision_dimensions_m[planar_dimension_index]),
+            ),
+        )
+        outputs = self.controller.update(states, robot_state, dt)
+        inhibited = set(inhibited_paths)
+        debug: dict[str, dict[str, object]] = {}
+        for path, output in outputs.items():
+            is_inhibited = path in inhibited
+            if is_inhibited:
+                self.inhibited_update_count += 1
+            else:
+                self.agents[path].set_speed(
+                    output.speed_command_mps / STAGE_METERS_PER_UNIT
+                )
+                self.speed_update_count += 1
+            debug[path] = {
+                "desired_component_mps": list(output.desired_component_mps),
+                "human_social_component_mps2": list(
+                    output.human_social_component_mps2
+                ),
+                "robot_social_component_mps2": list(
+                    output.robot_social_component_mps2
+                ),
+                "robot_personal_space_component_mps2": list(
+                    output.robot_personal_space_component_mps2
+                ),
+                "applied_social_accel_mps2": list(
+                    output.applied_social_accel_mps2
+                ),
+                "final_desired_velocity_mps": list(
+                    output.final_desired_velocity_mps
+                ),
+                "speed_command_mps": output.speed_command_mps,
+                "robot_footprint_clearance_m": (
+                    output.robot_footprint_clearance_m
+                ),
+                "robot_personal_space_violation": (
+                    output.robot_personal_space_violation
+                ),
+                "inhibited_by_emergency": is_inhibited,
+            }
+        self.latest_debug = debug
+        if sim_time >= self.next_debug_sim_time:
+            print(
+                "PEDESTRIAN_GAZEBO_SOCIAL_DEBUG="
+                + json.dumps(
+                    {
+                        "sim_time": sim_time,
+                        "people": debug,
+                        "summary": self.controller.summary(),
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+            self.next_debug_sim_time = sim_time + PEDESTRIAN_SOCIAL_DEBUG_PERIOD_SEC
+
+    def summary(self) -> dict[str, object]:
+        return {
+            "mode": "gazebo_social",
+            "adapter": "behavior_agent_forward_projection_plus_native_avoidance",
+            "lateral_vector_applied_directly": False,
+            "directional_owner": "isaac_native_navmesh_obstacle_avoidance",
+            "patrol_task_replacement": False,
+            "parameters": asdict(self.controller.parameters),
+            "preferred_speeds_mps": self.preferred_speeds_mps,
+            "speed_update_count": self.speed_update_count,
+            "inhibited_update_count": self.inhibited_update_count,
+            "latest_people": self.latest_debug,
+            **self.controller.summary(),
         }
 
 
@@ -1821,7 +2413,8 @@ def make_laser_ranges(
     robot_yaw: float,
     mount_translation: tuple[float, float, float],
     mount_yaw: float,
-) -> list[float | None]:
+    leg_snapshot: AnalyticLegSnapshot | None = None,
+) -> tuple[list[float | None], dict[str, object]]:
     """Raycast one planar scan in the loaded stage's navigation plane."""
     scale = STAGE_METERS_PER_UNIT
     mount_x, mount_y, mount_z = mount_translation
@@ -1833,27 +2426,146 @@ def make_laser_ranges(
     maximum_query_stage = (LIDAR_RANGE_MAX_M - LIDAR_RANGE_MIN_M) / scale
     angle_increment = 2.0 * math.pi / LIDAR_SAMPLE_COUNT
     query = omni.physx.get_physx_scene_query_interface()
+    world_angles = (
+        sensor_yaw
+        - math.pi
+        + np.arange(LIDAR_SAMPLE_COUNT, dtype=float) * angle_increment
+    )
+    cosine = np.cos(world_angles)
+    sine = np.sin(world_angles)
+    if STAGE_UP_AXIS == "Z":
+        directions = np.column_stack(
+            (cosine, sine, np.zeros(LIDAR_SAMPLE_COUNT, dtype=float))
+        )
+    else:
+        directions = np.column_stack(
+            (cosine, np.zeros(LIDAR_SAMPLE_COUNT, dtype=float), -sine)
+        )
+    origins = sensor_position[None, :] + directions * minimum_stage
+    if leg_snapshot is None:
+        analytic_distances = np.full(LIDAR_SAMPLE_COUNT, np.inf, dtype=float)
+        analytic_leg_indices = np.full(LIDAR_SAMPLE_COUNT, -1, dtype=int)
+    else:
+        analytic_distances, analytic_leg_indices = nearest_ray_capsule_intersections(
+            origins,
+            directions,
+            leg_snapshot.segment_starts,
+            leg_snapshot.segment_ends,
+            leg_snapshot.radii,
+        )
+
+    stats: dict[str, object] = {
+        "total_beams": LIDAR_SAMPLE_COUNT,
+        "fallback_beams": 0,
+        "fallback_ratio": 0.0,
+        "ignored_closest_hits": 0,
+        "ignored_all_hits": 0,
+        "analytic_accepted_beams": 0,
+        "physx_accepted_beams": 0,
+        "no_return_beams": 0,
+        "analytic_hits_by_leg": {},
+        "unknown_character_hit_paths": [],
+    }
+    unknown_character_hit_paths: set[str] = set()
+    analytic_hits_by_leg: dict[str, list[tuple[int, float]]] = {}
     ranges: list[float | None] = []
     for index in range(LIDAR_SAMPLE_COUNT):
-        world_angle = sensor_yaw - math.pi + index * angle_increment
-        direction = stage_from_ros_offset(
-            math.cos(world_angle), math.sin(world_angle), 0.0
-        ) * scale
-        origin = tuple(sensor_position + direction * minimum_stage)
-        hit = query.raycast_closest(origin, direction, maximum_query_stage)
+        direction = directions[index]
+        origin = origins[index]
+        hit = query.raycast_closest(tuple(origin), tuple(direction), maximum_query_stage)
+        physx_distance_stage = math.inf
         if hit["hit"]:
-            distance_m = LIDAR_RANGE_MIN_M + float(hit["distance"]) * scale
+            collision_path = str(hit.get("collision", ""))
+            if leg_snapshot is not None and is_ignored_person_query_collider(
+                collision_path
+            ):
+                stats["fallback_beams"] = int(stats["fallback_beams"]) + 1
+                stats["ignored_closest_hits"] = (
+                    int(stats["ignored_closest_hits"]) + 1
+                )
+
+                def report_all(candidate: object) -> bool:
+                    nonlocal physx_distance_stage
+                    candidate_path = str(
+                        scene_query_hit_value(candidate, "collision", "")
+                    )
+                    if is_ignored_person_query_collider(candidate_path):
+                        stats["ignored_all_hits"] = int(stats["ignored_all_hits"]) + 1
+                        return True
+                    if "/World/Characters/" in candidate_path:
+                        unknown_character_hit_paths.add(candidate_path)
+                    candidate_distance = float(
+                        scene_query_hit_value(candidate, "distance", math.inf)
+                    )
+                    if candidate_distance < physx_distance_stage:
+                        physx_distance_stage = candidate_distance
+                    return True
+
+                query.raycast_all(
+                    tuple(origin),
+                    tuple(direction),
+                    maximum_query_stage,
+                    report_all,
+                )
+            else:
+                physx_distance_stage = float(hit["distance"])
+                if "/World/Characters/" in collision_path:
+                    unknown_character_hit_paths.add(collision_path)
+
+        analytic_distance_stage = float(analytic_distances[index])
+        if analytic_distance_stage < physx_distance_stage:
+            selected_distance_stage = analytic_distance_stage
+            stats["analytic_accepted_beams"] = (
+                int(stats["analytic_accepted_beams"]) + 1
+            )
+            leg_index = int(analytic_leg_indices[index])
+            if leg_snapshot is not None and leg_index >= 0:
+                label = leg_snapshot.labels[leg_index]
+                analytic_hits_by_leg.setdefault(label, []).append(
+                    (
+                        index,
+                        LIDAR_RANGE_MIN_M + analytic_distance_stage * scale,
+                    )
+                )
+        else:
+            selected_distance_stage = physx_distance_stage
+            if math.isfinite(selected_distance_stage):
+                stats["physx_accepted_beams"] = int(stats["physx_accepted_beams"]) + 1
+
+        if math.isfinite(selected_distance_stage):
+            distance_m = LIDAR_RANGE_MIN_M + selected_distance_stage * scale
             ranges.append(min(LIDAR_RANGE_MAX_M, distance_m))
         else:
             # JSON has no portable Infinity value; the ROS bridge maps null to
             # LaserScan's conventional +inf no-return representation.
             ranges.append(None)
-    return ranges
+            stats["no_return_beams"] = int(stats["no_return_beams"]) + 1
+    stats["fallback_ratio"] = int(stats["fallback_beams"]) / LIDAR_SAMPLE_COUNT
+    stats["analytic_hits_by_leg"] = {
+        label: {
+            "count": len(hits),
+            "mean_angle_rad": math.atan2(
+                sum(math.sin(-math.pi + index * angle_increment) for index, _ in hits),
+                sum(math.cos(-math.pi + index * angle_increment) for index, _ in hits),
+            ),
+            "range_m_min": min(distance for _, distance in hits),
+            "range_m_max": max(distance for _, distance in hits),
+            "range_m_mean": sum(distance for _, distance in hits) / len(hits),
+        }
+        for label, hits in analytic_hits_by_leg.items()
+    }
+    stats["unknown_character_hit_paths"] = sorted(unknown_character_hit_paths)
+    return ranges, stats
 
 
 def make_dual_scan_payload(
-    robot_position: np.ndarray, robot_yaw: float
+    robot_position: np.ndarray,
+    robot_yaw: float,
+    people_lidar: PhysxAnalyticPeopleLidar | None = None,
+    sim_time: float = 0.0,
 ) -> dict[str, object]:
+    pair_started = time.perf_counter()
+    leg_snapshot = people_lidar.snapshot(sim_time) if people_lidar is not None else None
     angle_increment = 2.0 * math.pi / LIDAR_SAMPLE_COUNT
     metadata = {
         "angle_min": -math.pi,
@@ -1862,20 +2574,37 @@ def make_dual_scan_payload(
         "range_max": LIDAR_RANGE_MAX_M,
         "scan_time": LIDAR_PUBLISH_PERIOD_SEC,
     }
-    return {
+    front_ranges, front_stats = make_laser_ranges(
+        robot_position,
+        robot_yaw,
+        (0.2, 0.13, 0.208),
+        0.0,
+        leg_snapshot,
+    )
+    rear_ranges, rear_stats = make_laser_ranges(
+        robot_position,
+        robot_yaw,
+        (-0.2, -0.13, 0.208),
+        math.pi,
+        leg_snapshot,
+    )
+    payload = {
         "scan_01": {
             **metadata,
-            "ranges": make_laser_ranges(
-                robot_position, robot_yaw, (0.2, 0.13, 0.208), 0.0
-            ),
+            "ranges": front_ranges,
         },
         "scan_02": {
             **metadata,
-            "ranges": make_laser_ranges(
-                robot_position, robot_yaw, (-0.2, -0.13, 0.208), math.pi
-            ),
+            "ranges": rear_ranges,
         },
     }
+    if people_lidar is not None and leg_snapshot is not None:
+        people_lidar.record_pair(
+            leg_snapshot,
+            {"scan_01": front_stats, "scan_02": rear_stats},
+            (time.perf_counter() - pair_started) * 1000.0,
+        )
+    return payload
 
 
 class RtxDualLidar:
@@ -2812,6 +3541,7 @@ def main() -> int:
         print(
             "[WAREHOUSE-ROBOT] A/B controls: "
             f"robot_collision_protection={ROBOT_COLLISION_PROTECTION_ENABLED}, "
+            f"pedestrian_social_mode={PEDESTRIAN_SOCIAL_MODE}, "
             f"pedestrian_avoidance_mode={PEDESTRIAN_AVOIDANCE_MODE}, "
             f"pedestrian_robot_dodge={PEDESTRIAN_ROBOT_DODGE_ENABLED}",
             flush=True,
@@ -2993,11 +3723,32 @@ def main() -> int:
                 flush=True,
             )
             avoidance_configuration = configure_pedestrian_robot_avoidance(
-                stage, PEDESTRIAN_AVOIDANCE_MODE
+                stage, PEDESTRIAN_AVOIDANCE_MODE, PEDESTRIAN_SOCIAL_MODE
             )
         else:
             initial_people_positions = {}
             avoidance_configuration = {}
+        people_lidar = (
+            PhysxAnalyticPeopleLidar(
+                stage,
+                PHYSX_ANALYTIC_LEG_RADIUS_M,
+                debug=PHYSX_ANALYTIC_LEGS_DEBUG,
+            )
+            if PHYSX_ANALYTIC_LEGS_ENABLED
+            else None
+        )
+        if people_lidar is not None:
+            initial_leg_snapshot = people_lidar.snapshot(
+                float(timeline.get_current_time())
+            )
+            print(
+                "[WAREHOUSE-ROBOT] PhysX + analytic dynamic legs ready: "
+                f"people={len(people_lidar.bindings)} "
+                f"legs={len(initial_leg_snapshot.labels)} "
+                f"radius_m={people_lidar.radius_m:.3f} "
+                "joints=LeftFoot/LeftShin/RightFoot/RightShin",
+                flush=True,
+            )
         print(
             "[WAREHOUSE-ROBOT] Pedestrian/robot avoidance mode: "
             + json.dumps(
@@ -3022,9 +3773,27 @@ def main() -> int:
             personal_space_m=PEDESTRIAN_PERSONAL_SPACE_M,
             visual_overlap_m=PEDESTRIAN_VISUAL_OVERLAP_M,
         )
+        if PEDESTRIAN_SOCIAL_MODE == "gazebo_social":
+            yield_trigger_m = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M
+            yield_resume_m = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M
+            yield_role = "emergency_fallback"
+        else:
+            yield_trigger_m = PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M
+            yield_resume_m = PEDESTRIAN_SOCIAL_YIELD_RESUME_M
+            yield_role = "legacy_primary"
         pedestrian_social_yielding = (
-            PedestrianSocialYielding(initial_people_positions)
+            PedestrianSocialYielding(
+                initial_people_positions,
+                trigger_distance_m=yield_trigger_m,
+                resume_distance_m=yield_resume_m,
+                role=yield_role,
+            )
             if PEOPLE_ENABLED
+            else None
+        )
+        pedestrian_social_motion = (
+            BehaviorAgentSocialMotion(initial_people_positions)
+            if PEOPLE_ENABLED and PEDESTRIAN_SOCIAL_MODE == "gazebo_social"
             else None
         )
         max_people_displacements_m = {path: 0.0 for path in initial_people_positions}
@@ -3034,6 +3803,7 @@ def main() -> int:
         last_people_sim_time = float(timeline.get_current_time())
         last_telemetry_sim_time = -math.inf
         last_lidar_sim_time = -math.inf
+        last_analytic_leg_debug_sim_time = -math.inf
         # Native RTX acquisition and ROS publication are separate clocks.
         # Polling the render product only when the equally-rated ROS gate opens
         # aliases any Writer callback that becomes visible one app update late;
@@ -3118,6 +3888,14 @@ def main() -> int:
                     "collision_aware_motion": ROBOT_COLLISION_PROTECTION_ENABLED,
                     "robot_collision_protection": ROBOT_COLLISION_PROTECTION_ENABLED,
                     "people_enabled": PEOPLE_ENABLED,
+                    "pedestrian_social_mode": PEDESTRIAN_SOCIAL_MODE,
+                    "pedestrian_social_adapter": (
+                        "behavior_agent_forward_projection_plus_native_avoidance"
+                        if pedestrian_social_motion is not None
+                        else (
+                            "legacy_discrete_yield" if PEOPLE_ENABLED else "disabled"
+                        )
+                    ),
                     "pedestrian_avoidance_mode": PEDESTRIAN_AVOIDANCE_MODE,
                     "pedestrian_robot_object_avoidance": (
                         PEDESTRIAN_ROBOT_OBJECT_AVOIDANCE_ENABLED
@@ -3144,12 +3922,12 @@ def main() -> int:
                         PEDESTRIAN_VISUAL_OVERLAP_M if PEOPLE_ENABLED else None
                     ),
                     "pedestrian_social_yield_trigger_m": (
-                        PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M
+                        yield_trigger_m
                         if PEOPLE_ENABLED
                         else None
                     ),
                     "pedestrian_social_yield_resume_m": (
-                        PEDESTRIAN_SOCIAL_YIELD_RESUME_M
+                        yield_resume_m
                         if PEOPLE_ENABLED
                         else None
                     ),
@@ -3198,7 +3976,15 @@ def main() -> int:
                     "lidar_model": (
                         RTX_LIDAR_PROFILE_SPEC["model"]
                         if LIDAR_MODE == "rtx"
-                        else "PhysX raycast"
+                        else (
+                            "PhysX environment raycast + analytic dynamic pedestrian legs"
+                            if people_lidar is not None
+                            else "PhysX raycast"
+                        )
+                    ),
+                    "physx_analytic_legs_enabled": people_lidar is not None,
+                    "physx_analytic_leg_radius_m": (
+                        people_lidar.radius_m if people_lidar is not None else None
                     ),
                     "lidar_profile_asset": (
                         str(RTX_LIDAR_USD) if LIDAR_MODE == "rtx" else None
@@ -3533,6 +4319,10 @@ def main() -> int:
                         "telemetry_encoding": "json-or-zlib-fragmented/v1",
                         "lidar_range_min_m": LIDAR_RANGE_MIN_M,
                         "lidar_range_max_m": LIDAR_RANGE_MAX_M,
+                        "physx_analytic_legs_enabled": people_lidar is not None,
+                        "physx_analytic_leg_radius_m": (
+                            people_lidar.radius_m if people_lidar is not None else None
+                        ),
                         "manual_timing": manual_mode,
                         "fixed_time_stepping": fixed_time,
                         "min_simulation_frame_rate_hz": min_frame_rate,
@@ -3561,6 +4351,7 @@ def main() -> int:
                         "pedestrian_count": len(people),
                         "pedestrian_seed": PEDESTRIAN_SEED,
                         "pedestrian_base_speed_mps": PEDESTRIAN_BASE_SPEED_MPS,
+                        "pedestrian_social_mode": PEDESTRIAN_SOCIAL_MODE,
                     },
                     "robot_pose": [
                         *stage_to_ros_vector(navigation_position)[:2].tolist(),
@@ -3636,10 +4427,30 @@ def main() -> int:
                         )
                     else:
                         scans = make_dual_scan_payload(
-                            navigation_position, navigation_yaw
+                            navigation_position,
+                            navigation_yaw,
+                            people_lidar,
+                            sim_time,
                         )
                     if scans is not None:
                         telemetry["scans"] = scans
+                        if people_lidar is not None and people_lidar.debug:
+                            telemetry["analytic_people_lidar"] = (
+                                people_lidar.latest_diagnostics
+                            )
+                            if (
+                                sim_time
+                                >= last_analytic_leg_debug_sim_time + 0.5 - 1.0e-9
+                            ):
+                                print(
+                                    "ANALYTIC_PEOPLE_LIDAR_DEBUG="
+                                    + json.dumps(
+                                        people_lidar.latest_diagnostics,
+                                        sort_keys=True,
+                                    ),
+                                    flush=True,
+                                )
+                                last_analytic_leg_debug_sim_time = sim_time
                         last_lidar_sim_time = advance_periodic_origin(
                             last_lidar_sim_time,
                             sim_time,
@@ -3689,6 +4500,40 @@ def main() -> int:
                     pedestrian_social_yielding.update(
                         sampled_people_positions,
                         inhibited_social_yield_paths,
+                    )
+                if pedestrian_social_motion is not None:
+                    inhibited_social_motion_paths = set(
+                        pedestrian_social_yielding.yielded_restore_speeds
+                    )
+                    if pedestrian_robot_avoidance is not None:
+                        inhibited_social_motion_paths.update(
+                            pedestrian_robot_avoidance.active_dodge_task_ids
+                        )
+                        inhibited_social_motion_paths.update(
+                            pedestrian_robot_avoidance.patrol_resume_times
+                        )
+                    if actual_velocity is None:
+                        robot_world_velocity_mps = (0.0, 0.0)
+                    else:
+                        cosine, sine = math.cos(navigation_yaw), math.sin(
+                            navigation_yaw
+                        )
+                        robot_world_velocity_mps = (
+                            cosine * actual_velocity[0]
+                            - sine * actual_velocity[1],
+                            sine * actual_velocity[0]
+                            + cosine * actual_velocity[1],
+                        )
+                    pedestrian_social_motion.update(
+                        sampled_people_positions,
+                        collision_proxy.center(
+                            navigation_position, navigation_yaw
+                        ),
+                        navigation_yaw,
+                        collision_proxy.dimensions_m,
+                        robot_world_velocity_mps,
+                        sim_time,
+                        inhibited_social_motion_paths,
                     )
                 social_snapshot = pedestrian_social_tracker.update(
                     {
@@ -3798,6 +4643,12 @@ def main() -> int:
                     f"people_moving={moving_people}/{len(people)}",
                     flush=True,
                 )
+                if people_lidar is not None:
+                    print(
+                        "[WAREHOUSE-ROBOT] Analytic leg LiDAR: "
+                        + json.dumps(people_lidar.summary(), sort_keys=True),
+                        flush=True,
+                    )
                 last_report = now
                 last_report_sim_time = sim_time
                 last_report_frame = frame
@@ -4016,6 +4867,18 @@ def main() -> int:
                 if free_space_intrusion_tracker is not None
                 else None
             ),
+            "pedestrian_social_mode": PEDESTRIAN_SOCIAL_MODE,
+            "pedestrian_social_motion": (
+                pedestrian_social_motion.summary()
+                if pedestrian_social_motion is not None
+                else {
+                    "mode": PEDESTRIAN_SOCIAL_MODE,
+                    "adapter": (
+                        "legacy_discrete_yield" if PEOPLE_ENABLED else "disabled"
+                    ),
+                    "patrol_task_replacement": False,
+                }
+            ),
             "pedestrian_avoidance_mode": PEDESTRIAN_AVOIDANCE_MODE,
             "pedestrian_robot_object_avoidance": (
                 PEDESTRIAN_ROBOT_OBJECT_AVOIDANCE_ENABLED
@@ -4075,6 +4938,9 @@ def main() -> int:
             ),
             "lidar_profile_asset_sha256": RTX_LIDAR_ASSET_SHA256,
             "lidar_intensity": LIDAR_MODE == "rtx",
+            "physx_analytic_people_lidar": (
+                people_lidar.summary() if people_lidar is not None else None
+            ),
             "lidar_requested_rate_hz": LIDAR_RATE_HZ,
             "producer_source_sha256": SOURCE_SHA256,
             "launcher_sha256": LAUNCHER_SHA256,

@@ -75,3 +75,26 @@ def test_timing_catchup_and_pose_truth_are_explicitly_instrumented():
     assert '"--app-update-rate-limit-hz"' in source
     assert "navigation_yaw_unwrapped += math.atan2(" in source
     assert '"robot_final_yaw_unwrapped_ros_rad": navigation_yaw_unwrapped' in source
+
+
+def test_gazebo_social_mode_is_opt_in_and_does_not_replace_patrol_tasks():
+    launcher = LAUNCHER.read_text(encoding="utf-8")
+    source = ISAAC_RUNNER.read_text(encoding="utf-8")
+    adapter = source[
+        source.index("class BehaviorAgentSocialMotion") : source.index(
+            "class PedestrianRobotAvoidance"
+        )
+    ]
+
+    assert 'ISAAC_PEDESTRIAN_SOCIAL_MODE:-legacy' in launcher
+    assert 'legacy|gazebo_social' in launcher
+    assert 'PEDESTRIAN_SOCIAL_MODE == "gazebo_social"' in source
+    assert "agent.get_linear_velocity(True)" in adapter
+    assert ".get_speed()" in adapter
+    assert "agent.get_target_location()" in adapter
+    assert ".set_speed(" in adapter
+    assert ".move_to(" not in adapter
+    assert ".move_along(" not in adapter
+    assert ".dodge(" not in adapter
+    assert '"patrol_task_replacement": False' in adapter
+    assert 'agent.set_auto_avoidance_enabled(social_mode == "legacy")' in source

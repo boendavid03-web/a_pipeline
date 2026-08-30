@@ -58,6 +58,7 @@ install(
     scripts/continuous_teleop.py
     scripts/closed_loop_demo_recorder.py
     scripts/auto_goal_rosbag_scheduler.py
+    scripts/calf_policy_node.py
     scripts/demo_pedestrian_controller.py
     scripts/demo_goal_arrival_node.py
     scripts/demo_velocity_display_node.py
@@ -68,6 +69,7 @@ install(
     scripts/drl_vo_online_ppo_training_node.py
     scripts/episode_goal_picker.py
     scripts/fixed_goal_sequence.py
+    scripts/fixed_four_video_capture.py
     scripts/isaac_pedestrian_ground_truth_adapter.py
     scripts/scenario_pedestrian_controller.py
     scripts/odom_path_node.py
@@ -121,6 +123,10 @@ if(BUILD_TESTING)
     test_fixed_goal_sequence_config
     test/test_fixed_goal_sequence_config.py
   )
+  ament_add_pytest_test(
+    test_fixed_four_video_contract
+    test/test_fixed_four_video_contract.py
+  )
   set(semantic_cnn_test_site_packages
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../..//.venvs/train/lib/python3.10/site-packages"
   )
@@ -135,6 +141,22 @@ if(BUILD_TESTING)
     message(STATUS
       "Skipping test_semantic_cnn_fixed_dual_helpers: "
       "project .venvs/train site-packages are not available"
+    )
+  endif()
+  set(calf_test_site_packages
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../..//.venvs/calf_ros2/lib/python3.10/site-packages"
+  )
+  if(EXISTS "${calf_test_site_packages}")
+    ament_add_pytest_test(
+      test_calf_policy_helpers
+      test/test_calf_policy_helpers.py
+      PYTHON_EXECUTABLE "${Python3_EXECUTABLE}"
+      APPEND_ENV
+        "PYTHONPATH=${calf_test_site_packages}:${CMAKE_CURRENT_SOURCE_DIR}/../../../../github_src/drl_vo_nav-drl_vo/LegNav-Sim-master"
+    )
+  else()
+    message(STATUS
+      "Skipping test_calf_policy_helpers: project .venvs/calf_ros2 site-packages are not available"
     )
   endif()
 endif()
