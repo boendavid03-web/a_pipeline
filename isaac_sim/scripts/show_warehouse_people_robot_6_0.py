@@ -3100,6 +3100,7 @@ class PhysxDualLidarScheduler:
         self._last_native_times: dict[str, float] = {}
         self._native_delta_sec: dict[str, float] = {}
         self._duplicate_native_reading_count = 0
+        self._native_diagnostic_printed = False
         self._timing_samples: dict[str, deque[float]] = {
             name: deque(maxlen=256)
             for name in (
@@ -3240,6 +3241,10 @@ class PhysxDualLidarScheduler:
         endpoints = np.asarray(reading.ray_end_points_world, dtype=float).reshape(-1, 3)
         origins = np.asarray(reading.ray_origins_world, dtype=float).reshape(-1, 3)
         paths = np.asarray(reading.hit_prim_paths, dtype=object).reshape(-1)
+        try:
+            hit_positions = np.asarray(reading.hit_positions, dtype=float).reshape(-1, 3)
+        except Exception:
+            hit_positions = np.empty((0, 3), dtype=float)
         if depths.size != LIDAR_SAMPLE_COUNT or paths.size != LIDAR_SAMPLE_COUNT:
             raise RuntimeError(
                 f"native PhysX count mismatch: sensor={self._paths[topic]}, depths={depths.size}, paths={paths.size}, expected={LIDAR_SAMPLE_COUNT}"
@@ -3255,6 +3260,93 @@ class PhysxDualLidarScheduler:
         if np.any(finite):
             delta_m = np.abs(depth_ranges[finite] - endpoint_ranges[finite])
             if float(np.max(delta_m)) > 1.0e-3:
+                if not self._native_diagnostic_printed:
+                    self._native_diagnostic_printed = True
+                    finite_indices = np.flatnonzero(finite)
+                    bad_index = int(finite_indices[np.argmax(delta_m)])
+                    raw_hit_position = (
+                        hit_positions[bad_index]
+                        if bad_index < hit_positions.shape[0]
+                        else np.full(3, np.nan, dtype=float)
+                    )
+                    sensor_world_origin = np.full(3, np.nan, dtype=float)
+                    world_hit_position = np.full(3, np.nan, dtype=float)
+                    try:
+                        sensor_matrix = np.asarray(
+                            UsdGeom.Xformable(self._authoring[topic].prims[0])
+                            .ComputeLocalToWorldTransform(Usd.TimeCode.Default()),
+                            dtype=float,
+                        )
+                        sensor_world_origin = sensor_matrix[3, :3]
+                        if np.all(np.isfinite(raw_hit_position)):
+                            world_hit_position = (
+                                raw_hit_position @ sensor_matrix[:3, :3]
+                                + sensor_world_origin
+                            )
+                    except Exception:
+                        pass
+                    endpoint_origin_distance_m = (
+                        float(np.linalg.norm(endpoints[bad_index] - origins[bad_index]))
+                        * STAGE_METERS_PER_UNIT
+                    )
+                    hit_origin_distance_m = (
+                        float(np.linalg.norm(world_hit_position - origins[bad_index]))
+                        * STAGE_METERS_PER_UNIT
+                        if np.all(np.isfinite(world_hit_position))
+                        else float("nan")
+                    )
+                    endpoint_sensor_distance_m = (
+                        float(np.linalg.norm(endpoints[bad_index] - sensor_world_origin))
+                        * STAGE_METERS_PER_UNIT
+                        if np.all(np.isfinite(sensor_world_origin))
+                        else float("nan")
+                    )
+                    hit_sensor_distance_m = (
+                        float(np.linalg.norm(world_hit_position - sensor_world_origin))
+                        * STAGE_METERS_PER_UNIT
+                        if np.all(np.isfinite(world_hit_position))
+                        and np.all(np.isfinite(sensor_world_origin))
+                        else float("nan")
+                    )
+                    hit_path = str(paths[bad_index]) if bad_index < paths.size else ""
+                    hit_or_miss = "hit" if hit_path else "miss"
+                    native_min_range = self._prims[topic].GetAttribute("minRange").Get()
+                    native_max_range = self._prims[topic].GetAttribute("maxRange").Get()
+                    print(
+                        "[WAREHOUSE-ROBOT] NATIVE_PHYSX_FIRST_DISAGREEMENT_DIAGNOSTIC\n"
+                        f"sensor={topic} path={self._paths[topic]} hit_or_miss={hit_or_miss}\n"
+                        f"beam_index={bad_index}\n"
+                        f"reading.time={current_time:.9f}\n"
+                        f"reading.physics_step={int(SimulationManager.get_num_physics_steps())}\n"
+                        f"depth={float(depths[bad_index]):.9f}\n"
+                        f"hit_prim_path={hit_path!r}\n"
+                        f"configured_lidar_range_min_m={LIDAR_RANGE_MIN_M:.9f}\n"
+                        f"configured_lidar_range_max_m={LIDAR_RANGE_MAX_M:.9f}\n"
+                        f"native_min_range={float(native_min_range):.9f}\n"
+                        f"native_max_range={float(native_max_range):.9f}\n"
+                        f"ray_start_offset={float(self._ray_start_offsets_m[topic][bad_index]):.9f}\n"
+                        f"ray_origin_world={origins[bad_index].tolist()}\n"
+                        f"ray_end_point_world={endpoints[bad_index].tolist()}\n"
+                        f"hit_position_raw_SENSOR={raw_hit_position.tolist()}\n"
+                        f"hit_position_world={world_hit_position.tolist()}\n"
+                        f"sensor_world_origin={sensor_world_origin.tolist()}\n"
+                        f"norm(endpoint-origin)={endpoint_origin_distance_m:.9f}\n"
+                        f"norm(hit_position-origin)={hit_origin_distance_m:.9f}\n"
+                        f"norm(endpoint-sensor_origin)={endpoint_sensor_distance_m:.9f}\n"
+                        f"norm(hit_position-sensor_origin)={hit_sensor_distance_m:.9f}\n"
+                        f"depth-endpoint_origin_distance="
+                        f"{float(depths[bad_index] * STAGE_METERS_PER_UNIT - endpoint_origin_distance_m):.9f}\n"
+                        f"depth-hit_origin_distance="
+                        f"{float(depths[bad_index] * STAGE_METERS_PER_UNIT - hit_origin_distance_m):.9f}\n"
+                        f"depth+ray_start_offset="
+                        f"{float(depth_ranges[bad_index]):.9f}\n"
+                        f"norm(endpoint-origin)+ray_start_offset="
+                        f"{float(endpoint_ranges[bad_index]):.9f}\n"
+                        f"norm(hit_position-origin)+ray_start_offset="
+                        f"{float(hit_origin_distance_m + self._ray_start_offsets_m[topic][bad_index]):.9f}\n",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                 raise RuntimeError(
                     f"native PhysX depth/endpoint disagreement: sensor={self._paths[topic]}, max_m={float(np.max(delta_m)):.6f}"
                 )
