@@ -60,40 +60,28 @@ def test_dual_lidar_policy_contract_remains_2000_beams_at_15_hz():
     assert "--verify-lidar-rate --require-realtime-lidar" in source
 
 
-def test_physx_lidar_uses_physics_clock_and_dedicated_timestamped_messages():
+def test_physx_lidar_uses_historical_pass_scene_query_and_shared_telemetry():
     source = ISAAC_RUNNER.read_text(encoding="utf-8")
     bridge = ROS_BRIDGE.read_text(encoding="utf-8")
 
-    assert "class PhysxDualLidarScheduler" in source
-    assert 'enable_extension("isaacsim.sensors.experimental.physics")' in source
-    assert "Raycast.create(" in source
-    assert "RaycastSensor(authoring)" in source
-    assert "ray_origins=ray_origins" in source
-    assert "ray_directions=ray_directions" in source
-    assert "report_hit_prim_paths=True" in source
-    assert 'prim.GetAttribute("enabled").Set(enabled)' in source
-    assert "self.physics_steps % self.steps_per_capture == 0" in source
-    assert "reading.depths" in source
-    assert "reading.hit_prim_paths" in source
-    assert "native PhysX raycast reading was stale/replayed" in source
-    assert "native PhysX raycast cadence is not 15 Hz" in source
-    assert "native PhysX front/rear readings were not paired" in source
-    assert "native PhysX reading time is not current" not in source
-    assert "merge_native_physx_scan(" in source
-    assert "ThreadPoolExecutor" not in source
-    assert "raycast_closest" not in source
+    assert '"physx_scene_query" if LIDAR_MODE == "physx"' in source
+    assert '"omni.physx_scene_query" if LIDAR_MODE == "physx"' in source
+    assert "def make_laser_ranges(" in source
+    assert "origins = sensor_position[None, :] + directions * minimum_stage" in source
+    assert "query.raycast_closest(" in source
     assert "raycast_all" in source
-    assert "event=IsaacEvents.PRE_PHYSICS_STEP" in source
-    assert "event=IsaacEvents.POST_PHYSICS_STEP" in source
-    assert "self.physics_sim_time += step_dt" in source
-    assert "self.ros.send_lidar_telemetry(sim_time, scans)" in source
-    assert 'LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"' in source
-    assert "missed_periods" in source
-    assert "Dual-lidar simulation/wall rate validation failed" in source
-    assert 'LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"' in bridge
-    assert "self.handle_lidar_telemetry(payload)" in bridge
-    assert "self.pending_lidar.append((sim_time, scans))" in bridge
-    assert "self.publish_ready_lidar(sim_time)" in bridge
+    assert "LIDAR_RANGE_MIN_M + selected_distance_stage * scale" in source
+    assert "scans = make_dual_scan_payload(" in source
+    assert 'telemetry["scans"] = scans' in source
+    assert 'scans = payload.get("scans")' in bridge
+    assert "class PhysxDualLidarScheduler" not in source
+    assert "isaacsim.sensors.experimental.physics" not in source
+    assert "RaycastSensor" not in source
+    assert "reading.depths" not in source
+    assert "ray_start_offsets_outside_box" not in source
+    assert "LIDAR_TELEMETRY_SCHEMA" not in source
+    assert "LIDAR_TELEMETRY_SCHEMA" not in bridge
+    assert "pending_lidar" not in bridge
 
 
 def test_dynamic_velocity_command_is_applied_at_physx_rate():

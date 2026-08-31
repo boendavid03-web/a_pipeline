@@ -12,9 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from physx_lidar_people import (  # noqa: E402
     is_ignored_person_query_collider,
-    is_ignored_robot_query_collider,
     nearest_ray_capsule_intersections,
-    ray_start_offsets_outside_box,
     ray_capsule_intersection_matrix,
     scene_query_hit_value,
 )
@@ -118,38 +116,6 @@ def test_tilted_capsule_uses_complete_shin_foot_axis():
 )
 def test_full_body_query_collider_filter_is_narrow(path, expected):
     assert is_ignored_person_query_collider(path) is expected
-
-
-@pytest.mark.parametrize(
-    "path, expected",
-    [
-        ("/World/Robot", True),
-        ("/World/Robot/base_link/collisions", True),
-        ("/World/RobotCollisionProxy", True),
-        ("/World/RobotCollisionProxy/collision", True),
-        ("/World/RoboticsLab", False),
-        ("/World/Characters/person/Physics/BodyCollider", False),
-        (None, False),
-    ],
-)
-def test_robot_self_query_collider_filter_is_narrow(path, expected):
-    assert is_ignored_robot_query_collider(path) is expected
-
-
-def test_ray_start_offsets_move_only_directions_still_inside_robot_box():
-    offsets = ray_start_offsets_outside_box(
-        [0.20, 0.13],
-        [[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]],
-        [0.31237, 0.24352],
-        0.5,
-        epsilon=0.01,
-    )
-    assert offsets.tolist() == pytest.approx([0.5, 0.52237, 0.5, 0.5])
-
-
-def test_ray_start_offsets_reject_sensor_outside_box():
-    with pytest.raises(ValueError, match="strictly inside"):
-        ray_start_offsets_outside_box([0.4, 0.0], [[1.0, 0.0]], [0.3, 0.2], 0.5)
 
 
 @pytest.mark.parametrize(

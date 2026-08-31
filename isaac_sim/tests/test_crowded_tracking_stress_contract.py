@@ -81,6 +81,56 @@ def test_runner_keeps_baseline_parameters_and_records_every_required_layer():
     assert "STATIONARY_GUARD=PASS" in source
 
 
+def test_normal_and_crowded_runners_share_sensor_detector_tracker_contract():
+    normal_detector = (SCRIPT_DIR / "run_custom_people_dr_spaam_smoke.sh").read_text(
+        encoding="utf-8"
+    )
+    normal_tracking = (
+        SCRIPT_DIR / "run_custom_people_dr_spaam_tracking_smoke.sh"
+    ).read_text(encoding="utf-8")
+    crowded = (
+        SCRIPT_DIR / "run_custom_people_dr_spaam_crowded_tracking_stress.sh"
+    ).read_text(encoding="utf-8")
+
+    shared_sensor_contract = (
+        "export ISAAC_LIDAR_MODE=physx",
+        "export ISAAC_LIDAR_RATE_HZ=15",
+        "export ISAAC_LIDAR_SAMPLE_COUNT=2000",
+        '"$SCRIPT_DIR/run_isaac_6_0_warehouse_people_robot.sh"',
+    )
+    shared_detector_contract = (
+        "ckpt_jrdb_ann_ft_dr_spaam_e20.pth",
+        "-p detector_model:=DR-SPAAM",
+        "-p conf_thresh:=0.95",
+        "-p stride:=5",
+        "-p panoramic_scan:=true",
+        "-p reverse_scan:=true",
+        "-p drow_to_ros:=true",
+        "-p target_frame:=base_link",
+        "-p subscriber.scan.topic:=/scan_merged",
+    )
+    shared_tracker_contract = (
+        "pedestrian_point_tracker.py",
+        "-p tracking_frame:=odom",
+        "-p association_threshold:=0.8",
+        "-p min_hits:=3",
+        "-p max_age:=8",
+        "-p max_coast_time:=0.75",
+        "-p acceleration_sigma:=2.0",
+        "-p measurement_sigma:=0.10",
+        "-p max_prediction_dt:=0.50",
+        "-p measurement_history_size:=8",
+        "-p velocity_fit_min_samples:=3",
+        "-p velocity_fit_min_span:=0.15",
+    )
+    for runner in (normal_detector, normal_tracking, crowded):
+        for contract_line in shared_sensor_contract + shared_detector_contract:
+            assert contract_line in runner
+    for runner in (normal_tracking, crowded):
+        for contract_line in shared_tracker_contract:
+            assert contract_line in runner
+
+
 def test_evaluator_exposes_detector_tracker_failure_split_and_distance_bins():
     source = (
         PROJECT_ROOT
@@ -101,3 +151,33 @@ def test_isaac_duration_starts_after_scene_and_people_initialization():
         SCRIPT_DIR / "show_warehouse_people_robot_6_0.py"
     ).read_text(encoding="utf-8")
     assert "sim_time - started_sim_time >= ARGS.duration" in source
+
+
+def test_official_physx_backend_is_explicit_and_experimental_sensor_is_absent():
+    source = (
+        SCRIPT_DIR / "show_warehouse_people_robot_6_0.py"
+    ).read_text(encoding="utf-8")
+    helper = (SCRIPT_DIR / "physx_lidar_people.py").read_text(encoding="utf-8")
+    relay = (SCRIPT_DIR / "cmd_vel_udp_relay.py").read_text(encoding="utf-8")
+
+    assert '"physx_scene_query" if LIDAR_MODE == "physx"' in source
+    assert '"omni.physx_scene_query" if LIDAR_MODE == "physx"' in source
+    assert source.count('"lidar_backend": LIDAR_BACKEND') == 3
+    assert source.count('"physx_capture_backend": PHYSX_CAPTURE_BACKEND') == 3
+    assert "def make_laser_ranges(" in source
+    assert "origins = sensor_position[None, :] + directions * minimum_stage" in source
+    assert "query.raycast_closest(" in source
+    assert "LIDAR_RANGE_MIN_M + selected_distance_stage * scale" in source
+    assert 'telemetry["scans"] = scans' in source
+    for forbidden in (
+        "isaacsim.sensors.experimental.physics",
+        "RaycastSensor",
+        "reading.depths",
+        "world endpoint",
+        "ray_start_offsets_outside_box",
+        "is_ignored_robot_query_collider",
+        "LIDAR_TELEMETRY_SCHEMA",
+    ):
+        assert forbidden not in source
+        assert forbidden not in helper
+    assert "pending_lidar" not in relay

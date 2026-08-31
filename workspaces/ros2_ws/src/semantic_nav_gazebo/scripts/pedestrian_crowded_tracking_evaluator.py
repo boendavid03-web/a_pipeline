@@ -12,6 +12,7 @@ import csv
 import json
 import math
 import struct
+import sys
 from collections import deque
 from pathlib import Path
 
@@ -21,22 +22,32 @@ from nav_msgs.msg import Odometry
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
+from rosgraph_msgs.msg import Clock
 from semantic_nav_gazebo.msg import PedestrianStateArray, TrackedPedestrianArray
 from sensor_msgs.msg import LaserScan, PointCloud2, PointField
+from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformException, TransformListener
 
 from pedestrian_point_tracker_core import linear_sum_assignment
+from pedestrian_crowded_tracking_analysis_core import (
+    assign_scan_support,
+    compute_static_line_of_sight,
+    validate_world_scene_contract,
+)
 
 
 DISTANCE_BINS = (
-    ("<0.50", -math.inf, 0.50),
-    ("0.50-0.75", 0.50, 0.75),
-    ("0.75-1.00", 0.75, 1.00),
+    (">=1.50", 1.50, math.inf),
     ("1.00-1.50", 1.00, 1.50),
-    (">1.50", 1.50, math.inf),
+    ("0.75-1.00", 0.75, 1.00),
+    ("0.50-0.75", 0.50, 0.75),
+    ("<0.50", -math.inf, 0.50),
 )
+# v1 label retained for immutable artifact cross-checks; v2 uses the explicit
+# closed lower bound ``>=1.50`` in the analysis core.
+LEGACY_DISTANCE_BIN_LABEL = ">1.50"
 
 
 def stamp_ns(stamp) -> int:
@@ -170,6 +181,12 @@ class CrowdedTrackingEvaluator(Node):
         self.requested_spacing = float(
             self.declare_parameter("requested_spacing", -1.0).value
         )
+        project_root = Path(__file__).resolve().parents[5]
+        self.world_contract = validate_world_scene_contract(
+            project_root / "workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world",
+            project_root / "isaac_sim/scenes/a_pipeline_eng_lobby.usda",
+        )
+        self.static_boxes = self._load_static_boxes() if self.world_contract["valid"] else []
         output_dir = str(self.declare_parameter("output_dir", "").value)
         self.output_dir = Path(
             output_dir or "runs/dr_spaam_isaac_crowded_tracking/latest/evaluation"
@@ -202,6 +219,20 @@ class CrowdedTrackingEvaluator(Node):
         self.pending_tracks: deque[TrackedPedestrianArray] = deque(maxlen=500)
         self.detections_by_stamp: dict[int, tuple[str, list[dict]]] = {}
         self.scans_by_stamp: dict[int, LaserScan] = {}
+        self.source_scans_by_topic: dict[str, dict[int, LaserScan]] = {
+            "/scan_01": {}, "/scan_02": {}
+        }
+        self.clock_stamps: list[int] = []
+        self.clock_regressions = 0
+        self.tf_static_received = False
+        self.evaluated_before_tf_static_frames = 0
+        self.evaluated_before_clock_frames = 0
+        self.scan_stamps: dict[str, list[int]] = {
+            "scan_01": [], "scan_02": [], "scan_merged": []
+        }
+        self.scan_beam_counts: dict[str, set[int]] = {
+            "scan_01": set(), "scan_02": set(), "scan_merged": set()
+        }
         self.latest_detection_ns: int | None = None
 
         self.frames: list[dict] = []
@@ -241,6 +272,8 @@ class CrowdedTrackingEvaluator(Node):
         }
         self.topic_counts = {
             "scan_merged": 0,
+            "scan_01": 0,
+            "scan_02": 0,
             "detections": 0,
             "tracks": 0,
             "ground_truth": 0,
@@ -253,6 +286,19 @@ class CrowdedTrackingEvaluator(Node):
             self.scan_callback,
             qos_profile_sensor_data,
         )
+        for topic in ("/scan_01", "/scan_02"):
+            self.create_subscription(
+                LaserScan, topic,
+                lambda message, topic=topic: self.source_scan_callback(topic, message),
+                qos_profile_sensor_data,
+            )
+        self.create_subscription(Clock, "/clock", self.clock_callback, qos_profile_sensor_data)
+        tf_static_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.create_subscription(TFMessage, "/tf_static", self.tf_static_callback, tf_static_qos)
         self.create_subscription(
             PointCloud2, "/dr_spaam_detections_scored", self.detection_callback, 30
         )
@@ -267,7 +313,7 @@ class CrowdedTrackingEvaluator(Node):
         )
         self.create_subscription(Odometry, "/odom", self.odom_callback, 30)
         self.get_logger().info(
-            f"crowded evaluator ready: scenario={self.scenario}, "
+            f"CROWDED_EVALUATOR_READY scenario={self.scenario}, "
             f"stress_ids={list(self.stress_ids)}, match={self.match_threshold:.2f} m"
         )
 
@@ -285,8 +331,31 @@ class CrowdedTrackingEvaluator(Node):
 
     def scan_callback(self, message: LaserScan) -> None:
         self.topic_counts["scan_merged"] += 1
-        self.scans_by_stamp[stamp_ns(message.header.stamp)] = message
+        timestamp_ns = stamp_ns(message.header.stamp)
+        self.scan_stamps["scan_merged"].append(timestamp_ns)
+        self.scan_beam_counts["scan_merged"].add(len(message.ranges))
+        self.scans_by_stamp[timestamp_ns] = message
         self._trim_timestamp_dict(self.scans_by_stamp)
+
+    def source_scan_callback(self, topic: str, message: LaserScan) -> None:
+        name = topic.lstrip("/")
+        self.topic_counts[name] += 1
+        self.scan_stamps[name].append(stamp_ns(message.header.stamp))
+        self.scan_beam_counts[name].add(len(message.ranges))
+        values = self.source_scans_by_topic[topic]
+        values[stamp_ns(message.header.stamp)] = message
+        self._trim_timestamp_dict(values)
+
+    def clock_callback(self, message: Clock) -> None:
+        timestamp_ns = stamp_ns(message.clock)
+        if self.clock_stamps and timestamp_ns < self.clock_stamps[-1]:
+            self.clock_regressions += 1
+        self.clock_stamps.append(timestamp_ns)
+        if len(self.clock_stamps) > 1000:
+            del self.clock_stamps[:-1000]
+
+    def tf_static_callback(self, _message: TFMessage) -> None:
+        self.tf_static_received = True
 
     def detection_callback(self, message: PointCloud2) -> None:
         self.topic_counts["detections"] += 1
@@ -376,6 +445,40 @@ class CrowdedTrackingEvaluator(Node):
             return None
         return float(odom.pose.pose.position.x), float(odom.pose.pose.position.y)
 
+    def _sensor_origins(self, timestamp) -> dict[str, list[float] | None]:
+        origins = {}
+        for name, frame in (("scan_01", "base_scan_01"), ("scan_02", "base_scan_02")):
+            try:
+                transform = self.tf_buffer.lookup_transform(
+                    self.target_frame, frame, Time.from_msg(timestamp), timeout=Duration(seconds=0.05)
+                )
+                translation = transform.transform.translation
+                origins[name] = [float(translation.x), float(translation.y), float(translation.z)]
+            except TransformException:
+                origins[name] = None
+        return origins
+
+    @staticmethod
+    def _load_static_boxes() -> list[dict]:
+        """Load the project converter's boxes for post-hoc LOS only.
+
+        Failure is deliberately represented by an empty list: the trace then
+        records TF_OR_WORLD_UNKNOWN and the offline validity gate rejects it.
+        """
+        project_root = Path(__file__).resolve().parents[5]
+        world = project_root / "workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world"
+        converter_dir = project_root / "isaac_sim/scripts"
+        if not world.is_file():
+            world = Path.cwd() / "workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world"
+            converter_dir = Path.cwd() / "isaac_sim/scripts"
+        try:
+            sys.path.insert(0, str(converter_dir))
+            from convert_gazebo_boxes_to_usda import load_static_boxes
+            boxes, _ = load_static_boxes(world)
+            return [{"pose": {"x": box.pose.x, "y": box.pose.y, "z": box.pose.z, "yaw": box.pose.yaw}, "size": list(box.size)} for box in boxes]
+        except (ImportError, OSError, ValueError):
+            return []
+
     def _scan_points(self, timestamp_ns: int, timestamp) -> list[list[float]]:
         scan = self.scans_by_stamp.get(timestamp_ns)
         if scan is None:
@@ -424,6 +527,10 @@ class CrowdedTrackingEvaluator(Node):
         raw_detections: list[dict],
     ) -> None:
         timestamp_ns = stamp_ns(track_frame.header.stamp)
+        if not self.tf_static_received:
+            self.evaluated_before_tf_static_frames += 1
+        if not self.clock_stamps:
+            self.evaluated_before_clock_frames += 1
         if (
             str(track_frame.header.frame_id).lstrip("/") != self.target_frame
             or str(gt_frame.header.frame_id).lstrip("/") != self.target_frame
@@ -629,9 +736,58 @@ class CrowdedTrackingEvaluator(Node):
                 event["event"] == "continuous_id_switch" for event in frame_id_events
             )
 
+        scan_points = self._scan_points(timestamp_ns, track_frame.header.stamp)
+        scan_support = assign_scan_support(scan_points, truths)
+        sensor_origins = self._sensor_origins(track_frame.header.stamp)
+        observability = {}
+        for truth in truths:
+            identity = truth["id"]
+            in_roi = robot is None or math.hypot(truth["x"] - robot[0], truth["y"] - robot[1]) <= self.visible_distance
+            los = (
+                compute_static_line_of_sight(
+                    sensor_origins, (truth["x"], truth["y"]), self.static_boxes
+                )
+                if self.world_contract["valid"]
+                and self.static_boxes
+                and all(origin is not None for origin in sensor_origins.values())
+                else None
+            )
+            supported = bool(scan_support.get(identity, {}).get("supported", False))
+            if not in_roi:
+                reason = "OUT_OF_ROI"
+            elif los is None:
+                reason = "TF_OR_WORLD_UNKNOWN"
+            elif los is False:
+                reason = "STATIC_OCCLUDED"
+            elif not supported:
+                reason = "NO_SCAN_SUPPORT"
+            else:
+                reason = "OBSERVABLE"
+            observability[identity] = {
+                "in_roi": in_roi,
+                "scan_support": supported,
+                "line_of_sight": los,
+                "observable": bool(in_roi and supported and los is True),
+                "reason": reason,
+            }
+        source_stamps = {
+            "scan_01": timestamp_ns if timestamp_ns in self.source_scans_by_topic["/scan_01"] else None,
+            "scan_02": timestamp_ns if timestamp_ns in self.source_scans_by_topic["/scan_02"] else None,
+            "merged": timestamp_ns if timestamp_ns in self.scans_by_stamp else None,
+            "detections": timestamp_ns,
+            "tracks": timestamp_ns,
+        }
         trace = {
-            "schema": "pedestrian_crowded_tracking_trace/v1",
+            "schema": "pedestrian_crowded_tracking_trace/v2",
+            "legacy_schema": "pedestrian_crowded_tracking_trace/v1",
             "timestamp_ns": timestamp_ns,
+            "clock": {
+                "stamp_ns": self.clock_stamps[-1] if self.clock_stamps else None,
+                "nondecreasing": all(a <= b for a, b in zip(self.clock_stamps, self.clock_stamps[1:])),
+            },
+            "replay_sequence": len(self.frames),
+            "source_stamps": source_stamps,
+            "sensor_origins": sensor_origins,
             "scenario": self.scenario,
             "frame": self.target_frame,
             "robot": list(robot) if robot is not None else None,
@@ -656,7 +812,9 @@ class CrowdedTrackingEvaluator(Node):
             "merge_frame": merge_frame,
             "merge_pairs": merge_pairs,
             "id_events": frame_id_events,
-            "scan_points": self._scan_points(timestamp_ns, track_frame.header.stamp),
+            "scan_points": scan_points,
+            "scan_support": scan_support,
+            "observability": observability,
         }
         self.frames.append(trace)
         with self.trace_path.open("a", encoding="utf-8") as stream:
@@ -729,8 +887,14 @@ class CrowdedTrackingEvaluator(Node):
             }
             for identity, state in sorted(self.identity_state.items())
         }
+        def observed_rate(stamps: list[int]) -> float | None:
+            if len(stamps) < 2 or stamps[-1] <= stamps[0]:
+                return None
+            return (len(stamps) - 1) / ((stamps[-1] - stamps[0]) / 1.0e9)
+
         summary = {
-            "schema": "isaac_crowded_tracking_evaluation/v1",
+            "schema": "isaac_crowded_tracking_evaluation/v2",
+            "legacy_schema": "isaac_crowded_tracking_evaluation/v1",
             "scenario": self.scenario,
             "stress_ids": list(self.stress_ids),
             "requested_spacing_m": (
@@ -793,6 +957,19 @@ class CrowdedTrackingEvaluator(Node):
                 "tracking_frame": self.target_frame,
                 "ground_truth_used_by_detector_or_tracker": False,
                 "velocity_is_primary_gate": False,
+                "trace_schema": "pedestrian_crowded_tracking_trace/v2",
+                "legacy_trace_schema": "pedestrian_crowded_tracking_trace/v1",
+            },
+            "replay_contract": {
+                "authoritative": "raw_bag_replay",
+                "use_sim_time": bool(self.get_parameter("use_sim_time").value),
+                "tf_static_received": self.tf_static_received,
+                "clock_received": bool(self.clock_stamps),
+                "clock_monotonic": self.clock_regressions == 0,
+                "world_scene_contract": self.world_contract,
+                "required_exact_source_stamps": ["scan_01", "scan_02", "merged", "detections", "tracks"],
+                "beams_per_sensor": 2000,
+                "acceptable_scan_rate_hz": [13.5, 16.5],
             },
             "quality": {
                 "evaluated_frames": len(self.frames),
@@ -803,6 +980,20 @@ class CrowdedTrackingEvaluator(Node):
                 "malformed_detection_frames": self.malformed_detection_frames,
                 "pending_track_frames": len(self.pending_tracks),
                 "keyframes": keyframes or [],
+                "clock_stamps": len(self.clock_stamps),
+                "clock_regressions": self.clock_regressions,
+                "evaluated_before_tf_static_frames": self.evaluated_before_tf_static_frames,
+                "evaluated_before_clock_frames": self.evaluated_before_clock_frames,
+                "scan_beam_counts": {
+                    name: sorted(values) for name, values in self.scan_beam_counts.items()
+                },
+                "scan_observed_rate_hz": {
+                    name: observed_rate(values) for name, values in self.scan_stamps.items()
+                },
+                "exact_source_stamp_counters": {
+                    name: sum(frame.get("source_stamps", {}).get(name) == frame["timestamp_ns"] for frame in self.frames)
+                    for name in ("scan_01", "scan_02", "merged", "detections", "tracks")
+                },
             },
         }
         self.summary_path.write_text(
