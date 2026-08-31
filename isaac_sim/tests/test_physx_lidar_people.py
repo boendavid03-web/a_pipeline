@@ -12,7 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from physx_lidar_people import (  # noqa: E402
     is_ignored_person_query_collider,
+    is_ignored_robot_query_collider,
     nearest_ray_capsule_intersections,
+    physics_capture_due,
+    ray_start_offsets_outside_box,
     ray_capsule_intersection_matrix,
     scene_query_hit_value,
 )
@@ -116,6 +119,62 @@ def test_tilted_capsule_uses_complete_shin_foot_axis():
 )
 def test_full_body_query_collider_filter_is_narrow(path, expected):
     assert is_ignored_person_query_collider(path) is expected
+
+
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        ("/World/Robot/Physics/Body", True),
+        ("/World/RobotCollisionProxy", True),
+        ("/World/RobotCollisionProxy/Shape", True),
+        ("/World/RobotLike", False),
+        ("/World/Characters/person/Physics/BodyCollider", False),
+        (None, False),
+    ],
+)
+def test_robot_self_query_filter_is_root_bounded(path, expected):
+    assert is_ignored_robot_query_collider(path) is expected
+
+
+def test_ray_start_offsets_preserve_minimum_and_exit_robot_box():
+    offsets = ray_start_offsets_outside_box(
+        [0.2, 0.0],
+        [[1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]],
+        [0.5, 0.5],
+        0.5,
+    )
+    assert offsets.tolist() == pytest.approx([0.5, 0.51, 0.71])
+
+
+def test_sixty_physics_steps_produce_fifteen_capture_events():
+    next_capture = 1.0 / 15.0
+    captures = 0
+    missed = 0
+    for step in range(1, 61):
+        due, next_capture, skipped = physics_capture_due(
+            step / 60.0, next_capture, 1.0 / 15.0
+        )
+        captures += int(due)
+        missed += skipped
+    assert captures == 15
+    assert missed == 0
+    assert next_capture == pytest.approx(1.0666666666666667)
+
+
+def test_slow_app_frame_does_not_change_simulation_clock_capture_count():
+    next_capture = 1.0 / 15.0
+    captures = 0
+    app_frames = 0
+    for step in range(1, 61):
+        due, next_capture, skipped = physics_capture_due(
+            step / 60.0, next_capture, 1.0 / 15.0
+        )
+        captures += int(due)
+        assert skipped == 0
+        if step in (20, 40, 60):
+            app_frames += 1
+    assert app_frames == 3
+    assert captures == 15
 
 
 @pytest.mark.parametrize(

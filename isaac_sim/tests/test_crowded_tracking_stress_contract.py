@@ -153,31 +153,23 @@ def test_isaac_duration_starts_after_scene_and_people_initialization():
     assert "sim_time - started_sim_time >= ARGS.duration" in source
 
 
-def test_official_physx_backend_is_explicit_and_experimental_sensor_is_absent():
+def test_official_physx_backend_uses_native_experimental_sensor():
     source = (
         SCRIPT_DIR / "show_warehouse_people_robot_6_0.py"
     ).read_text(encoding="utf-8")
     helper = (SCRIPT_DIR / "physx_lidar_people.py").read_text(encoding="utf-8")
     relay = (SCRIPT_DIR / "cmd_vel_udp_relay.py").read_text(encoding="utf-8")
 
-    assert '"physx_scene_query" if LIDAR_MODE == "physx"' in source
-    assert '"omni.physx_scene_query" if LIDAR_MODE == "physx"' in source
-    assert source.count('"lidar_backend": LIDAR_BACKEND') == 3
-    assert source.count('"physx_capture_backend": PHYSX_CAPTURE_BACKEND') == 3
-    assert "def make_laser_ranges(" in source
-    assert "origins = sensor_position[None, :] + directions * minimum_stage" in source
-    assert "query.raycast_closest(" in source
-    assert "LIDAR_RANGE_MIN_M + selected_distance_stage * scale" in source
-    assert 'telemetry["scans"] = scans' in source
-    for forbidden in (
-        "isaacsim.sensors.experimental.physics",
-        "RaycastSensor",
-        "reading.depths",
-        "world endpoint",
-        "ray_start_offsets_outside_box",
-        "is_ignored_robot_query_collider",
-        "LIDAR_TELEMETRY_SCHEMA",
-    ):
-        assert forbidden not in source
-        assert forbidden not in helper
-    assert "pending_lidar" not in relay
+    assert '"physx_raycast_sensor" if LIDAR_MODE == "physx"' in source
+    assert '"isaacsim.sensors.experimental.physics.RaycastSensor"' in source
+    assert "class PhysxDualLidarScheduler" in source
+    assert "RaycastSensor" in source
+    assert "def merge_native_physx_scan(" in source
+    assert "native_ranges_m" in source
+    assert "LIDAR_RANGE_MIN_M + candidate_distance_stage * scale" in source
+    assert 'self.ros.send_lidar_telemetry(sim_time, scans)' in source
+    assert '"isaacsim.sensors.experimental.physics"' in source
+    assert "ray_start_offsets_outside_box" in helper
+    assert "is_ignored_robot_query_collider" in helper
+    assert "LIDAR_TELEMETRY_SCHEMA" in relay
+    assert "Publish directly on receipt" in relay

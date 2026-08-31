@@ -60,28 +60,29 @@ def test_dual_lidar_policy_contract_remains_2000_beams_at_15_hz():
     assert "--verify-lidar-rate --require-realtime-lidar" in source
 
 
-def test_physx_lidar_uses_historical_pass_scene_query_and_shared_telemetry():
+def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry():
     source = ISAAC_RUNNER.read_text(encoding="utf-8")
     bridge = ROS_BRIDGE.read_text(encoding="utf-8")
 
-    assert '"physx_scene_query" if LIDAR_MODE == "physx"' in source
-    assert '"omni.physx_scene_query" if LIDAR_MODE == "physx"' in source
-    assert "def make_laser_ranges(" in source
-    assert "origins = sensor_position[None, :] + directions * minimum_stage" in source
-    assert "query.raycast_closest(" in source
+    assert '"physx_raycast_sensor" if LIDAR_MODE == "physx"' in source
+    assert '"isaacsim.sensors.experimental.physics.RaycastSensor"' in source
+    assert "class PhysxDualLidarScheduler" in source
+    assert "from isaacsim.sensors.experimental.physics import Raycast, RaycastSensor" in source
+    assert "event=IsaacEvents.PRE_PHYSICS_STEP" in source
+    assert "event=IsaacEvents.POST_PHYSICS_STEP" in source
+    assert "physics_capture_due(" in source
+    assert "def merge_native_physx_scan(" in source
+    assert "native_ranges_m" in source
+    assert "query.raycast_all(" in source
+    assert "ray_start_offsets_outside_box(" in source
     assert "raycast_all" in source
-    assert "LIDAR_RANGE_MIN_M + selected_distance_stage * scale" in source
-    assert "scans = make_dual_scan_payload(" in source
-    assert 'telemetry["scans"] = scans' in source
-    assert 'scans = payload.get("scans")' in bridge
-    assert "class PhysxDualLidarScheduler" not in source
-    assert "isaacsim.sensors.experimental.physics" not in source
-    assert "RaycastSensor" not in source
-    assert "reading.depths" not in source
-    assert "ray_start_offsets_outside_box" not in source
-    assert "LIDAR_TELEMETRY_SCHEMA" not in source
-    assert "LIDAR_TELEMETRY_SCHEMA" not in bridge
-    assert "pending_lidar" not in bridge
+    assert "candidate_distance_m = (" in source
+    assert "self.ros.send_lidar_telemetry(sim_time, scans)" in source
+    assert 'payload.get("schema") == LIDAR_TELEMETRY_SCHEMA' in bridge
+    assert "Publish directly on receipt" in bridge
+    assert "lidar_udp_rx_count" in bridge
+    assert "lidar_ros_pub_count" in bridge
+    assert "def make_laser_ranges(" not in source
 
 
 def test_dynamic_velocity_command_is_applied_at_physx_rate():

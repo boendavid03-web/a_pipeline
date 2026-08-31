@@ -522,7 +522,7 @@ if [[ "$ISAAC_SCENE" == "custom" ]]; then
 fi
 echo "A/B mode: robot collision protection=$ISAAC_ROBOT_COLLISION_PROTECTION; pedestrian avoidance=$ISAAC_PEDESTRIAN_AVOIDANCE_MODE; pedestrian social=$ISAAC_PEDESTRIAN_SOCIAL_MODE"
 echo "Robot physics: $ISAAC_ROBOT_PHYSICS (dynamic rigid body in the custom scene)"
-echo "LiDAR mode: $ISAAC_LIDAR_MODE (rtx=native material/angle intensity; physx=range-only fallback)"
+echo "LiDAR mode: $ISAAC_LIDAR_MODE (rtx=native material/angle intensity; physx=native RaycastSensor range-only)"
 echo "RTX LiDAR profile: ${ISAAC_RTX_LIDAR_PROFILE}"
 echo "LiDAR requested rate: ${ISAAC_LIDAR_RATE_HZ} Hz"
 echo "LiDAR ROS samples per scan: ${ISAAC_LIDAR_SAMPLE_COUNT}"
