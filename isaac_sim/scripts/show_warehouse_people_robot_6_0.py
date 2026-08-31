@@ -777,8 +777,12 @@ from isaacsim.core.utils import stage as stage_utils  # noqa: E402
 from isaacsim.core.utils.extensions import enable_extension  # noqa: E402
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, UsdSkel  # noqa: E402
 from physx_lidar_people import (  # noqa: E402
+    ENDPOINT_HIT_WORLD_TOLERANCE_M,
+    endpoint_hit_world_diagnostic,
+    endpoint_ranges_from_world_geometry,
     is_ignored_person_query_collider,
     is_ignored_robot_query_collider,
+    native_depth_diagnostic,
     nearest_ray_capsule_intersections,
     physics_capture_due,
     ray_start_offsets_outside_box,
@@ -3100,7 +3104,10 @@ class PhysxDualLidarScheduler:
         self._last_native_times: dict[str, float] = {}
         self._native_delta_sec: dict[str, float] = {}
         self._duplicate_native_reading_count = 0
-        self._native_diagnostic_printed = False
+        self._native_depth_warning_count = 0
+        self._native_depth_warning_printed: set[str] = set()
+        self._native_depth_diagnostic: dict[str, dict[str, float | int | None]] = {}
+        self._endpoint_hit_diagnostic: dict[str, dict[str, float | int | None]] = {}
         self._timing_samples: dict[str, deque[float]] = {
             name: deque(maxlen=256)
             for name in (
@@ -3119,6 +3126,9 @@ class PhysxDualLidarScheduler:
         self.failure: Exception | None = None
         self.physics_steps = 0
         self.physics_sim_time = float(timeline.get_current_time())
+        self._physics_start_sim_time = self.physics_sim_time
+        self._physics_first_wall_time: float | None = None
+        self._physics_last_wall_time: float | None = None
         self._next_capture_sim_time = self.physics_sim_time + LIDAR_PUBLISH_PERIOD_SEC
         self._capture_armed = False
         self._capture_pose: tuple[np.ndarray, float] | None = None
@@ -3191,6 +3201,7 @@ class PhysxDualLidarScheduler:
         # Re-anchor the producer clock after those steps so the first scheduled
         # pair is exactly one 15 Hz period after the last warmup reading.
         self.physics_sim_time = float(timeline.get_current_time())
+        self._physics_start_sim_time = self.physics_sim_time
         self._next_capture_sim_time = (
             self.physics_sim_time + LIDAR_PUBLISH_PERIOD_SEC
         )
@@ -3251,105 +3262,46 @@ class PhysxDualLidarScheduler:
             )
         if endpoints.shape != (LIDAR_SAMPLE_COUNT, 3) or origins.shape != (LIDAR_SAMPLE_COUNT, 3):
             raise RuntimeError(f"native PhysX endpoint shape mismatch: sensor={self._paths[topic]}")
-        depth_ranges = depths * STAGE_METERS_PER_UNIT + self._ray_start_offsets_m[topic]
-        endpoint_ranges = (
-            np.linalg.norm(endpoints - origins, axis=1) * STAGE_METERS_PER_UNIT
-            + self._ray_start_offsets_m[topic]
+        endpoint_ranges = endpoint_ranges_from_world_geometry(
+            endpoints,
+            origins,
+            self._ray_start_offsets_m[topic],
+            STAGE_METERS_PER_UNIT,
         )
-        finite = np.isfinite(depth_ranges) & np.isfinite(endpoint_ranges)
-        if np.any(finite):
-            delta_m = np.abs(depth_ranges[finite] - endpoint_ranges[finite])
-            if float(np.max(delta_m)) > 1.0e-3:
-                if not self._native_diagnostic_printed:
-                    self._native_diagnostic_printed = True
-                    finite_indices = np.flatnonzero(finite)
-                    bad_index = int(finite_indices[np.argmax(delta_m)])
-                    raw_hit_position = (
-                        hit_positions[bad_index]
-                        if bad_index < hit_positions.shape[0]
-                        else np.full(3, np.nan, dtype=float)
-                    )
-                    sensor_world_origin = np.full(3, np.nan, dtype=float)
-                    world_hit_position = np.full(3, np.nan, dtype=float)
-                    try:
-                        sensor_matrix = np.asarray(
-                            UsdGeom.Xformable(self._authoring[topic].prims[0])
-                            .ComputeLocalToWorldTransform(Usd.TimeCode.Default()),
-                            dtype=float,
-                        )
-                        sensor_world_origin = sensor_matrix[3, :3]
-                        if np.all(np.isfinite(raw_hit_position)):
-                            world_hit_position = (
-                                raw_hit_position @ sensor_matrix[:3, :3]
-                                + sensor_world_origin
-                            )
-                    except Exception:
-                        pass
-                    endpoint_origin_distance_m = (
-                        float(np.linalg.norm(endpoints[bad_index] - origins[bad_index]))
-                        * STAGE_METERS_PER_UNIT
-                    )
-                    hit_origin_distance_m = (
-                        float(np.linalg.norm(world_hit_position - origins[bad_index]))
-                        * STAGE_METERS_PER_UNIT
-                        if np.all(np.isfinite(world_hit_position))
-                        else float("nan")
-                    )
-                    endpoint_sensor_distance_m = (
-                        float(np.linalg.norm(endpoints[bad_index] - sensor_world_origin))
-                        * STAGE_METERS_PER_UNIT
-                        if np.all(np.isfinite(sensor_world_origin))
-                        else float("nan")
-                    )
-                    hit_sensor_distance_m = (
-                        float(np.linalg.norm(world_hit_position - sensor_world_origin))
-                        * STAGE_METERS_PER_UNIT
-                        if np.all(np.isfinite(world_hit_position))
-                        and np.all(np.isfinite(sensor_world_origin))
-                        else float("nan")
-                    )
-                    hit_path = str(paths[bad_index]) if bad_index < paths.size else ""
-                    hit_or_miss = "hit" if hit_path else "miss"
-                    native_min_range = self._prims[topic].GetAttribute("minRange").Get()
-                    native_max_range = self._prims[topic].GetAttribute("maxRange").Get()
-                    print(
-                        "[WAREHOUSE-ROBOT] NATIVE_PHYSX_FIRST_DISAGREEMENT_DIAGNOSTIC\n"
-                        f"sensor={topic} path={self._paths[topic]} hit_or_miss={hit_or_miss}\n"
-                        f"beam_index={bad_index}\n"
-                        f"reading.time={current_time:.9f}\n"
-                        f"reading.physics_step={int(SimulationManager.get_num_physics_steps())}\n"
-                        f"depth={float(depths[bad_index]):.9f}\n"
-                        f"hit_prim_path={hit_path!r}\n"
-                        f"configured_lidar_range_min_m={LIDAR_RANGE_MIN_M:.9f}\n"
-                        f"configured_lidar_range_max_m={LIDAR_RANGE_MAX_M:.9f}\n"
-                        f"native_min_range={float(native_min_range):.9f}\n"
-                        f"native_max_range={float(native_max_range):.9f}\n"
-                        f"ray_start_offset={float(self._ray_start_offsets_m[topic][bad_index]):.9f}\n"
-                        f"ray_origin_world={origins[bad_index].tolist()}\n"
-                        f"ray_end_point_world={endpoints[bad_index].tolist()}\n"
-                        f"hit_position_raw_SENSOR={raw_hit_position.tolist()}\n"
-                        f"hit_position_world={world_hit_position.tolist()}\n"
-                        f"sensor_world_origin={sensor_world_origin.tolist()}\n"
-                        f"norm(endpoint-origin)={endpoint_origin_distance_m:.9f}\n"
-                        f"norm(hit_position-origin)={hit_origin_distance_m:.9f}\n"
-                        f"norm(endpoint-sensor_origin)={endpoint_sensor_distance_m:.9f}\n"
-                        f"norm(hit_position-sensor_origin)={hit_sensor_distance_m:.9f}\n"
-                        f"depth-endpoint_origin_distance="
-                        f"{float(depths[bad_index] * STAGE_METERS_PER_UNIT - endpoint_origin_distance_m):.9f}\n"
-                        f"depth-hit_origin_distance="
-                        f"{float(depths[bad_index] * STAGE_METERS_PER_UNIT - hit_origin_distance_m):.9f}\n"
-                        f"depth+ray_start_offset="
-                        f"{float(depth_ranges[bad_index]):.9f}\n"
-                        f"norm(endpoint-origin)+ray_start_offset="
-                        f"{float(endpoint_ranges[bad_index]):.9f}\n"
-                        f"norm(hit_position-origin)+ray_start_offset="
-                        f"{float(hit_origin_distance_m + self._ray_start_offsets_m[topic][bad_index]):.9f}\n",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                raise RuntimeError(
-                    f"native PhysX depth/endpoint disagreement: sensor={self._paths[topic]}, max_m={float(np.max(delta_m)):.6f}"
+        depth_diagnostic = native_depth_diagnostic(
+            depths,
+            endpoint_ranges,
+            self._ray_start_offsets_m[topic],
+            STAGE_METERS_PER_UNIT,
+        )
+        self._native_depth_diagnostic[topic] = depth_diagnostic
+        if int(depth_diagnostic["disagreement_count"] or 0) > 0:
+            self._native_depth_warning_count += 1
+            if topic not in self._native_depth_warning_printed:
+                self._native_depth_warning_printed.add(topic)
+                print(
+                    "[WAREHOUSE-ROBOT] WARNING: native PhysX depth/endpoint "
+                    "disagreement is non-fatal; endpoint geometry remains the "
+                    "range source: "
+                    + json.dumps(
+                        {"sensor": topic, **depth_diagnostic}, sort_keys=True
+                    ),
+                    flush=True,
                 )
+
+        sensor_matrix = np.asarray(
+            UsdGeom.Xformable(self._authoring[topic].prims[0])
+            .ComputeLocalToWorldTransform(Usd.TimeCode.Default()),
+            dtype=float,
+        )
+        self._endpoint_hit_diagnostic[topic] = endpoint_hit_world_diagnostic(
+            endpoints,
+            hit_positions,
+            paths,
+            sensor_matrix,
+            STAGE_METERS_PER_UNIT,
+            tolerance_m=ENDPOINT_HIT_WORLD_TOLERANCE_M,
+        )
         self._last_native_times[topic] = current_time
         self._native_delta_sec[topic] = delta
         return endpoint_ranges.copy(), paths.copy(), current_time
@@ -3406,6 +3358,10 @@ class PhysxDualLidarScheduler:
             return
         try:
             self.physics_steps += 1
+            physics_wall_time = time.monotonic()
+            if self._physics_first_wall_time is None:
+                self._physics_first_wall_time = physics_wall_time
+            self._physics_last_wall_time = physics_wall_time
             self.physics_sim_time += float(step_dt)
             if self.physics_sim_time + 1.0e-9 < self._next_capture_sim_time:
                 return
@@ -3440,6 +3396,24 @@ class PhysxDualLidarScheduler:
     def measured_pair_wall_rate_hz(self) -> float | None:
         return self._rate(self.capture_wall_times)
 
+    @property
+    def measured_physics_sim_rate_hz(self) -> float | None:
+        if self.physics_steps < 1:
+            return None
+        elapsed_sim = self.physics_sim_time - self._physics_start_sim_time
+        return self.physics_steps / elapsed_sim if elapsed_sim > 0.0 else None
+
+    @property
+    def measured_physics_wall_rate_hz(self) -> float | None:
+        if (
+            self.physics_steps < 2
+            or self._physics_first_wall_time is None
+            or self._physics_last_wall_time is None
+        ):
+            return None
+        elapsed_wall = self._physics_last_wall_time - self._physics_first_wall_time
+        return (self.physics_steps - 1) / elapsed_wall if elapsed_wall > 0.0 else None
+
     @staticmethod
     def _timing_summary(values: deque[float]) -> dict[str, float | None]:
         if not values:
@@ -3465,6 +3439,8 @@ class PhysxDualLidarScheduler:
         return {
             "requested_rate_hz": LIDAR_RATE_HZ,
             "physics_rate_hz": 1.0 / PHYSICS_DT,
+            "physics_sim_hz": self.measured_physics_sim_rate_hz,
+            "physics_wall_hz": self.measured_physics_wall_rate_hz,
             "physics_steps": self.physics_steps,
             "lidar_capture_sim_hz": self.measured_pair_rate_hz,
             "lidar_capture_wall_hz": self.measured_pair_wall_rate_hz,
@@ -3472,6 +3448,10 @@ class PhysxDualLidarScheduler:
             "capture_count": self.capture_count,
             "missed_capture_count": self.missed_capture_count,
             "duplicate_native_reading_count": self._duplicate_native_reading_count,
+            "depth_diagnostic_warning_count": self._native_depth_warning_count,
+            "native_depth_diagnostic": dict(self._native_depth_diagnostic),
+            "endpoint_hit_diagnostic": dict(self._endpoint_hit_diagnostic),
+            "endpoint_hit_tolerance_m": ENDPOINT_HIT_WORLD_TOLERANCE_M,
             "recent_capture_sim_deltas_ms": sim_deltas[-12:],
             "recent_capture_wall_deltas_ms": wall_deltas[-12:],
             "latest_native_reading_times": dict(self._last_native_times),
@@ -5978,6 +5958,16 @@ def main() -> int:
             "lidar_physics_steps": (
                 physx_lidar.physics_steps if physx_lidar is not None else 0
             ),
+            "lidar_physics_sim_hz": (
+                physx_lidar.measured_physics_sim_rate_hz
+                if physx_lidar is not None
+                else None
+            ),
+            "lidar_physics_wall_hz": (
+                physx_lidar.measured_physics_wall_rate_hz
+                if physx_lidar is not None
+                else None
+            ),
             "lidar_capture_missed_count": (
                 physx_lidar.missed_capture_count if physx_lidar is not None else 0
             ),
@@ -5987,6 +5977,23 @@ def main() -> int:
                 )
                 if physx_lidar is not None
                 else 0
+            ),
+            "lidar_depth_diagnostic": (
+                physx_lidar.pairing_diagnostics.get("native_depth_diagnostic", {})
+                if physx_lidar is not None
+                else {}
+            ),
+            "lidar_depth_diagnostic_warning_count": (
+                physx_lidar.pairing_diagnostics.get(
+                    "depth_diagnostic_warning_count", 0
+                )
+                if physx_lidar is not None
+                else 0
+            ),
+            "lidar_endpoint_hit_diagnostic": (
+                physx_lidar.pairing_diagnostics.get("endpoint_hit_diagnostic", {})
+                if physx_lidar is not None
+                else {}
             ),
             "lidar_timing": (
                 physx_lidar.pairing_diagnostics.get("timing_ms", {})

@@ -18,6 +18,135 @@ PERSON_QUERY_COLLIDER_SUFFIXES = (
     "/Physics/AvoidanceTrigger",
 )
 
+# The current Isaac Sim 6.0.1 native RaycastSensor produces endpoint/hit WORLD
+# geometry agreeing to about 1.1 um in full-frame measurements.  Fifty um leaves
+# roughly 47x headroom for float and transform roundoff while remaining 20x
+# tighter than the former 1 mm depth/endpoint diagnostic threshold.
+ENDPOINT_HIT_WORLD_TOLERANCE_M = 5.0e-5
+
+
+def endpoint_ranges_from_world_geometry(
+    ray_end_points_world: object,
+    ray_origins_world: object,
+    per_beam_start_offset_m: object,
+    stage_meters_per_unit: float,
+) -> np.ndarray:
+    """Return ranges from authoritative endpoint geometry plus ray offsets."""
+    endpoints = np.asarray(ray_end_points_world, dtype=float)
+    origins = np.asarray(ray_origins_world, dtype=float)
+    offsets = np.asarray(per_beam_start_offset_m, dtype=float).reshape(-1)
+    if endpoints.ndim != 2 or endpoints.shape[1] != 3:
+        raise ValueError("ray_end_points_world must have shape (N, 3)")
+    if origins.shape != endpoints.shape:
+        raise ValueError("ray_origins_world must match ray_end_points_world")
+    if offsets.shape != (endpoints.shape[0],):
+        raise ValueError("per_beam_start_offset_m must have shape (N,)")
+    if not math.isfinite(stage_meters_per_unit) or stage_meters_per_unit <= 0.0:
+        raise ValueError("stage_meters_per_unit must be finite and positive")
+    if np.any(~np.isfinite(origins)) or np.any(~np.isfinite(offsets)):
+        raise ValueError("ray origins and start offsets must be finite")
+    return (
+        np.linalg.norm(endpoints - origins, axis=1) * stage_meters_per_unit
+        + offsets
+    )
+
+
+def native_depth_diagnostic(
+    depths: object,
+    endpoint_ranges_m: object,
+    per_beam_start_offset_m: object,
+    stage_meters_per_unit: float,
+    *,
+    disagreement_threshold_m: float = 1.0e-3,
+) -> dict[str, float | int | None]:
+    """Summarize native depths without making disagreement a safety failure."""
+    depth_values = np.asarray(depths, dtype=float).reshape(-1)
+    endpoint_ranges = np.asarray(endpoint_ranges_m, dtype=float).reshape(-1)
+    offsets = np.asarray(per_beam_start_offset_m, dtype=float).reshape(-1)
+    if (
+        endpoint_ranges.shape != depth_values.shape
+        or offsets.shape != depth_values.shape
+    ):
+        raise ValueError("depth, endpoint range, and offset arrays must have equal length")
+    if not math.isfinite(stage_meters_per_unit) or stage_meters_per_unit <= 0.0:
+        raise ValueError("stage_meters_per_unit must be finite and positive")
+    if not math.isfinite(disagreement_threshold_m) or disagreement_threshold_m <= 0.0:
+        raise ValueError("disagreement_threshold_m must be finite and positive")
+
+    depths_m = depth_values * stage_meters_per_unit
+    depth_ranges = depths_m + offsets
+    finite_depths = depths_m[np.isfinite(depths_m)]
+    finite = np.isfinite(depth_ranges) & np.isfinite(endpoint_ranges)
+    errors = np.abs(depth_ranges[finite] - endpoint_ranges[finite])
+    return {
+        "finite_count": int(errors.size),
+        "disagreement_count": int(np.count_nonzero(errors > disagreement_threshold_m)),
+        "disagreement_threshold_m": float(disagreement_threshold_m),
+        "error_median_m": float(np.median(errors)) if errors.size else None,
+        "error_p95_m": float(np.percentile(errors, 95.0)) if errors.size else None,
+        "error_max_m": float(np.max(errors)) if errors.size else None,
+        "depth_unique_count": int(np.unique(finite_depths).size),
+        "depth_min_m": float(np.min(finite_depths)) if finite_depths.size else None,
+        "depth_max_m": float(np.max(finite_depths)) if finite_depths.size else None,
+        "depth_std_m": float(np.std(finite_depths)) if finite_depths.size else None,
+    }
+
+
+def endpoint_hit_world_diagnostic(
+    ray_end_points_world: object,
+    hit_positions_sensor: object,
+    hit_prim_paths: object,
+    sensor_local_to_world: object,
+    stage_meters_per_unit: float,
+    *,
+    tolerance_m: float = ENDPOINT_HIT_WORLD_TOLERANCE_M,
+) -> dict[str, float | int | None]:
+    """Validate endpoint positions against valid native hits in WORLD space."""
+    endpoints = np.asarray(ray_end_points_world, dtype=float)
+    hit_positions = np.asarray(hit_positions_sensor, dtype=float)
+    paths = np.asarray(hit_prim_paths, dtype=object).reshape(-1)
+    transform = np.asarray(sensor_local_to_world, dtype=float)
+    if endpoints.ndim != 2 or endpoints.shape[1] != 3:
+        raise ValueError("ray_end_points_world must have shape (N, 3)")
+    if hit_positions.shape != endpoints.shape:
+        raise ValueError("hit_positions must match ray_end_points_world")
+    if paths.shape != (endpoints.shape[0],):
+        raise ValueError("hit_prim_paths must have shape (N,)")
+    if transform.shape != (4, 4) or np.any(~np.isfinite(transform)):
+        raise ValueError("sensor_local_to_world must be a finite 4x4 matrix")
+    if not math.isfinite(stage_meters_per_unit) or stage_meters_per_unit <= 0.0:
+        raise ValueError("stage_meters_per_unit must be finite and positive")
+    if not math.isfinite(tolerance_m) or tolerance_m <= 0.0:
+        raise ValueError("tolerance_m must be finite and positive")
+
+    valid_hit = np.asarray(
+        [path is not None and bool(str(path)) for path in paths], dtype=bool
+    )
+    if np.any(valid_hit & ~np.all(np.isfinite(hit_positions), axis=1)):
+        raise RuntimeError("native PhysX valid hit has non-finite hit_position")
+    world_hits = (
+        hit_positions[valid_hit] @ transform[:3, :3] + transform[3, :3]
+    )
+    errors = (
+        np.linalg.norm(endpoints[valid_hit] - world_hits, axis=1)
+        * stage_meters_per_unit
+    )
+    if np.any(~np.isfinite(errors)):
+        raise RuntimeError("native PhysX endpoint/hit WORLD error is non-finite")
+    stats: dict[str, float | int | None] = {
+        "valid_hit_count": int(errors.size),
+        "tolerance_m": float(tolerance_m),
+        "error_median_m": float(np.median(errors)) if errors.size else None,
+        "error_p95_m": float(np.percentile(errors, 95.0)) if errors.size else None,
+        "error_max_m": float(np.max(errors)) if errors.size else None,
+    }
+    if errors.size and float(np.max(errors)) > tolerance_m:
+        raise RuntimeError(
+            "native PhysX endpoint/hit WORLD geometry inconsistency: "
+            f"max_m={float(np.max(errors)):.9f}, tolerance_m={tolerance_m:.9f}"
+        )
+    return stats
+
 
 def scene_query_hit_value(hit: object, name: str, default: object = None) -> object:
     """Read a field from either Isaac 6.0 scene-query result representation.
