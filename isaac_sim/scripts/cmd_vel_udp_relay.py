@@ -46,6 +46,9 @@ RESET_PORT = int(os.environ.get("ISAAC_RESET_UDP_PORT", "15975"))
 COMMAND_PACKET = struct.Struct("!IQdddd")
 TELEMETRY_SCHEMA = "isaac_6_warehouse_telemetry/v1"
 LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"
+TIMESTAMP_TRACE_ENABLED = os.environ.get(
+    "ISAAC_TIMESTAMP_TRACE", "0"
+).strip().lower() in {"1", "true", "yes", "on"}
 MANUAL_EPISODE_SCHEMA = "isaac_manual_teleop_episode/v1"
 MANUAL_EPISODE_EVENTS_ENABLED = os.environ.get(
     "ISAAC_MANUAL_EPISODE_EVENTS", "1"
@@ -59,6 +62,33 @@ def finite_vector(values: Iterable[object], length: int, label: str) -> list[flo
     result = [float(value) for value in values]
     if len(result) != length or not all(math.isfinite(value) for value in result):
         raise ValueError(f"{label} must contain {length} finite numbers")
+    return result
+
+
+def udp_socket_queue_state(sock: socket.socket) -> dict[str, int | None]:
+    """Read Linux UDP kernel queue bytes/drops for one bound socket."""
+    result: dict[str, int | None] = {
+        "rx_queue_bytes": None,
+        "tx_queue_bytes": None,
+        "drops": None,
+    }
+    try:
+        link = os.readlink(f"/proc/self/fd/{sock.fileno()}")
+        inode = link.removeprefix("socket:[").removesuffix("]")
+        for table in ("/proc/net/udp", "/proc/net/udp6"):
+            with open(table, encoding="utf-8") as stream:
+                next(stream, None)
+                for line in stream:
+                    fields = line.split()
+                    if len(fields) < 10 or fields[9] != inode:
+                        continue
+                    tx_hex, rx_hex = fields[4].split(":", 1)
+                    result["tx_queue_bytes"] = int(tx_hex, 16)
+                    result["rx_queue_bytes"] = int(rx_hex, 16)
+                    result["drops"] = int(fields[12]) if len(fields) > 12 else 0
+                    return result
+    except (OSError, ValueError):
+        pass
     return result
 
 
@@ -139,6 +169,21 @@ class IsaacUdpRosBridge:
         self.lidar_udp_rx_times: deque[float] = deque(maxlen=256)
         self.lidar_ros_pub_count = 0
         self.lidar_ros_pub_times: deque[float] = deque(maxlen=256)
+        self._trace_datagrams_received = 0
+        self._trace_complete_payloads = 0
+        self._trace_last_udp_sequence_id: int | None = None
+        self._trace_last_stream_sequence_id: dict[str, int] = {}
+        self._trace_udp_sequence_gaps = 0
+        self._trace_udp_out_of_order = 0
+        self._trace_stream_sequence_gaps: dict[str, int] = {}
+        self._trace_stream_out_of_order: dict[str, int] = {}
+        self._trace_queue_samples = 0
+        self._trace_last_queue_sample_wall = -math.inf
+        self._trace_queue_first_bytes: int | None = None
+        self._trace_queue_last_bytes: int | None = None
+        self._trace_queue_max_bytes = 0
+        self._trace_queue_growth_samples = 0
+        self._trace_queue_nonzero_samples = 0
         self.publish_static_tf()
 
     @staticmethod
@@ -147,6 +192,84 @@ class IsaacUdpRosBridge:
             return None
         span = values[-1] - values[0]
         return (len(values) - 1) / span if span > 0.0 else None
+
+    def _observe_trace_queue(self, state: dict[str, int | None]) -> None:
+        now = time.monotonic()
+        if now - self._trace_last_queue_sample_wall < 0.05:
+            return
+        self._trace_last_queue_sample_wall = now
+        value = state.get("rx_queue_bytes")
+        if value is None:
+            return
+        rx_bytes = int(value)
+        self._trace_queue_samples += 1
+        if self._trace_queue_first_bytes is None:
+            self._trace_queue_first_bytes = rx_bytes
+        if self._trace_queue_last_bytes is not None and rx_bytes > self._trace_queue_last_bytes:
+            self._trace_queue_growth_samples += 1
+        if rx_bytes > 0:
+            self._trace_queue_nonzero_samples += 1
+        self._trace_queue_last_bytes = rx_bytes
+        self._trace_queue_max_bytes = max(self._trace_queue_max_bytes, rx_bytes)
+
+    def _observe_trace_sequence(self, payload: dict) -> None:
+        transport = payload.get("timestamp_trace_transport")
+        if not isinstance(transport, dict):
+            return
+        sequence_id = int(transport["udp_sequence_id"])
+        if self._trace_last_udp_sequence_id is not None:
+            if sequence_id <= self._trace_last_udp_sequence_id:
+                self._trace_udp_out_of_order += 1
+            elif sequence_id > self._trace_last_udp_sequence_id + 1:
+                self._trace_udp_sequence_gaps += (
+                    sequence_id - self._trace_last_udp_sequence_id - 1
+                )
+        self._trace_last_udp_sequence_id = sequence_id
+        schema = str(transport["schema"])
+        stream_sequence_id = int(transport["stream_sequence_id"])
+        previous = self._trace_last_stream_sequence_id.get(schema)
+        if previous is not None:
+            if stream_sequence_id <= previous:
+                self._trace_stream_out_of_order[schema] = (
+                    self._trace_stream_out_of_order.get(schema, 0) + 1
+                )
+            elif stream_sequence_id > previous + 1:
+                self._trace_stream_sequence_gaps[schema] = (
+                    self._trace_stream_sequence_gaps.get(schema, 0)
+                    + stream_sequence_id
+                    - previous
+                    - 1
+                )
+        self._trace_last_stream_sequence_id[schema] = stream_sequence_id
+
+    def _trace_backlog_summary(
+        self, current_queue: dict[str, int | None]
+    ) -> dict[str, object]:
+        transport_last = self._trace_last_udp_sequence_id or 0
+        return {
+            "kernel_rx_queue_current_bytes": current_queue.get("rx_queue_bytes"),
+            "kernel_rx_queue_first_bytes": self._trace_queue_first_bytes,
+            "kernel_rx_queue_last_bytes": self._trace_queue_last_bytes,
+            "kernel_rx_queue_max_bytes": self._trace_queue_max_bytes,
+            "kernel_rx_queue_samples": self._trace_queue_samples,
+            "kernel_rx_queue_growth_samples": self._trace_queue_growth_samples,
+            "kernel_rx_queue_nonzero_samples": self._trace_queue_nonzero_samples,
+            "kernel_udp_drops": current_queue.get("drops"),
+            "receiver_socket_rcvbuf_bytes": self.telemetry_socket.getsockopt(
+                socket.SOL_SOCKET, socket.SO_RCVBUF
+            ),
+            "decoder_fragment_assemblies": len(self.telemetry_decoder._fragments),
+            "internal_complete_payload_queue_depth": 0,
+            "datagrams_received": self._trace_datagrams_received,
+            "complete_payloads_decoded": self._trace_complete_payloads,
+            "producer_sequence_minus_completed": (
+                transport_last - self._trace_complete_payloads
+            ),
+            "udp_sequence_gaps": self._trace_udp_sequence_gaps,
+            "udp_out_of_order": self._trace_udp_out_of_order,
+            "stream_sequence_gaps": self._trace_stream_sequence_gaps,
+            "stream_out_of_order": self._trace_stream_out_of_order,
+        }
 
     @staticmethod
     def stamp(seconds: float):
@@ -375,20 +498,30 @@ class IsaacUdpRosBridge:
         message.intensities = intensities
         return message
 
-    def publish_scans(self, scans: dict, sim_time: float) -> None:
+    def publish_scans(self, scans: dict, sim_time: float) -> dict[str, float]:
         if not isinstance(scans, dict):
             raise ValueError("scans must be an object")
         front = self.make_scan(scans["scan_01"], "base_scan_01", sim_time)
         rear = self.make_scan(scans["scan_02"], "base_scan_02", sim_time)
         self.scan_01_pub.publish(front)
+        front_publish_wall = time.monotonic()
         self.scan_02_pub.publish(rear)
         self.scan_pub.publish(
             self.make_scan(scans["scan_01"], "base_scan", sim_time)
         )
         self.lidar_ros_pub_count += 1
         self.lidar_ros_pub_times.append(time.monotonic())
+        return {
+            "front_scan_stamp": (
+                float(front.header.stamp.sec)
+                + float(front.header.stamp.nanosec) / 1_000_000_000.0
+            ),
+            "front_publish_wall_monotonic": front_publish_wall,
+        }
 
-    def handle_lidar_telemetry(self, payload: dict) -> None:
+    def handle_lidar_telemetry(
+        self, payload: dict, rx_context: dict[str, object] | None = None
+    ) -> None:
         sim_time = float(payload["sim_time"])
         if not math.isfinite(sim_time) or sim_time < 0.0:
             raise ValueError("lidar sim_time must be finite and non-negative")
@@ -402,12 +535,68 @@ class IsaacUdpRosBridge:
         # Publish directly on receipt.  Waiting for the lower-rate general
         # telemetry stream would reintroduce the app-loop rate limit that this
         # separate LiDAR datagram is designed to remove.
-        self.publish_scans(scans, sim_time)
+        publish_trace = self.publish_scans(scans, sim_time)
         self.last_lidar_time = sim_time
         self.lidar_udp_rx_count += 1
         self.lidar_udp_rx_times.append(time.monotonic())
+        transport = payload.get("timestamp_trace_transport")
+        source = payload.get("timestamp_trace")
+        if (
+            TIMESTAMP_TRACE_ENABLED
+            and isinstance(transport, dict)
+            and bool(transport.get("trigger"))
+            and isinstance(source, dict)
+            and rx_context is not None
+        ):
+            readings = source.get("readings")
+            front_reading = (
+                readings.get("scan_01", {}) if isinstance(readings, dict) else {}
+            )
+            current_queue = udp_socket_queue_state(self.telemetry_socket)
+            tx_wall = float(transport["tx_wall_monotonic_before_encode"])
+            rx_wall = float(rx_context["rx_wall_monotonic"])
+            print(
+                "TIMESTAMP_TRACE_LIDAR="
+                + json.dumps(
+                    {
+                        "timeline_time": float(source["timeline_sim_time"]),
+                        "physics_sim_time": float(
+                            source["physics_callback_accumulated_sim_time"]
+                        ),
+                        "current_physics_step": int(source["current_physics_step"]),
+                        "reading_physics_step": front_reading.get(
+                            "reading_physics_step"
+                        ),
+                        "reading_physics_step_derived_from_time": front_reading.get(
+                            "reading_physics_step_derived_from_time"
+                        ),
+                        "reading_time": float(front_reading["reading_time"]),
+                        "scheduler_stamp": float(source["scheduler_sim_time"]),
+                        "UDP_TX_stamp": float(transport["packet_timestamp"]),
+                        "UDP_TX_wall_monotonic_before_encode": tx_wall,
+                        "UDP_RX_stamp": sim_time,
+                        "UDP_RX_wall_monotonic": rx_wall,
+                        "ROS_scan_stamp": publish_trace["front_scan_stamp"],
+                        "ROS_publish_wall_monotonic": publish_trace[
+                            "front_publish_wall_monotonic"
+                        ],
+                        "clock": self.sim_time,
+                        "udp_sequence_id": int(transport["udp_sequence_id"]),
+                        "lidar_sequence_id": int(
+                            transport["stream_sequence_id"]
+                        ),
+                        "TX_to_RX_wall_latency_sec": rx_wall - tx_wall,
+                        "queue_backlog": self._trace_backlog_summary(current_queue),
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                flush=True,
+            )
 
-    def publish_odometry(self, pose: list[float], reported_velocity: list[float]) -> None:
+    def publish_odometry(
+        self, pose: list[float], reported_velocity: list[float]
+    ) -> dict[str, float]:
         x, y, yaw = pose
         stamp = self.stamp(self.sim_time)
         odom = Odometry()
@@ -427,6 +616,7 @@ class IsaacUdpRosBridge:
         odom.twist.twist.linear.y = reported_velocity[1]
         odom.twist.twist.angular.z = reported_velocity[2]
         self.odom_pub.publish(odom)
+        odom_publish_wall = time.monotonic()
 
         transform = TransformStamped()
         transform.header.stamp = stamp
@@ -436,6 +626,13 @@ class IsaacUdpRosBridge:
         transform.transform.translation.y = y
         transform.transform.rotation = odom.pose.pose.orientation
         self.tf_pub.publish(TFMessage(transforms=[transform]))
+        return {
+            "odom_stamp": (
+                float(odom.header.stamp.sec)
+                + float(odom.header.stamp.nanosec) / 1_000_000_000.0
+            ),
+            "odom_publish_wall_monotonic": odom_publish_wall,
+        }
 
     def publish_actuation_state(self, payload: dict) -> list[float]:
         actuation = payload.get("actuation")
@@ -545,9 +742,11 @@ class IsaacUdpRosBridge:
         self.last_sensor_config = encoded
         self.last_sensor_config_publish_sim_time = self.sim_time
 
-    def handle_telemetry(self, payload: dict) -> None:
+    def handle_telemetry(
+        self, payload: dict, rx_context: dict[str, object] | None = None
+    ) -> None:
         if payload.get("schema") == LIDAR_TELEMETRY_SCHEMA:
-            self.handle_lidar_telemetry(payload)
+            self.handle_lidar_telemetry(payload, rx_context)
             return
         if payload.get("schema") != TELEMETRY_SCHEMA:
             raise ValueError(f"unexpected telemetry schema: {payload.get('schema')!r}")
@@ -591,7 +790,7 @@ class IsaacUdpRosBridge:
         _legacy_command = finite_vector(payload["command"], 3, "command")
         self.robot_pose = pose
         actual_velocity = self.publish_actuation_state(payload)
-        self.publish_odometry(pose, actual_velocity)
+        odom_trace = self.publish_odometry(pose, actual_velocity)
         if "pedestrians" in payload:
             self.publish_pedestrians(payload["pedestrians"])
         scans = payload.get("scans")
@@ -599,6 +798,42 @@ class IsaacUdpRosBridge:
             self.publish_scans(scans, sim_time)
 
         self.telemetry_count += 1
+        transport = payload.get("timestamp_trace_transport")
+        if (
+            TIMESTAMP_TRACE_ENABLED
+            and isinstance(transport, dict)
+            and bool(transport.get("trigger"))
+            and rx_context is not None
+        ):
+            current_queue = udp_socket_queue_state(self.telemetry_socket)
+            tx_wall = float(transport["tx_wall_monotonic_before_encode"])
+            rx_wall = float(rx_context["rx_wall_monotonic"])
+            print(
+                "TIMESTAMP_TRACE_STATE="
+                + json.dumps(
+                    {
+                        "state_producer_sim_time": sim_time,
+                        "UDP_TX_stamp": float(transport["packet_timestamp"]),
+                        "UDP_TX_wall_monotonic_before_encode": tx_wall,
+                        "UDP_RX_stamp": sim_time,
+                        "UDP_RX_wall_monotonic": rx_wall,
+                        "Odometry_header_stamp": odom_trace["odom_stamp"],
+                        "Odometry_publish_wall_monotonic": odom_trace[
+                            "odom_publish_wall_monotonic"
+                        ],
+                        "clock": sim_time,
+                        "udp_sequence_id": int(transport["udp_sequence_id"]),
+                        "state_sequence_id": int(
+                            transport["stream_sequence_id"]
+                        ),
+                        "TX_to_RX_wall_latency_sec": rx_wall - tx_wall,
+                        "queue_backlog": self._trace_backlog_summary(current_queue),
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                flush=True,
+            )
         if self.telemetry_count == 1:
             print(
                 "[ISAAC-ROS-BRIDGE] First Isaac telemetry received; "
@@ -607,16 +842,33 @@ class IsaacUdpRosBridge:
             )
 
     def poll_telemetry(self) -> None:
+        if TIMESTAMP_TRACE_ENABLED:
+            self._observe_trace_queue(udp_socket_queue_state(self.telemetry_socket))
         while True:
             try:
                 packet, _address = self.telemetry_socket.recvfrom(65_535)
             except BlockingIOError:
+                if TIMESTAMP_TRACE_ENABLED:
+                    self._observe_trace_queue(
+                        udp_socket_queue_state(self.telemetry_socket)
+                    )
                 return
+            rx_wall_monotonic = time.monotonic()
+            if TIMESTAMP_TRACE_ENABLED:
+                self._trace_datagrams_received += 1
             try:
                 payload = self.telemetry_decoder.feed(packet)
                 if payload is None:
                     continue
-                self.handle_telemetry(payload)
+                rx_context: dict[str, object] | None = None
+                if TIMESTAMP_TRACE_ENABLED:
+                    self._trace_complete_payloads += 1
+                    self._observe_trace_sequence(payload)
+                    rx_context = {
+                        "rx_wall_monotonic": rx_wall_monotonic,
+                        "datagram_bytes": len(packet),
+                    }
+                self.handle_telemetry(payload, rx_context)
             except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
                 self.discarded_count += 1
                 if self.discarded_count == 1 or self.discarded_count % 100 == 0:

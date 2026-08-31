@@ -165,6 +165,12 @@ TELEMETRY_UDP_PORT = int(os.environ.get("ISAAC_TELEMETRY_UDP_PORT", "15974"))
 RESET_UDP_PORT = int(os.environ.get("ISAAC_RESET_UDP_PORT", "15975"))
 TELEMETRY_SCHEMA = "isaac_6_warehouse_telemetry/v1"
 LIDAR_TELEMETRY_SCHEMA = "isaac_6_lidar_telemetry/v1"
+TIMESTAMP_TRACE_ENABLED = os.environ.get(
+    "ISAAC_TIMESTAMP_TRACE", "0"
+).strip().lower() in {"1", "true", "yes", "on"}
+TIMESTAMP_TRACE_MIN_DRIFT_SEC = float(
+    os.environ.get("ISAAC_TIMESTAMP_TRACE_MIN_DRIFT_SEC", "5.0")
+)
 TELEMETRY_PUBLISH_PERIOD_SEC = 1.0 / 30.0
 PEDESTRIAN_PUBLISH_PERIOD_SEC = 1.0 / 15.0
 PEDESTRIAN_MIN_VISUAL_CLEARANCE_M = 0.15
@@ -2748,6 +2754,11 @@ class RosCmdVel:
         self._pending_reset: dict[str, object] | None = None
         self.lidar_udp_tx_count = 0
         self.lidar_udp_tx_times: deque[float] = deque(maxlen=256)
+        self._trace_udp_sequence_id = 0
+        self._trace_lidar_sequence_id = 0
+        self._trace_state_sequence_id = 0
+        self._trace_lidar_triggered = False
+        self._trace_state_triggered = False
 
     def spin_once(self) -> None:
         while True:
@@ -2818,6 +2829,47 @@ class RosCmdVel:
         }
 
     def send_telemetry(self, payload: dict[str, object]) -> None:
+        trace_transport: dict[str, object] | None = None
+        trace_trigger = False
+        if TIMESTAMP_TRACE_ENABLED:
+            self._trace_udp_sequence_id += 1
+            schema = str(payload.get("schema", ""))
+            if schema == LIDAR_TELEMETRY_SCHEMA:
+                self._trace_lidar_sequence_id += 1
+                stream_sequence_id = self._trace_lidar_sequence_id
+                source_trace = payload.get("timestamp_trace")
+                if isinstance(source_trace, dict):
+                    timeline_time = float(source_trace["timeline_sim_time"])
+                    scheduler_time = float(source_trace["scheduler_sim_time"])
+                    trace_trigger = (
+                        not self._trace_lidar_triggered
+                        and timeline_time - scheduler_time
+                        >= TIMESTAMP_TRACE_MIN_DRIFT_SEC
+                    )
+                    if trace_trigger:
+                        self._trace_lidar_triggered = True
+            elif schema == TELEMETRY_SCHEMA:
+                self._trace_state_sequence_id += 1
+                stream_sequence_id = self._trace_state_sequence_id
+                trace_trigger = (
+                    self._trace_lidar_triggered and not self._trace_state_triggered
+                )
+                if trace_trigger:
+                    self._trace_state_triggered = True
+            else:
+                stream_sequence_id = 0
+            trace_transport = {
+                "udp_sequence_id": self._trace_udp_sequence_id,
+                "stream_sequence_id": stream_sequence_id,
+                "schema": schema,
+                "packet_timestamp": float(payload.get("sim_time", 0.0)),
+                "tx_wall_monotonic_before_encode": time.monotonic(),
+                "sender_socket_sndbuf_bytes": self.telemetry_socket.getsockopt(
+                    socket.SOL_SOCKET, socket.SO_SNDBUF
+                ),
+                "trigger": trace_trigger,
+            }
+            payload["timestamp_trace_transport"] = trace_transport
         packets = self.telemetry_encoder.encode(payload)
         if not self._large_telemetry_reported and (
             len(packets) > 1 or packets[0].startswith(COMPRESSED_MAGIC)
@@ -2828,22 +2880,45 @@ class RosCmdVel:
                 flush=True,
             )
             self._large_telemetry_reported = True
+        tx_send_begin = time.monotonic()
         for packet in packets:
             self.telemetry_socket.sendto(
                 packet, (CMD_VEL_UDP_HOST, TELEMETRY_UDP_PORT)
+            )
+        tx_send_end = time.monotonic()
+        if trace_trigger and trace_transport is not None:
+            print(
+                "TIMESTAMP_TRACE_UDP_TX="
+                + json.dumps(
+                    {
+                        **trace_transport,
+                        "datagram_count": len(packets),
+                        "datagram_bytes": [len(packet) for packet in packets],
+                        "tx_send_begin_wall_monotonic": tx_send_begin,
+                        "tx_send_end_wall_monotonic": tx_send_end,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+                flush=True,
             )
 
     def send_lidar_telemetry(
         self, sim_time: float, scans: dict[str, object]
     ) -> None:
         """Send a scan pair independently of the application telemetry loop."""
-        self.send_telemetry(
-            {
-                "schema": LIDAR_TELEMETRY_SCHEMA,
-                "sim_time": float(sim_time),
-                "scans": scans,
-            }
-        )
+        payload: dict[str, object] = {
+            "schema": LIDAR_TELEMETRY_SCHEMA,
+            "sim_time": float(sim_time),
+            "scans": {
+                "scan_01": scans["scan_01"],
+                "scan_02": scans["scan_02"],
+            },
+        }
+        timestamp_trace = scans.get("timestamp_trace")
+        if TIMESTAMP_TRACE_ENABLED and isinstance(timestamp_trace, dict):
+            payload["timestamp_trace"] = timestamp_trace
+        self.send_telemetry(payload)
         self.lidar_udp_tx_count += 1
         self.lidar_udp_tx_times.append(time.monotonic())
 
@@ -3228,7 +3303,9 @@ class PhysxDualLidarScheduler:
                 orientations=np.asarray([robot_orientation(robot_yaw + mount_yaw)], dtype=float),
             )
 
-    def _native_scan(self, topic: str) -> tuple[np.ndarray, np.ndarray, float]:
+    def _native_scan(
+        self, topic: str
+    ) -> tuple[np.ndarray, np.ndarray, float, int | None]:
         started = time.perf_counter()
         reading = self._sensors[topic].get_sensor_reading()
         self._timing_samples["native_reading_fetch"].append(
@@ -3237,6 +3314,12 @@ class PhysxDualLidarScheduler:
         if not reading.is_valid:
             raise RuntimeError(f"native PhysX reading is invalid: {self._paths[topic]}")
         current_time = float(reading.time)
+        reading_physics_step_value = getattr(reading, "physics_step", None)
+        reading_physics_step = (
+            None
+            if reading_physics_step_value is None
+            else int(reading_physics_step_value)
+        )
         previous_time = self._last_native_times[topic]
         if not math.isfinite(current_time) or current_time <= previous_time + 1.0e-9:
             self._duplicate_native_reading_count += 1
@@ -3304,7 +3387,12 @@ class PhysxDualLidarScheduler:
         )
         self._last_native_times[topic] = current_time
         self._native_delta_sec[topic] = delta
-        return endpoint_ranges.copy(), paths.copy(), current_time
+        return (
+            endpoint_ranges.copy(),
+            paths.copy(),
+            current_time,
+            reading_physics_step,
+        )
 
     def _build_payload(
         self, sim_time: float, robot_position: np.ndarray, robot_yaw: float
@@ -3321,9 +3409,22 @@ class PhysxDualLidarScheduler:
         scans: dict[str, object] = {}
         scan_stats: dict[str, dict[str, object]] = {}
         reading_times: list[float] = []
+        reading_trace: dict[str, dict[str, object]] = {}
         for topic, _prim_name, mount, mount_yaw in self._specs:
-            native_ranges, paths, reading_time = self._native_scan(topic)
+            (
+                native_ranges,
+                paths,
+                reading_time,
+                reading_physics_step,
+            ) = self._native_scan(topic)
             reading_times.append(reading_time)
+            reading_trace[topic] = {
+                "reading_physics_step": reading_physics_step,
+                "reading_physics_step_derived_from_time": int(
+                    round(reading_time / PHYSICS_DT)
+                ),
+                "reading_time": reading_time,
+            }
             ranges, stats = merge_native_physx_scan(
                 robot_position, robot_yaw, mount, mount_yaw, native_ranges, paths, leg_snapshot
             )
@@ -3351,6 +3452,16 @@ class PhysxDualLidarScheduler:
         self._timing_samples["full_pair_postprocess"].append(
             (time.perf_counter() - pair_started) * 1000.0
         )
+        if TIMESTAMP_TRACE_ENABLED:
+            scans["timestamp_trace"] = {
+                "current_physics_step": int(
+                    SimulationManager.get_num_physics_steps()
+                ),
+                "timeline_sim_time": float(self.timeline.get_current_time()),
+                "physics_callback_accumulated_sim_time": self.physics_sim_time,
+                "scheduler_sim_time": sim_time,
+                "readings": reading_trace,
+            }
         return scans
 
     def _on_physics_pre_step(self, step_dt: float, _context: object) -> None:
