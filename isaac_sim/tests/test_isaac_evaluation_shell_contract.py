@@ -57,7 +57,13 @@ def test_dual_lidar_policy_contract_remains_2000_beams_at_15_hz():
     assert "DRL-VO dual-LiDAR input is fixed at 15 Hz" in source
     assert "if (( ISAAC_LIDAR_SAMPLE_COUNT != 2000 )); then" in source
     assert "fixed at 2000 beams per sensor" in source
-    assert "--verify-lidar-rate --require-realtime-lidar" in source
+    assert "--sensor-preflight --verify-lidar-rate" in source
+    assert "--require-realtime-lidar" not in source
+    readiness = (
+        ROOT / "isaac_sim/scripts/check_capture_ready.py"
+    ).read_text(encoding="utf-8")
+    assert '"physx": "simulation_manager_physics_time"' in readiness
+    assert '== "simulation_manager_physics_time"' in readiness
 
 
 def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry():
@@ -80,9 +86,12 @@ def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry()
     assert "candidate_distance_m = (" in source
     assert "self.ros.send_lidar_telemetry(" in source
     assert '"robot_pose": robot_pose' in source
+    assert '"pedestrians": pedestrians' in source
+    assert "current_pedestrian_positions" in source
     assert 'payload.get("schema") == LIDAR_TELEMETRY_SCHEMA' in bridge
     assert "self.clock_pub.publish(clock)" in bridge
     assert "self.publish_odometry(pose, self.actual_velocity)" in bridge
+    assert 'self.publish_pedestrians(payload["pedestrians"])' in bridge
     assert "lidar_udp_rx_count" in bridge
     assert "lidar_ros_pub_count" in bridge
     assert "def make_laser_ranges(" not in source

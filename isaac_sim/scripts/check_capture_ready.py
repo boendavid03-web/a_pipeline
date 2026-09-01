@@ -224,13 +224,13 @@ class CaptureReadiness(Node):
                 mode = str(config["lidar_mode"])
                 expected_pairing_timestamp_domain = {
                     "rtx": "isaac_rtx_gmo_timestamp_ns",
-                    "physx": "isaac_telemetry_sim_time",
+                    "physx": "simulation_manager_physics_time",
                 }.get(mode)
                 self.sensor_config_ready = bool(
                     config.get("schema") == "isaac_sensor_config/v1"
                     and config.get("lidar_rate_basis") == "simulation_time"
                     and config.get("lidar_timestamp_domain")
-                    == "isaac_telemetry_sim_time"
+                    == "simulation_manager_physics_time"
                     and config.get("lidar_pairing_timestamp_domain")
                     == expected_pairing_timestamp_domain
                     and 1 <= rate_hz <= 30

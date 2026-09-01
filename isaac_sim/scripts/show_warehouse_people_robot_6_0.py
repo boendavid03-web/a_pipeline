@@ -2920,12 +2920,14 @@ class RosCmdVel:
         sim_time: float,
         scans: dict[str, object],
         robot_pose: list[float],
+        pedestrians: list[dict[str, object]],
     ) -> None:
-        """Send a scan pair and matching physics-step pose."""
+        """Send scans, pose, and pedestrians from one physics-time sample."""
         payload: dict[str, object] = {
             "schema": LIDAR_TELEMETRY_SCHEMA,
             "sim_time": float(sim_time),
             "robot_pose": robot_pose,
+            "pedestrians": pedestrians,
             "scans": {
                 "scan_01": scans["scan_01"],
                 "scan_02": scans["scan_02"],
@@ -3184,9 +3186,13 @@ class PhysxDualLidarScheduler:
         from isaacsim.sensors.experimental.physics import Raycast, RaycastSensor
 
         self.timeline = timeline
+        self.stage = stage
         self.pose_provider = pose_provider
         self.people_lidar = people_lidar
         self.ros = ros
+        self._pedestrian_positions = (
+            character_positions(stage) if PEOPLE_ENABLED else {}
+        )
         self._sensors: dict[str, object] = {}
         self._authoring: dict[str, object] = {}
         self._prims: dict[str, Usd.Prim] = {}
@@ -3686,11 +3692,24 @@ class PhysxDualLidarScheduler:
             if self.ros is not None:
                 started = time.perf_counter()
                 ros_position = stage_to_ros_vector(position)
+                current_pedestrian_positions = (
+                    character_positions(self.stage) if PEOPLE_ENABLED else {}
+                )
+                pedestrians = pedestrian_payload(
+                    current_pedestrian_positions,
+                    self._pedestrian_positions,
+                    LIDAR_PUBLISH_PERIOD_SEC,
+                )
                 self.ros.send_lidar_telemetry(
                     sim_time,
                     scans,
                     [float(ros_position[0]), float(ros_position[1]), float(yaw)],
+                    pedestrians,
                 )
+                self._pedestrian_positions = {
+                    path: value.copy()
+                    for path, value in current_pedestrian_positions.items()
+                }
                 self._timing_samples["udp_serialize_send"].append(
                     (time.perf_counter() - started) * 1000.0
                 )

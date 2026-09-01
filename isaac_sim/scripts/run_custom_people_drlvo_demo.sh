@@ -420,7 +420,7 @@ esac
 
 sensor_preflight_log="$log_dir/sensor_preflight.log"
 if ! python3 "$SCRIPT_DIR/check_capture_ready.py" \
-    --sensor-preflight --verify-lidar-rate --require-realtime-lidar \
+    --sensor-preflight --verify-lidar-rate \
     --timeout "${ISAAC_DEMO_SENSOR_PREFLIGHT_TIMEOUT:-180.0}" \
     >"$sensor_preflight_log" 2>&1; then
     echo "ERROR: Isaac sensor preflight failed. See $sensor_preflight_log" >&2

@@ -557,6 +557,7 @@ class IsaacUdpRosBridge:
         self.last_odom_time = sim_time
         self.odom_pub_count += 1
         self.odom_pub_times.append(time.monotonic())
+        self.publish_pedestrians(payload["pedestrians"])
         publish_trace = self.publish_scans(scans, sim_time)
         self.last_lidar_time = sim_time
         self.lidar_udp_rx_count += 1
