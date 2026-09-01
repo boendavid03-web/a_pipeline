@@ -171,6 +171,9 @@ TIMESTAMP_TRACE_ENABLED = os.environ.get(
 TIMESTAMP_TRACE_MIN_DRIFT_SEC = float(
     os.environ.get("ISAAC_TIMESTAMP_TRACE_MIN_DRIFT_SEC", "5.0")
 )
+PHYSICS_TIME_QUALIFICATION_PATH = os.environ.get(
+    "ISAAC_PHYSICS_TIME_QUALIFICATION_PATH", ""
+).strip()
 TELEMETRY_PUBLISH_PERIOD_SEC = 1.0 / 30.0
 PEDESTRIAN_PUBLISH_PERIOD_SEC = 1.0 / 15.0
 PEDESTRIAN_MIN_VISUAL_CLEARANCE_M = 0.15
@@ -316,6 +319,13 @@ MIN_SIMULATION_FRAME_RATE_HZ = environment_integer(
     1,
     int(round(1.0 / PHYSICS_DT)),
     unit="Hz",
+)
+PHYSICS_TIME_QUALIFICATION_STEPS = environment_integer(
+    "ISAAC_PHYSICS_TIME_QUALIFICATION_STEPS",
+    240,
+    100,
+    300,
+    unit="steps",
 )
 LIDAR_PUBLISH_PERIOD_SEC = 1.0 / float(LIDAR_RATE_HZ)
 PEDESTRIAN_SOCIAL_MODE = environment_choice(
@@ -594,13 +604,14 @@ RTX_LIDAR_PROFILE = environment_choice(
 LIDAR_PAIRING_TIMESTAMP_DOMAIN = (
     "isaac_rtx_gmo_timestamp_ns"
     if LIDAR_MODE == "rtx"
-    else "isaac_telemetry_sim_time"
+    else "simulation_manager_physics_time"
 )
 # GMO timestamps are native sensor counters and are safe for exact front/rear
 # pairing, but they do not necessarily advance at the same rate as the USD
 # timeline when a GUI/render workload drops RTX captures. Every ROS header
-# therefore uses the telemetry timeline shared by /clock, odom, and TF.
-LIDAR_TIMESTAMP_DOMAIN = "isaac_telemetry_sim_time"
+# therefore uses the qualified SimulationManager physics time shared by
+# /clock, odom, TF, and PhysX scan headers.
+LIDAR_TIMESTAMP_DOMAIN = "simulation_manager_physics_time"
 
 
 def parse_args() -> argparse.Namespace:
@@ -793,6 +804,7 @@ from physx_lidar_people import (  # noqa: E402
     physics_capture_due,
     ray_start_offsets_outside_box,
     scene_query_hit_value,
+    summarize_physics_time_qualification,
 )
 
 
@@ -2904,12 +2916,16 @@ class RosCmdVel:
             )
 
     def send_lidar_telemetry(
-        self, sim_time: float, scans: dict[str, object]
+        self,
+        sim_time: float,
+        scans: dict[str, object],
+        robot_pose: list[float],
     ) -> None:
-        """Send a scan pair independently of the application telemetry loop."""
+        """Send a scan pair and matching physics-step pose."""
         payload: dict[str, object] = {
             "schema": LIDAR_TELEMETRY_SCHEMA,
             "sim_time": float(sim_time),
+            "robot_pose": robot_pose,
             "scans": {
                 "scan_01": scans["scan_01"],
                 "scan_02": scans["scan_02"],
@@ -3207,6 +3223,17 @@ class PhysxDualLidarScheduler:
         self._next_capture_sim_time = self.physics_sim_time + LIDAR_PUBLISH_PERIOD_SEC
         self._capture_armed = False
         self._capture_pose: tuple[np.ndarray, float] | None = None
+        self._capture_sim_time: float | None = None
+        physics_hz = int(round(1.0 / PHYSICS_DT))
+        if physics_hz % LIDAR_RATE_HZ != 0:
+            raise RuntimeError(
+                "PhysX LiDAR cadence requires an integer physics-step divisor: "
+                f"physics_hz={physics_hz}, lidar_hz={LIDAR_RATE_HZ}"
+            )
+        self._capture_period_steps = physics_hz // LIDAR_RATE_HZ
+        self._qualification_app_update_sequence: int | None = None
+        self._qualification_samples: list[dict[str, float | int]] = []
+        self._qualification_written = False
 
         dimensions = np.asarray(robot_collision_dimensions_m, dtype=float)
         if dimensions.shape != (3,) or np.any(~np.isfinite(dimensions)) or np.any(dimensions <= 0.0):
@@ -3291,6 +3318,72 @@ class PhysxDualLidarScheduler:
             event=IsaacEvents.POST_PHYSICS_STEP,
             order=100,
         )
+
+    def begin_app_update(self, sequence: int) -> None:
+        """Identify the application update containing subsequent callbacks."""
+        self._qualification_app_update_sequence = int(sequence)
+
+    def _record_physics_time_qualification(self, step_dt: float) -> None:
+        if (
+            not PHYSICS_TIME_QUALIFICATION_PATH
+            or self._qualification_app_update_sequence is None
+            or len(self._qualification_samples) >= PHYSICS_TIME_QUALIFICATION_STEPS
+        ):
+            return
+        self._qualification_samples.append(
+            {
+                "app_update_sequence": self._qualification_app_update_sequence,
+                "physics_callback_sequence": len(self._qualification_samples) + 1,
+                "physics_step_count": int(
+                    SimulationManager.get_num_physics_steps()
+                ),
+                "timeline_time": float(self.timeline.get_current_time()),
+                "simulation_manager_time": float(
+                    SimulationManager.get_simulation_time()
+                ),
+                "callback_dt": float(step_dt),
+                "wall_monotonic": time.monotonic(),
+            }
+        )
+
+    @property
+    def physics_time_qualification_complete(self) -> bool:
+        return bool(
+            PHYSICS_TIME_QUALIFICATION_PATH
+            and len(self._qualification_samples)
+            >= PHYSICS_TIME_QUALIFICATION_STEPS
+        )
+
+    def write_physics_time_qualification(self) -> dict[str, object]:
+        if not self.physics_time_qualification_complete:
+            raise RuntimeError("physics-time qualification is not complete")
+        summary = summarize_physics_time_qualification(
+            self._qualification_samples,
+            1.0 / PHYSICS_DT,
+        )
+        if not self._qualification_written:
+            output_path = Path(PHYSICS_TIME_QUALIFICATION_PATH).expanduser().resolve()
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "schema": "isaac_physics_time_qualification/v1",
+                "summary": summary,
+                "samples": self._qualification_samples,
+            }
+            temporary_path = output_path.with_name(output_path.name + ".tmp")
+            temporary_path.write_text(
+                json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            temporary_path.replace(output_path)
+            self._qualification_written = True
+            print(
+                "PHYSICS_TIME_QUALIFICATION_COMPLETE="
+                + json.dumps(
+                    {"path": str(output_path), **summary}, sort_keys=True
+                ),
+                flush=True,
+            )
+        return summary
 
     def _set_sensor_poses(self, robot_position: np.ndarray, robot_yaw: float) -> None:
         for topic, _prim_name, mount, mount_yaw in self._specs:
@@ -3468,25 +3561,21 @@ class PhysxDualLidarScheduler:
         if self.failure is not None or not math.isfinite(step_dt) or step_dt <= 0.0:
             return
         try:
+            self._record_physics_time_qualification(step_dt)
             self.physics_steps += 1
             physics_wall_time = time.monotonic()
             if self._physics_first_wall_time is None:
                 self._physics_first_wall_time = physics_wall_time
             self._physics_last_wall_time = physics_wall_time
             self.physics_sim_time += float(step_dt)
-            if self.physics_sim_time + 1.0e-9 < self._next_capture_sim_time:
+            if self.physics_steps % self._capture_period_steps != 0:
                 return
-            due, self._next_capture_sim_time, missed = physics_capture_due(
-                self.physics_sim_time,
-                self._next_capture_sim_time,
-                LIDAR_PUBLISH_PERIOD_SEC,
-            )
-            if not due:
-                return
-            self.missed_capture_count += missed
             position, yaw = self.pose_provider()
             self._set_sensor_poses(np.asarray(position, dtype=float), float(yaw))
             self._capture_pose = (np.asarray(position, dtype=float).copy(), float(yaw))
+            self._capture_sim_time = float(
+                SimulationManager.get_simulation_time()
+            )
             self._capture_armed = True
         except Exception as exc:
             self.failure = exc
@@ -3585,14 +3674,23 @@ class PhysxDualLidarScheduler:
         if self.failure is not None or not math.isfinite(step_dt) or step_dt <= 0.0:
             return
         try:
-            if not self._capture_armed or self._capture_pose is None:
+            if (
+                not self._capture_armed
+                or self._capture_pose is None
+                or self._capture_sim_time is None
+            ):
                 return
-            sim_time = self.physics_sim_time
+            sim_time = self._capture_sim_time
             position, yaw = self._capture_pose
             scans = self._build_payload(sim_time, position, yaw)
             if self.ros is not None:
                 started = time.perf_counter()
-                self.ros.send_lidar_telemetry(sim_time, scans)
+                ros_position = stage_to_ros_vector(position)
+                self.ros.send_lidar_telemetry(
+                    sim_time,
+                    scans,
+                    [float(ros_position[0]), float(ros_position[1]), float(yaw)],
+                )
                 self._timing_samples["udp_serialize_send"].append(
                     (time.perf_counter() - started) * 1000.0
                 )
@@ -3601,6 +3699,7 @@ class PhysxDualLidarScheduler:
             self.capture_count += 1
             self._capture_armed = False
             self._capture_pose = None
+            self._capture_sim_time = None
         except Exception as exc:
             self.failure = exc
             for prim in self._prims.values():
@@ -5102,7 +5201,7 @@ def main() -> int:
             elif ros is not None:
                 ros.spin_once()
                 command, command_watchdog_active, command_age_sec = ros.command(
-                    float(timeline.get_current_time())
+                    float(SimulationManager.get_simulation_time())
                 )
             else:
                 command = (0.0, 0.0, 0.0)
@@ -5152,7 +5251,9 @@ def main() -> int:
                 pending_reset_event = {
                     "schema": "isaac_reset_event/v1",
                     "sequence_id": sequence_id,
-                    "simulation_time_sec": float(timeline.get_current_time()),
+                    "simulation_time_sec": float(
+                        SimulationManager.get_simulation_time()
+                    ),
                     "accepted": rejection_reason is None,
                     "reason": rejection_reason or "reset_applied",
                     "pose": [reset_x, reset_y, reset_yaw],
@@ -5168,10 +5269,19 @@ def main() -> int:
                 collision_proxy.set_dynamic_command(command)
             # This also advances IRA behavior trees and Skel animation when
             # the optional people pipeline is enabled.
+            if physx_lidar is not None:
+                physx_lidar.begin_app_update(frame)
             simulation_app.update()
             if physx_lidar is not None:
                 physx_lidar.raise_if_failed()
+                if physx_lidar.physics_time_qualification_complete:
+                    physx_lidar.write_physics_time_qualification()
+                    exit_reason = "physics_time_qualification_complete"
+                    break
             sim_time = float(timeline.get_current_time())
+            authoritative_ros_sim_time = float(
+                SimulationManager.get_simulation_time()
+            )
             if (
                 free_space_guard is not None
                 and sim_time
@@ -5293,7 +5403,7 @@ def main() -> int:
                         )
                         last_collision_report = now
             pose_sample = (
-                sim_time,
+                authoritative_ros_sim_time,
                 *stage_to_ros_vector(navigation_position)[:2].tolist(),
                 navigation_yaw,
             )
@@ -5356,7 +5466,7 @@ def main() -> int:
             ):
                 telemetry: dict[str, object] = {
                     "schema": TELEMETRY_SCHEMA,
-                    "sim_time": sim_time,
+                    "sim_time": authoritative_ros_sim_time,
                     "sensor_config": {
                         "schema": "isaac_sensor_config/v1",
                         "lidar_mode": LIDAR_MODE,

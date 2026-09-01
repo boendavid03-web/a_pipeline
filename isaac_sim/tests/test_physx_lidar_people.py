@@ -22,6 +22,7 @@ from physx_lidar_people import (  # noqa: E402
     ray_start_offsets_outside_box,
     ray_capsule_intersection_matrix,
     scene_query_hit_value,
+    summarize_physics_time_qualification,
 )
 
 
@@ -177,6 +178,85 @@ def test_capture_timestamps_are_strictly_monotonic():
             timestamps.append(current)
     assert len(timestamps) == 15
     assert np.all(np.diff(timestamps) > 0.0)
+
+
+def test_physics_time_qualification_accepts_per_step_manager_time_with_timeline_duplicates():
+    samples = []
+    for index in range(1, 121):
+        physics_step = 1000 + index
+        samples.append(
+            {
+                "app_update_sequence": (index - 1) // 4,
+                "physics_callback_sequence": index,
+                "physics_step_count": physics_step,
+                "timeline_time": 20.0 + ((index - 1) // 4) / 15.0,
+                "simulation_manager_time": physics_step / 60.0,
+                "callback_dt": 1.0 / 60.0,
+                "wall_monotonic": 100.0 + index / 20.0,
+            }
+        )
+    summary = summarize_physics_time_qualification(samples, 60.0)
+    assert summary["same_app_update_multi_physics_callbacks"] is True
+    assert summary["same_app_update_max_physics_callbacks"] == 4
+    assert summary["timeline_duplicate_count"] == 90
+    assert summary["simulation_manager_duplicate_count"] == 0
+    assert summary["simulation_manager_non_monotonic_count"] == 0
+    assert summary["expected_dt_error_max"] < 1.0e-12
+    assert summary["step_mapping_error"]["span"] < 1.0e-12
+    assert abs(summary["long_term_drift_slope_sec_per_sim_sec"]) < 1.0e-12
+    assert summary["qualification"] == "PASS"
+
+
+def test_physics_time_qualification_rejects_same_app_manager_duplicates():
+    samples = []
+    for index in range(1, 101):
+        samples.append(
+            {
+                "app_update_sequence": (index - 1) // 2,
+                "physics_callback_sequence": index,
+                "physics_step_count": index,
+                "timeline_time": ((index - 1) // 2) / 30.0,
+                "simulation_manager_time": ((index - 1) // 2) / 30.0,
+                "callback_dt": 1.0 / 60.0,
+                "wall_monotonic": 100.0 + index / 20.0,
+            }
+        )
+    summary = summarize_physics_time_qualification(samples, 60.0)
+    assert summary["simulation_manager_duplicate_count"] == 50
+    assert summary["simulation_manager_strictly_increasing"] is False
+    assert summary["qualification"] == "FAIL"
+
+
+def test_production_physx_stamp_uses_qualified_time_and_integer_step_cadence():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "scripts/show_warehouse_people_robot_6_0.py"
+    ).read_text()
+    assert "self.physics_steps % self._capture_period_steps" in source
+    assert "self._capture_sim_time = float(" in source
+    assert "SimulationManager.get_simulation_time()" in source
+    post_callback = source[
+        source.index("    def _on_physics_post_step(") : source.index(
+            "    def close(", source.index("    def _on_physics_post_step(")
+        )
+    ]
+    assert "sim_time = self._capture_sim_time" in post_callback
+    assert "sim_time = self.physics_sim_time" not in post_callback
+    assert "self.timeline.get_current_time()" not in post_callback
+    assert '"sim_time": authoritative_ros_sim_time' in source
+    assert 'LIDAR_TIMESTAMP_DOMAIN = "simulation_manager_physics_time"' in source
+
+    relay = (
+        Path(__file__).resolve().parents[1] / "scripts/cmd_vel_udp_relay.py"
+    ).read_text()
+    handler = relay[
+        relay.index("    def handle_lidar_telemetry(") : relay.index(
+            "    def publish_odometry("
+        )
+    ]
+    assert handler.index("self.clock_pub.publish(clock)") < handler.index(
+        "self.publish_odometry(pose, self.actual_velocity)"
+    ) < handler.index("self.publish_scans(scans, sim_time)")
 
 
 def test_bad_native_depth_is_nonfatal_and_endpoint_geometry_remains_range_source():

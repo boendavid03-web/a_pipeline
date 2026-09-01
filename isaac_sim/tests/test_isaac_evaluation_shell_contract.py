@@ -70,16 +70,19 @@ def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry()
     assert "from isaacsim.sensors.experimental.physics import Raycast, RaycastSensor" in source
     assert "event=IsaacEvents.PRE_PHYSICS_STEP" in source
     assert "event=IsaacEvents.POST_PHYSICS_STEP" in source
-    assert "physics_capture_due(" in source
+    assert "self.physics_steps % self._capture_period_steps" in source
+    assert "SimulationManager.get_simulation_time()" in source
     assert "def merge_native_physx_scan(" in source
     assert "native_ranges_m" in source
     assert "query.raycast_all(" in source
     assert "ray_start_offsets_outside_box(" in source
     assert "raycast_all" in source
     assert "candidate_distance_m = (" in source
-    assert "self.ros.send_lidar_telemetry(sim_time, scans)" in source
+    assert "self.ros.send_lidar_telemetry(" in source
+    assert '"robot_pose": robot_pose' in source
     assert 'payload.get("schema") == LIDAR_TELEMETRY_SCHEMA' in bridge
-    assert "Publish directly on receipt" in bridge
+    assert "self.clock_pub.publish(clock)" in bridge
+    assert "self.publish_odometry(pose, self.actual_velocity)" in bridge
     assert "lidar_udp_rx_count" in bridge
     assert "lidar_ros_pub_count" in bridge
     assert "def make_laser_ranges(" not in source
@@ -111,6 +114,21 @@ def test_timing_catchup_and_pose_truth_are_explicitly_instrumented():
     assert '"--app-update-rate-limit-hz"' in source
     assert "navigation_yaw_unwrapped += math.atan2(" in source
     assert '"robot_final_yaw_unwrapped_ros_rad": navigation_yaw_unwrapped' in source
+
+
+def test_simulation_manager_physics_time_qualification_is_default_off_and_per_step():
+    source = ISAAC_RUNNER.read_text(encoding="utf-8")
+    assert '"ISAAC_PHYSICS_TIME_QUALIFICATION_PATH", ""' in source
+    assert "SimulationManager.get_simulation_time()" in source
+    assert '"app_update_sequence"' in source
+    assert '"physics_callback_sequence"' in source
+    assert '"physics_step_count"' in source
+    assert '"timeline_time"' in source
+    assert '"simulation_manager_time"' in source
+    assert '"callback_dt"' in source
+    assert '"wall_monotonic"' in source
+    assert "physx_lidar.begin_app_update(frame)" in source
+    assert 'exit_reason = "physics_time_qualification_complete"' in source
 
 
 def test_gazebo_social_mode_uses_persistent_full_2d_follow_target():

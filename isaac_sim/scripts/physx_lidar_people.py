@@ -25,6 +25,107 @@ PERSON_QUERY_COLLIDER_SUFFIXES = (
 ENDPOINT_HIT_WORLD_TOLERANCE_M = 5.0e-5
 
 
+def summarize_physics_time_qualification(
+    samples: Sequence[Mapping[str, float | int]],
+    physics_hz: float,
+) -> dict[str, object]:
+    """Summarize a per-physics-callback time-source qualification trace."""
+    if len(samples) < 2:
+        raise ValueError("physics-time qualification requires at least two samples")
+    if not math.isfinite(physics_hz) or physics_hz <= 0.0:
+        raise ValueError("physics_hz must be finite and positive")
+
+    app_updates = np.asarray(
+        [sample["app_update_sequence"] for sample in samples], dtype=np.int64
+    )
+    physics_steps = np.asarray(
+        [sample["physics_step_count"] for sample in samples], dtype=np.int64
+    )
+    timeline_times = np.asarray(
+        [sample["timeline_time"] for sample in samples], dtype=float
+    )
+    simulation_manager_times = np.asarray(
+        [sample["simulation_manager_time"] for sample in samples], dtype=float
+    )
+    callback_dts = np.asarray(
+        [sample["callback_dt"] for sample in samples], dtype=float
+    )
+    if (
+        np.any(~np.isfinite(timeline_times))
+        or np.any(~np.isfinite(simulation_manager_times))
+        or np.any(~np.isfinite(callback_dts))
+    ):
+        raise ValueError("qualification samples must contain finite times")
+
+    expected_dt = 1.0 / physics_hz
+    timeline_deltas = np.diff(timeline_times)
+    manager_deltas = np.diff(simulation_manager_times)
+    tolerance = 1.0e-12
+    _, callbacks_per_app_update = np.unique(app_updates, return_counts=True)
+    multi_callback_counts = callbacks_per_app_update[callbacks_per_app_update > 1]
+    mapping_errors = simulation_manager_times - physics_steps / physics_hz
+    mapping_error_span = float(np.max(mapping_errors) - np.min(mapping_errors))
+    centered_time = simulation_manager_times - simulation_manager_times[0]
+    centered_error = mapping_errors - mapping_errors[0]
+    slope_denominator = float(np.dot(centered_time, centered_time))
+    drift_slope = (
+        float(np.dot(centered_time, centered_error) / slope_denominator)
+        if slope_denominator > 0.0
+        else math.inf
+    )
+    expected_dt_errors = np.abs(manager_deltas - expected_dt)
+    manager_duplicate_count = int(np.count_nonzero(np.abs(manager_deltas) <= tolerance))
+    manager_non_monotonic_count = int(np.count_nonzero(manager_deltas < -tolerance))
+    manager_strictly_increasing = bool(np.all(manager_deltas > 0.0))
+    qualification_pass = bool(
+        multi_callback_counts.size > 0
+        and manager_strictly_increasing
+        and manager_duplicate_count == 0
+        and manager_non_monotonic_count == 0
+        and float(np.max(expected_dt_errors)) <= 1.0e-6
+        and mapping_error_span <= 1.0e-6
+        and abs(drift_slope) <= 1.0e-6
+    )
+    return {
+        "physics_hz": float(physics_hz),
+        "physics_steps_observed": len(samples),
+        "same_app_update_multi_physics_callbacks": bool(
+            multi_callback_counts.size > 0
+        ),
+        "same_app_update_multi_callback_group_count": int(
+            multi_callback_counts.size
+        ),
+        "same_app_update_max_physics_callbacks": int(
+            np.max(callbacks_per_app_update)
+        ),
+        "timeline_duplicate_count": int(
+            np.count_nonzero(np.abs(timeline_deltas) <= tolerance)
+        ),
+        "timeline_non_monotonic_count": int(
+            np.count_nonzero(timeline_deltas < -tolerance)
+        ),
+        "simulation_manager_duplicate_count": manager_duplicate_count,
+        "simulation_manager_non_monotonic_count": manager_non_monotonic_count,
+        "simulation_manager_strictly_increasing": manager_strictly_increasing,
+        "simulation_manager_delta": {
+            "median": float(np.median(manager_deltas)),
+            "p95": float(np.percentile(manager_deltas, 95)),
+            "min": float(np.min(manager_deltas)),
+            "max": float(np.max(manager_deltas)),
+        },
+        "expected_dt": expected_dt,
+        "expected_dt_error_max": float(np.max(expected_dt_errors)),
+        "step_mapping_error": {
+            "median": float(np.median(mapping_errors)),
+            "min": float(np.min(mapping_errors)),
+            "max": float(np.max(mapping_errors)),
+            "span": mapping_error_span,
+        },
+        "long_term_drift_slope_sec_per_sim_sec": drift_slope,
+        "qualification": "PASS" if qualification_pass else "FAIL",
+    }
+
+
 def endpoint_ranges_from_world_geometry(
     ray_end_points_world: object,
     ray_origins_world: object,

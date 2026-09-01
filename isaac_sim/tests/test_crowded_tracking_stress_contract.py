@@ -167,9 +167,14 @@ def test_official_physx_backend_uses_native_experimental_sensor():
     assert "def merge_native_physx_scan(" in source
     assert "native_ranges_m" in source
     assert "LIDAR_RANGE_MIN_M + candidate_distance_stage * scale" in source
-    assert 'self.ros.send_lidar_telemetry(sim_time, scans)' in source
+    assert "self.physics_steps % self._capture_period_steps" in source
+    assert "self._capture_sim_time = float(" in source
+    assert "SimulationManager.get_simulation_time()" in source
+    assert "self.ros.send_lidar_telemetry(" in source
+    assert '"robot_pose": robot_pose' in source
     assert '"isaacsim.sensors.experimental.physics"' in source
     assert "ray_start_offsets_outside_box" in helper
     assert "is_ignored_robot_query_collider" in helper
     assert "LIDAR_TELEMETRY_SCHEMA" in relay
-    assert "Publish directly on receipt" in relay
+    assert "self.clock_pub.publish(clock)" in relay
+    assert "self.publish_odometry(pose, self.actual_velocity)" in relay

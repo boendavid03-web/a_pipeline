@@ -164,7 +164,14 @@ class IsaacUdpRosBridge:
         self.episode_active = False
         self.stop_started_sim_time: float | None = None
         self.robot_pose = [0.0, 0.0, 0.0]
+        self.actual_velocity = [0.0, 0.0, 0.0]
         self.last_lidar_time = -math.inf
+        self.last_clock_time = -math.inf
+        self.last_odom_time = -math.inf
+        self.clock_pub_count = 0
+        self.odom_pub_count = 0
+        self.clock_pub_times: deque[float] = deque(maxlen=256)
+        self.odom_pub_times: deque[float] = deque(maxlen=256)
         self.lidar_udp_rx_count = 0
         self.lidar_udp_rx_times: deque[float] = deque(maxlen=256)
         self.lidar_ros_pub_count = 0
@@ -532,9 +539,24 @@ class IsaacUdpRosBridge:
         scans = payload["scans"]
         if not isinstance(scans, dict):
             raise ValueError("lidar scans must be an object")
-        # Publish directly on receipt.  Waiting for the lower-rate general
-        # telemetry stream would reintroduce the app-loop rate limit that this
-        # separate LiDAR datagram is designed to remove.
+        pose = finite_vector(payload["robot_pose"], 3, "lidar.robot_pose")
+        if sim_time + 1.0e-9 < self.sim_time:
+            raise ValueError(
+                "lidar physics time moved behind ROS clock: "
+                f"clock={self.sim_time}, lidar={sim_time}"
+            )
+        self.sim_time = sim_time
+        self.robot_pose = pose
+        clock = Clock()
+        clock.clock = self.stamp(sim_time)
+        self.clock_pub.publish(clock)
+        self.last_clock_time = sim_time
+        self.clock_pub_count += 1
+        self.clock_pub_times.append(time.monotonic())
+        odom_trace = self.publish_odometry(pose, self.actual_velocity)
+        self.last_odom_time = sim_time
+        self.odom_pub_count += 1
+        self.odom_pub_times.append(time.monotonic())
         publish_trace = self.publish_scans(scans, sim_time)
         self.last_lidar_time = sim_time
         self.lidar_udp_rx_count += 1
@@ -577,6 +599,7 @@ class IsaacUdpRosBridge:
                         "UDP_RX_stamp": sim_time,
                         "UDP_RX_wall_monotonic": rx_wall,
                         "ROS_scan_stamp": publish_trace["front_scan_stamp"],
+                        "Odometry_header_stamp": odom_trace["odom_stamp"],
                         "ROS_publish_wall_monotonic": publish_trace[
                             "front_publish_wall_monotonic"
                         ],
@@ -709,7 +732,7 @@ class IsaacUdpRosBridge:
             raise ValueError("sensor_config lidar rate or sample count is invalid")
         expected_pairing_timestamp_domain = {
             "rtx": "isaac_rtx_gmo_timestamp_ns",
-            "physx": "isaac_telemetry_sim_time",
+            "physx": "simulation_manager_physics_time",
         }.get(mode)
         valid_profile = (
             profile in {"example_dense", "navigation_2d_32k", "rplidar_s2e"}
@@ -720,7 +743,7 @@ class IsaacUdpRosBridge:
             not valid_profile
             or
             rate_basis != "simulation_time"
-            or timestamp_domain != "isaac_telemetry_sim_time"
+            or timestamp_domain != "simulation_manager_physics_time"
             or pairing_timestamp_domain != expected_pairing_timestamp_domain
         ):
             raise ValueError(
@@ -760,6 +783,8 @@ class IsaacUdpRosBridge:
             self.episode_active = False
             self.stop_started_sim_time = None
             self.last_lidar_time = -math.inf
+            self.last_clock_time = -math.inf
+            self.last_odom_time = -math.inf
             self.publish_static_tf()
         self.sim_time = sim_time
         self.last_telemetry_time = sim_time
@@ -767,9 +792,19 @@ class IsaacUdpRosBridge:
         if sensor_config is not None:
             self.publish_sensor_config(sensor_config)
 
-        clock = Clock()
-        clock.clock = self.stamp(sim_time)
-        self.clock_pub.publish(clock)
+        publish_clock_and_odom = sim_time > self.last_clock_time + 1.0e-9
+        if sim_time + 1.0e-9 < self.last_clock_time:
+            raise ValueError(
+                "state physics time moved behind ROS clock: "
+                f"clock={self.last_clock_time}, state={sim_time}"
+            )
+        if publish_clock_and_odom:
+            clock = Clock()
+            clock.clock = self.stamp(sim_time)
+            self.clock_pub.publish(clock)
+            self.last_clock_time = sim_time
+            self.clock_pub_count += 1
+            self.clock_pub_times.append(time.monotonic())
         event = payload.get("event")
         if event == "shutdown":
             if MANUAL_EPISODE_EVENTS_ENABLED and self.episode_active:
@@ -790,7 +825,13 @@ class IsaacUdpRosBridge:
         _legacy_command = finite_vector(payload["command"], 3, "command")
         self.robot_pose = pose
         actual_velocity = self.publish_actuation_state(payload)
-        odom_trace = self.publish_odometry(pose, actual_velocity)
+        self.actual_velocity = actual_velocity
+        odom_trace = None
+        if publish_clock_and_odom:
+            odom_trace = self.publish_odometry(pose, actual_velocity)
+            self.last_odom_time = sim_time
+            self.odom_pub_count += 1
+            self.odom_pub_times.append(time.monotonic())
         if "pedestrians" in payload:
             self.publish_pedestrians(payload["pedestrians"])
         scans = payload.get("scans")
@@ -817,10 +858,16 @@ class IsaacUdpRosBridge:
                         "UDP_TX_wall_monotonic_before_encode": tx_wall,
                         "UDP_RX_stamp": sim_time,
                         "UDP_RX_wall_monotonic": rx_wall,
-                        "Odometry_header_stamp": odom_trace["odom_stamp"],
-                        "Odometry_publish_wall_monotonic": odom_trace[
-                            "odom_publish_wall_monotonic"
-                        ],
+                        "Odometry_header_stamp": (
+                            odom_trace["odom_stamp"]
+                            if odom_trace is not None
+                            else None
+                        ),
+                        "Odometry_publish_wall_monotonic": (
+                            odom_trace["odom_publish_wall_monotonic"]
+                            if odom_trace is not None
+                            else None
+                        ),
                         "clock": sim_time,
                         "udp_sequence_id": int(transport["udp_sequence_id"]),
                         "state_sequence_id": int(
