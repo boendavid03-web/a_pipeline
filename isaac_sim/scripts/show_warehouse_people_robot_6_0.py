@@ -320,6 +320,12 @@ MIN_SIMULATION_FRAME_RATE_HZ = environment_integer(
     int(round(1.0 / PHYSICS_DT)),
     unit="Hz",
 )
+PHYSX_GPU_DYNAMICS_ENABLED = environment_flag(
+    "ISAAC_PHYSX_GPU_DYNAMICS", False
+)
+PHYSX_GPU_DEVICE = environment_integer(
+    "ISAAC_PHYSX_GPU_DEVICE", 0, 0, 15
+)
 PHYSICS_TIME_QUALIFICATION_STEPS = environment_integer(
     "ISAAC_PHYSICS_TIME_QUALIFICATION_STEPS",
     240,
@@ -4519,7 +4525,27 @@ def main() -> int:
         # 15 Hz lidar behave like the historical 10 Hz default.  This is the
         # initialization sequence used by Isaac Sim 6's own standalone RTX
         # lidar examples.  Preserve the existing 60 Hz physics contract.
+        # Keep CPU readback enabled even when rigid-body dynamics and broadphase
+        # are offloaded.  SimulationManager.setup_simulation(device="cuda:0")
+        # also enables suppressReadback, which would invalidate this runner's
+        # authoritative pose, collision, LiDAR, and evaluator data paths.
         SimulationManager.setup_simulation(dt=PHYSICS_DT, device="cpu")
+        physics_execution_device = "cpu"
+        physics_broadphase = "MBP"
+        physics_gpu_dynamics = False
+        if PHYSX_GPU_DYNAMICS_ENABLED:
+            carb.settings.get_settings().set_int(
+                "/physics/cudaDevice", PHYSX_GPU_DEVICE
+            )
+            physics_scenes = SimulationManager.get_physics_scenes()
+            if not physics_scenes:
+                raise RuntimeError("GPU PhysX requested without a PhysicsScene")
+            for physics_scene in physics_scenes:
+                physics_scene.set_broadphase_type("GPU")
+                physics_scene.set_enabled_gpu_dynamics(True)
+            physics_execution_device = f"cuda:{PHYSX_GPU_DEVICE}"
+            physics_broadphase = "GPU"
+            physics_gpu_dynamics = True
         # In variable-step GUI playback Kit advances the timeline from wall
         # time, but PhysX limits catch-up work to roughly
         # physics_hz/minFrameRate steps per application update.  The historical
@@ -4712,6 +4738,13 @@ def main() -> int:
             f"minFrameRate={min_frame_rate}, "
             f"multi_tick={multi_tick}, per_sensor_tlas={per_sensor_tlas}, "
             f"physics_dt={SimulationManager.get_physics_dt()}",
+            flush=True,
+        )
+        print(
+            "[WAREHOUSE-ROBOT] PhysX execution: "
+            f"device={physics_execution_device}, "
+            f"gpu_dynamics={physics_gpu_dynamics}, "
+            f"broadphase={physics_broadphase}, cpu_readback=True",
             flush=True,
         )
 
@@ -5140,6 +5173,10 @@ def main() -> int:
                     "manual_timing": manual_mode,
                     "fixed_time_stepping": fixed_time,
                     "min_simulation_frame_rate_hz": min_frame_rate,
+                    "physics_execution_device": physics_execution_device,
+                    "physics_gpu_dynamics": physics_gpu_dynamics,
+                    "physics_broadphase": physics_broadphase,
+                    "physics_cpu_readback": True,
                     "app_update_rate_limit_hz": (
                         ARGS.app_update_rate_limit_hz or None
                     ),
@@ -5517,6 +5554,10 @@ def main() -> int:
                         "manual_timing": manual_mode,
                         "fixed_time_stepping": fixed_time,
                         "min_simulation_frame_rate_hz": min_frame_rate,
+                        "physics_execution_device": physics_execution_device,
+                        "physics_gpu_dynamics": physics_gpu_dynamics,
+                        "physics_broadphase": physics_broadphase,
+                        "physics_cpu_readback": True,
                         "physics_rate_hz": 1.0 / PHYSICS_DT,
                         "app_update_rate_limit_hz": (
                             ARGS.app_update_rate_limit_hz or None
@@ -6011,6 +6052,10 @@ def main() -> int:
             "physics_steps_main_loop": main_physics_steps,
             "physics_steps_per_expected_timeline_step": physics_timeline_ratio,
             "min_simulation_frame_rate_hz": min_frame_rate,
+            "physics_execution_device": physics_execution_device,
+            "physics_gpu_dynamics": physics_gpu_dynamics,
+            "physics_broadphase": physics_broadphase,
+            "physics_cpu_readback": True,
             "manual_timing": manual_mode,
             "fixed_time_stepping": fixed_time,
             "app_update_rate_limit_hz": ARGS.app_update_rate_limit_hz or None,

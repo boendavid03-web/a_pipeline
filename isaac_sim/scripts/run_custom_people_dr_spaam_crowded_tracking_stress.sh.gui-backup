@@ -231,7 +231,7 @@ export ISAAC_CUSTOM_SPAWN_Z_M=0.01
 
 set +e
 "$SCRIPT_DIR/run_isaac_6_0_warehouse_people_robot.sh" \
-    --duration "$DURATION_SEC" \
+    --headless --duration "$DURATION_SEC" \
     >"$RUN_DIR/isaac.log" 2>&1 &
 isaac_pid=$!
 (

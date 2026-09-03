@@ -46,6 +46,24 @@ case "$ISAAC_RTX_LIDAR_PROFILE" in
         exit 2
         ;;
 esac
+export ISAAC_PHYSX_GPU_DYNAMICS="${ISAAC_PHYSX_GPU_DYNAMICS:-0}"
+case "${ISAAC_PHYSX_GPU_DYNAMICS,,}" in
+    1|true|yes|on) ISAAC_PHYSX_GPU_DYNAMICS=1 ;;
+    0|false|no|off) ISAAC_PHYSX_GPU_DYNAMICS=0 ;;
+    *) echo "ERROR: ISAAC_PHYSX_GPU_DYNAMICS must be a boolean value." >&2; exit 2 ;;
+esac
+export ISAAC_PHYSX_GPU_DEVICE="${ISAAC_PHYSX_GPU_DEVICE:-0}"
+export ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB="${ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB:-8192}"
+if [[ ! "$ISAAC_PHYSX_GPU_DEVICE" =~ ^[0-9]+$ ]] || (( ISAAC_PHYSX_GPU_DEVICE > 15 )); then
+    echo "ERROR: ISAAC_PHYSX_GPU_DEVICE must be an integer from 0 through 15." >&2
+    exit 2
+fi
+if [[ ! "$ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB" =~ ^[0-9]+$ ]] \
+    || (( ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB < 2048 )); then
+    echo "ERROR: ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB must be at least 2048." >&2
+    exit 2
+fi
+export ISAAC_PHYSX_GPU_DYNAMICS ISAAC_PHYSX_GPU_DEVICE ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB
 
 # The user may launch this from a desktop terminal whose PATH does not include
 # ripgrep.  Kernel monitoring and single-instance protection must not depend
@@ -104,6 +122,23 @@ if command -v nvidia-smi >/dev/null 2>&1; then
             exit 6
         fi
     done < <(nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits 2>/dev/null || true)
+    if (( ISAAC_PHYSX_GPU_DYNAMICS )); then
+        GPU_FREE_MEMORY_MIB="$(
+            nvidia-smi --id="$ISAAC_PHYSX_GPU_DEVICE" \
+                --query-gpu=memory.free --format=csv,noheader,nounits \
+                | head -n 1 | tr -d '[:space:]'
+        )"
+        if [[ ! "$GPU_FREE_MEMORY_MIB" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: could not read free memory for GPU $ISAAC_PHYSX_GPU_DEVICE." >&2
+            exit 6
+        fi
+        if (( GPU_FREE_MEMORY_MIB < ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB )); then
+            echo "ERROR: GPU PhysX requested with only ${GPU_FREE_MEMORY_MIB} MiB free; " \
+                "at least ${ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB} MiB is required." >&2
+            exit 8
+        fi
+        echo "ISAAC_PHYSX_GPU_PREFLIGHT=PASS device=$ISAAC_PHYSX_GPU_DEVICE free_mib=$GPU_FREE_MEMORY_MIB reserve_mib=$ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB"
+    fi
 fi
 
 # A process-only check is not enough after a fatal driver or kernel fault: the
@@ -522,6 +557,7 @@ if [[ "$ISAAC_SCENE" == "custom" ]]; then
 fi
 echo "A/B mode: robot collision protection=$ISAAC_ROBOT_COLLISION_PROTECTION; pedestrian avoidance=$ISAAC_PEDESTRIAN_AVOIDANCE_MODE; pedestrian social=$ISAAC_PEDESTRIAN_SOCIAL_MODE"
 echo "Robot physics: $ISAAC_ROBOT_PHYSICS (dynamic rigid body in the custom scene)"
+echo "PhysX execution: gpu_dynamics=$ISAAC_PHYSX_GPU_DYNAMICS device=$ISAAC_PHYSX_GPU_DEVICE min_free_memory_mib=$ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB cpu_readback=1"
 echo "LiDAR mode: $ISAAC_LIDAR_MODE (rtx=native material/angle intensity; physx=native RaycastSensor range-only)"
 echo "RTX LiDAR profile: ${ISAAC_RTX_LIDAR_PROFILE}"
 echo "LiDAR requested rate: ${ISAAC_LIDAR_RATE_HZ} Hz"

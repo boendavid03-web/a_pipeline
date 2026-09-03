@@ -67,7 +67,11 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
-from semantic_nav_gazebo.msg import DrlVoTrainingState, PedestrianStateArray
+from semantic_nav_gazebo.msg import (
+    DrlVoTrainingState,
+    PedestrianStateArray,
+    TrackedPedestrianArray,
+)
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Empty, String
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -140,6 +144,28 @@ class TemporalLidarFrame:
     sensor_indices: np.ndarray
     robot_pose_map: np.ndarray
     timestamp_ns: int
+
+
+def tracked_pedestrian_records(message: TrackedPedestrianArray) -> list[dict]:
+    """Adapt typed tracker output to the existing DRL-VO map contract."""
+
+    return [
+        {
+            "track_id": int(track.track_id),
+            "position_xy_map": np.asarray(
+                [float(track.position.x), float(track.position.y)],
+                dtype=np.float64,
+            ),
+            "velocity_xy_map_absolute": np.asarray(
+                [float(track.velocity.x), float(track.velocity.y)],
+                dtype=np.float64,
+            ),
+            "confidence": float(track.confidence),
+            "track_state": str(track.state),
+            "time_since_update_s": float(track.time_since_update),
+        }
+        for track in message.tracks
+    ]
 
 
 def build_temporal_lidar_bev(
@@ -688,6 +714,7 @@ class DrlVoFixedDualInference(Node):
             "pedestrian_ground_truth_topic",
             "/pedestrian_ground_truth",
         )
+        self.declare_parameter("pedestrian_tracks_topic", "/pedestrian_tracks")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel")
         self.declare_parameter(
             "inference_metrics_topic", "/navigation_evaluation/inference_metrics"
@@ -708,6 +735,7 @@ class DrlVoFixedDualInference(Node):
         self.declare_parameter("odom_frame", "odom")
         self.declare_parameter("map_frame", "map")
         self.declare_parameter("pedestrian_frame", "odom")
+        self.declare_parameter("pedestrian_track_frame", "odom")
         self.declare_parameter("sync_slop", 0.05)
         self.declare_parameter("tf_timeout", 0.05)
         self.declare_parameter("range_min", 0.1)
@@ -719,6 +747,7 @@ class DrlVoFixedDualInference(Node):
         self.declare_parameter("subgoal_timeout", 0.3)
         self.declare_parameter("final_goal_timeout", 0.5)
         self.declare_parameter("pedestrian_truth_timeout", 0.15)
+        self.declare_parameter("pedestrian_track_timeout", 0.20)
         self.declare_parameter("goal_tolerance", 0.35)
         self.declare_parameter("front_half_angle", 0.35)
         self.declare_parameter("front_stop_distance", 0.5)
@@ -766,9 +795,15 @@ class DrlVoFixedDualInference(Node):
         self.pedestrian_source = str(
             self.get_parameter("pedestrian_source").value
         )
-        if self.pedestrian_source not in ("oracle", "predicted", "zero"):
+        if self.pedestrian_source not in (
+            "oracle",
+            "predicted",
+            "tracks",
+            "zero",
+        ):
             raise ValueError(
-                "pedestrian_source must be 'oracle', 'predicted', or 'zero'"
+                "pedestrian_source must be 'oracle', 'predicted', 'tracks', "
+                "or 'zero'"
             )
         if self.mode == "semantic_no_ped":
             self.pedestrian_source = "zero"
@@ -782,6 +817,7 @@ class DrlVoFixedDualInference(Node):
             "subgoal_timeout",
             "final_goal_timeout",
             "pedestrian_truth_timeout",
+            "pedestrian_track_timeout",
             "goal_tolerance",
             "front_half_angle",
             "front_stop_distance",
@@ -870,7 +906,7 @@ class DrlVoFixedDualInference(Node):
                 "oracle pedestrian source requires fresh pedestrian truth"
             )
         if (
-            self.pedestrian_source in ("predicted", "zero")
+            self.pedestrian_source in ("predicted", "tracks", "zero")
             and self.require_pedestrian_truth
             and not self.uses_semantics
         ):
@@ -879,11 +915,12 @@ class DrlVoFixedDualInference(Node):
                 "require_pedestrian_truth:=false"
             )
         if (
-            self.pedestrian_source == "predicted"
+            self.pedestrian_source in ("predicted", "tracks")
             and self.mode not in ("original", "base")
         ):
             raise ValueError(
-                "predicted pedestrian source supports original/base policies only"
+                f"{self.pedestrian_source} pedestrian source supports "
+                "original/base policies only"
             )
         if (
             self.uses_semantics
@@ -973,6 +1010,10 @@ class DrlVoFixedDualInference(Node):
         self.pedestrian_yaw = np.empty(0, dtype=np.float32)
         self.pedestrian_velocity = np.empty((0, 2), dtype=np.float32)
         self.pedestrian_stamp_ns: int | None = None
+        self.pedestrian_track_history: deque[tuple[int, list[dict]]] = deque(
+            maxlen=100
+        )
+        self.pedestrian_track_stamp_ns: int | None = None
         self.last_scan_clock_ns: int | None = None
         self.last_clock_ns: int | None = None
 
@@ -1040,6 +1081,13 @@ class DrlVoFixedDualInference(Node):
                 self.pedestrian_callback,
                 10,
             )
+        if self.pedestrian_source == "tracks":
+            self.create_subscription(
+                TrackedPedestrianArray,
+                str(self.get_parameter("pedestrian_tracks_topic").value),
+                self.pedestrian_tracks_callback,
+                20,
+            )
         scan_01_sub = message_filters.Subscriber(
             self,
             LaserScan,
@@ -1069,6 +1117,14 @@ class DrlVoFixedDualInference(Node):
             self.get_logger().warning(
                 "DRL-VO online demo uses truth-free dual-lidar pedestrian "
                 f"prediction; mode={self.mode}, weights={weight_items}, "
+                f"device={self.device}, checkpoint={model_path}"
+            )
+        elif self.pedestrian_source == "tracks":
+            self.get_logger().warning(
+                "DRL-VO online demo uses external tracked pedestrians without "
+                "ground truth; "
+                f"topic={self.get_parameter('pedestrian_tracks_topic').value}, "
+                f"mode={self.mode}, weights={weight_items}, "
                 f"device={self.device}, checkpoint={model_path}"
             )
         elif self.uses_semantics:
@@ -1370,6 +1426,8 @@ class DrlVoFixedDualInference(Node):
         self.pedestrian_yaw = np.empty(0, dtype=np.float32)
         self.pedestrian_velocity = np.empty((0, 2), dtype=np.float32)
         self.pedestrian_stamp_ns = None
+        self.pedestrian_track_history.clear()
+        self.pedestrian_track_stamp_ns = None
         self.last_scan_clock_ns = None
         if clear_sensor_contract:
             self.sensor_layouts.clear()
@@ -1536,6 +1594,9 @@ class DrlVoFixedDualInference(Node):
         self.actions_inhibited_after_reset = True
         self._clear_actuation_deadlock_state()
         self._clear_history()
+        if hasattr(self, "pedestrian_track_history"):
+            self.pedestrian_track_history.clear()
+            self.pedestrian_track_stamp_ns = None
         self._clear_subgoal_state()
         self.last_scan_clock_ns = None
         self.publish_stop("episode_reset_inhibit")
@@ -1719,6 +1780,40 @@ class DrlVoFixedDualInference(Node):
         self.pedestrian_velocity = velocity_array
         self.pedestrian_stamp_ns = stamp_to_nanoseconds(message.header.stamp)
 
+    def pedestrian_tracks_callback(
+        self, message: TrackedPedestrianArray
+    ) -> None:
+        """Buffer causal, world-frame tracks without touching ground truth."""
+
+        self._observe_clock()
+        expected_frame = str(
+            self.get_parameter("pedestrian_track_frame").value
+        ).lstrip("/")
+        actual_frame = message.header.frame_id.lstrip("/")
+        if actual_frame != expected_frame:
+            self.get_logger().error(
+                f"rejecting pedestrian track frame {actual_frame!r}; "
+                f"expected {expected_frame!r}"
+            )
+            self.pedestrian_track_history.clear()
+            self.pedestrian_track_stamp_ns = None
+            self.publish_stop("invalid_pedestrian_track_frame")
+            return
+        stamp_ns = stamp_to_nanoseconds(message.header.stamp)
+        if (
+            self.pedestrian_track_stamp_ns is not None
+            and stamp_ns <= self.pedestrian_track_stamp_ns
+        ):
+            self.get_logger().warning(
+                "discarding duplicate or non-increasing pedestrian track stamp",
+                throttle_duration_sec=2.0,
+            )
+            return
+        self.pedestrian_track_history.append(
+            (stamp_ns, tracked_pedestrian_records(message))
+        )
+        self.pedestrian_track_stamp_ns = stamp_ns
+
     def _input_status(
         self,
         now_ns: int,
@@ -1769,6 +1864,12 @@ class DrlVoFixedDualInference(Node):
             float(self.get_parameter("pedestrian_truth_timeout").value),
         ):
             return False, "pedestrian truth missing or stale"
+        if self.pedestrian_source == "tracks" and not time_is_fresh(
+            now_ns,
+            self.pedestrian_track_stamp_ns,
+            float(self.get_parameter("pedestrian_track_timeout").value),
+        ):
+            return False, "pedestrian tracks missing or stale"
         return True, "ready"
 
     def _virtualize_scan(
@@ -1994,6 +2095,55 @@ class DrlVoFixedDualInference(Node):
                     f"latency={perception_stats['end_to_end_ms']:.2f} ms",
                     throttle_duration_sec=2.0,
                 )
+        tracked_pedestrian_map = None
+        if self.pedestrian_source == "tracks":
+            reference_stamp_ns = max(scan_01_stamp_ns, scan_02_stamp_ns)
+            causal_tracks = latest_causal_sample(
+                self.pedestrian_track_history,
+                reference_stamp_ns,
+                float(self.get_parameter("pedestrian_track_timeout").value),
+            )
+            if causal_tracks is None:
+                self._clear_history()
+                self.publish_stop("causal_pedestrian_tracks_missing_or_stale")
+                self.get_logger().warning(
+                    "no causal pedestrian tracks at or before the scan pair",
+                    throttle_duration_sec=2.0,
+                )
+                return
+            track_records, track_stamp_ns = causal_tracks
+            sample_age_s = (reference_stamp_ns - track_stamp_ns) / 1e9
+            aged_records = [
+                {
+                    **track,
+                    "time_since_update_s": (
+                        float(track["time_since_update_s"]) + sample_age_s
+                    ),
+                }
+                for track in track_records
+            ]
+            tracked_pedestrian_map, diagnostics = (
+                tracks_to_drl_vo_ped_map_with_diagnostics(
+                    aged_records,
+                    self.pose,
+                    coasting_max_time_s=float(
+                        self.get_parameter("coasting_max_time_s").value
+                    ),
+                    max_track_age_s=float(
+                        self.get_parameter("max_track_age_s").value
+                    ),
+                    include_tentative=bool(
+                        self.get_parameter("include_tentative_tracks").value
+                    ),
+                )
+            )
+            self.get_logger().info(
+                "external pedestrian tracks "
+                f"received={len(track_records)}, "
+                f"written={len(diagnostics['written_track_ids'])}, "
+                f"dropped={diagnostics['dropped_track_count']}",
+                throttle_duration_sec=2.0,
+            )
 
         if (
             bool(self.get_parameter("require_full_history").value)
@@ -2013,6 +2163,12 @@ class DrlVoFixedDualInference(Node):
             pedestrian_map = (
                 predicted_pedestrian_map
                 if predicted_pedestrian_map is not None
+                else np.zeros(PED_MAP_SHAPE, dtype=np.float32)
+            )
+        elif self.pedestrian_source == "tracks":
+            pedestrian_map = (
+                tracked_pedestrian_map
+                if tracked_pedestrian_map is not None
                 else np.zeros(PED_MAP_SHAPE, dtype=np.float32)
             )
         else:

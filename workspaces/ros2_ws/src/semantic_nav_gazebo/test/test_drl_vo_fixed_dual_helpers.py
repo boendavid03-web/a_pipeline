@@ -59,6 +59,37 @@ SPEC.loader.exec_module(MODULE)
 
 
 class DrlVoFixedDualHelperTests(unittest.TestCase):
+    def test_external_tracks_adapt_to_existing_pedestrian_map(self):
+        track = SimpleNamespace(
+            track_id=7,
+            position=SimpleNamespace(x=1.0, y=0.0),
+            velocity=SimpleNamespace(x=0.5, y=-0.25),
+            confidence=0.98,
+            state="CONFIRMED",
+            time_since_update=0.0,
+        )
+        records = MODULE.tracked_pedestrian_records(
+            SimpleNamespace(tracks=[track])
+        )
+        pedestrian_map, diagnostics = (
+            MODULE.tracks_to_drl_vo_ped_map_with_diagnostics(
+                records,
+                np.asarray([0.0, 0.0, 0.0], dtype=np.float32),
+            )
+        )
+        self.assertEqual(diagnostics["written_track_ids"], [7])
+        self.assertEqual(pedestrian_map.shape, (2, 80, 80))
+        self.assertAlmostEqual(float(pedestrian_map[0, 4, 40]), 0.5)
+        self.assertAlmostEqual(float(pedestrian_map[1, 4, 40]), -0.25)
+
+    def test_external_track_callback_has_no_ground_truth_access(self):
+        source = inspect.getsource(
+            MODULE.DrlVoFixedDualInference.pedestrian_tracks_callback
+        )
+        self.assertNotIn("ground_truth", source)
+        self.assertNotIn("pedestrian_xy", source)
+        self.assertNotIn("pedestrian_velocity", source)
+
     def test_freshness_and_clock_rollback(self):
         second = MODULE.NANOSECONDS_PER_SECOND
         self.assertTrue(MODULE.time_is_fresh(2 * second, second, 1.0))

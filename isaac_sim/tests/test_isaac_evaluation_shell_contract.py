@@ -121,8 +121,22 @@ def test_timing_catchup_and_pose_truth_are_explicitly_instrumented():
     assert '"physx_reported_velocity"' in source
     assert '"source": "pose_derived_velocity"' in source
     assert '"--app-update-rate-limit-hz"' in source
+    assert '"ISAAC_PHYSX_GPU_DYNAMICS"' in source
+    assert '"ISAAC_PHYSX_GPU_DEVICE"' in source
+    assert 'physics_scene.set_broadphase_type("GPU")' in source
+    assert 'physics_scene.set_enabled_gpu_dynamics(True)' in source
+    assert 'SimulationManager.setup_simulation(dt=PHYSICS_DT, device="cpu")' in source
+    assert '"physics_cpu_readback": True' in source
     assert "navigation_yaw_unwrapped += math.atan2(" in source
     assert '"robot_final_yaw_unwrapped_ros_rad": navigation_yaw_unwrapped' in source
+
+
+def test_gpu_physx_launcher_requires_vram_headroom_and_is_opt_in():
+    launcher = WAREHOUSE_LAUNCHER.read_text(encoding="utf-8")
+    assert 'ISAAC_PHYSX_GPU_DYNAMICS="${ISAAC_PHYSX_GPU_DYNAMICS:-0}"' in launcher
+    assert 'ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB="${ISAAC_PHYSX_GPU_MIN_FREE_MEMORY_MIB:-8192}"' in launcher
+    assert '--query-gpu=memory.free' in launcher
+    assert 'ISAAC_PHYSX_GPU_PREFLIGHT=PASS' in launcher
 
 
 def test_simulation_manager_physics_time_qualification_is_default_off_and_per_step():

@@ -246,7 +246,25 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "pedestrian_source",
                 default_value="oracle",
-                description="'oracle', 'predicted', or 'zero'.",
+                description="'oracle', 'predicted', 'tracks', or 'zero'.",
+            ),
+            DeclareLaunchArgument(
+                "pedestrian_tracks_topic",
+                default_value="/pedestrian_tracks",
+                description=(
+                    "TrackedPedestrianArray input used only by "
+                    "pedestrian_source=tracks."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "pedestrian_track_frame",
+                default_value="odom",
+                description="Required frame for external pedestrian tracks.",
+            ),
+            DeclareLaunchArgument(
+                "pedestrian_track_timeout",
+                default_value="0.20",
+                description="Maximum causal external-track age in seconds.",
             ),
             DeclareLaunchArgument(
                 "perception_model",
@@ -382,8 +400,8 @@ def generate_launch_description():
                 "require_pedestrian_truth",
                 default_value="true",
                 description=(
-                    "true is required by oracle/semantic modes; predicted and "
-                    "zero original/base modes must set false."
+                    "true is required by oracle/semantic modes; predicted, "
+                    "tracks, and zero original/base modes must set false."
                 ),
             ),
             DeclareLaunchArgument(
@@ -947,6 +965,18 @@ def generate_launch_description():
                                 "device": LaunchConfiguration("device"),
                                 "pedestrian_source": LaunchConfiguration(
                                     "pedestrian_source"
+                                ),
+                                "pedestrian_tracks_topic": LaunchConfiguration(
+                                    "pedestrian_tracks_topic"
+                                ),
+                                "pedestrian_track_frame": LaunchConfiguration(
+                                    "pedestrian_track_frame"
+                                ),
+                                "pedestrian_track_timeout": ParameterValue(
+                                    LaunchConfiguration(
+                                        "pedestrian_track_timeout"
+                                    ),
+                                    value_type=float,
                                 ),
                                 "perception_model": LaunchConfiguration(
                                     "perception_model"
