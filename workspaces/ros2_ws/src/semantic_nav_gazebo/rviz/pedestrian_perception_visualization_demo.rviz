@@ -1,0 +1,66 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Plane: XY
+      Plane Cell Count: 40
+      Cell Size: 1
+      Line Style:
+        Line Width: 0.03
+        Value: Lines
+      Color: 160; 160; 160
+      Alpha: 0.35
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Pedestrian perception
+      Namespaces:
+        {}
+      Topic: /pedestrian_visualization
+      Queue Size: 20
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Frame Timeout: 15
+      Marker Scale: 0.5
+      Update Interval: 0
+      Show Names: false
+      Show Axes: true
+      Show Arrows: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: Pedestrian Perception Visualization Demo
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetInitialPose
+    - Class: rviz_default_plugins/SetGoal
+    - Class: rviz_default_plugins/PublishPoint
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 18
+      Focal Point:
+        X: 10
+        Y: 10
+        Z: 0
+      Pitch: 1.5707
+      Yaw: 0
+      Target Frame: <Fixed Frame>
+Window Geometry:
+  Height: 900
+  Width: 1400
+  X: 80
+  Y: 60

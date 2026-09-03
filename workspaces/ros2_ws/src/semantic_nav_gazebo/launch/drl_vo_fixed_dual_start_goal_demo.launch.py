@@ -246,14 +246,17 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "pedestrian_source",
                 default_value="oracle",
-                description="'oracle', 'predicted', 'tracks', or 'zero'.",
+                description=(
+                    "'oracle', 'dr_spaam', 'predicted', 'tracks', or 'zero'. "
+                    "'tracks' is retained as a compatibility alias."
+                ),
             ),
             DeclareLaunchArgument(
                 "pedestrian_tracks_topic",
                 default_value="/pedestrian_tracks",
                 description=(
                     "TrackedPedestrianArray input used only by "
-                    "pedestrian_source=tracks."
+                    "pedestrian_source=dr_spaam (or the legacy tracks alias)."
                 ),
             ),
             DeclareLaunchArgument(
@@ -400,8 +403,9 @@ def generate_launch_description():
                 "require_pedestrian_truth",
                 default_value="true",
                 description=(
-                    "true is required by oracle/semantic modes; predicted, "
-                    "tracks, and zero original/base modes must set false."
+                    "true is required by oracle/semantic modes; dr_spaam, "
+                    "predicted, tracks, and zero original/base modes must set "
+                    "false."
                 ),
             ),
             DeclareLaunchArgument(

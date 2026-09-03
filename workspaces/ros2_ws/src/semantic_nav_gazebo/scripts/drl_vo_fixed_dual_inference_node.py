@@ -38,7 +38,8 @@
 
 This node intentionally rebuilds the exact 19,202-element observation used by
 ``methods/experiments/drl_vo_ros2_offline``. The original/base policies accept
-oracle, truth-free dual-LiDAR predicted, or zero pedestrian velocity maps.
+oracle, DR-SPAAM tracked, truth-free dual-LiDAR predicted, or zero pedestrian
+velocity maps.
 Semantic policies retain the recorded oracle lower-leg Person-label contract,
 so those modes remain simulation research interfaces.
 """
@@ -136,6 +137,7 @@ SELF_FOOTPRINT_HALF_EXTENTS_M = (0.36, 0.32)
 EXPECTED_BASE_WEIGHT_ITEMS = 163
 EXPECTED_SEMANTIC_WEIGHT_ITEMS = 172
 NANOSECONDS_PER_SECOND = 1_000_000_000
+EXTERNAL_TRACK_SOURCES = frozenset(("dr_spaam", "tracks"))
 
 
 @dataclass(frozen=True)
@@ -797,13 +799,14 @@ class DrlVoFixedDualInference(Node):
         )
         if self.pedestrian_source not in (
             "oracle",
+            "dr_spaam",
             "predicted",
             "tracks",
             "zero",
         ):
             raise ValueError(
-                "pedestrian_source must be 'oracle', 'predicted', 'tracks', "
-                "or 'zero'"
+                "pedestrian_source must be 'oracle', 'dr_spaam', 'predicted', "
+                "'tracks', or 'zero'"
             )
         if self.mode == "semantic_no_ped":
             self.pedestrian_source = "zero"
@@ -906,7 +909,8 @@ class DrlVoFixedDualInference(Node):
                 "oracle pedestrian source requires fresh pedestrian truth"
             )
         if (
-            self.pedestrian_source in ("predicted", "tracks", "zero")
+            self.pedestrian_source
+            in ("predicted", "dr_spaam", "tracks", "zero")
             and self.require_pedestrian_truth
             and not self.uses_semantics
         ):
@@ -915,7 +919,7 @@ class DrlVoFixedDualInference(Node):
                 "require_pedestrian_truth:=false"
             )
         if (
-            self.pedestrian_source in ("predicted", "tracks")
+            self.pedestrian_source in ("predicted", "dr_spaam", "tracks")
             and self.mode not in ("original", "base")
         ):
             raise ValueError(
@@ -1081,7 +1085,7 @@ class DrlVoFixedDualInference(Node):
                 self.pedestrian_callback,
                 10,
             )
-        if self.pedestrian_source == "tracks":
+        if self.pedestrian_source in EXTERNAL_TRACK_SOURCES:
             self.create_subscription(
                 TrackedPedestrianArray,
                 str(self.get_parameter("pedestrian_tracks_topic").value),
@@ -1108,6 +1112,7 @@ class DrlVoFixedDualInference(Node):
         self.scan_sync.registerCallback(self.scan_callback)
         self.create_timer(0.1, self.watchdog_callback)
         if self.pedestrian_source == "oracle":
+            self.get_logger().warning("[DRLVO] pedestrian_source=oracle")
             self.get_logger().warning(
                 "DRL-VO online demo uses oracle Gazebo pedestrian positions and "
                 f"velocities; mode={self.mode}, weights={weight_items}, "
@@ -1119,7 +1124,10 @@ class DrlVoFixedDualInference(Node):
                 f"prediction; mode={self.mode}, weights={weight_items}, "
                 f"device={self.device}, checkpoint={model_path}"
             )
-        elif self.pedestrian_source == "tracks":
+        elif self.pedestrian_source in EXTERNAL_TRACK_SOURCES:
+            self.get_logger().warning(
+                f"[DRLVO] pedestrian_source={self.pedestrian_source} tracks=0"
+            )
             self.get_logger().warning(
                 "DRL-VO online demo uses external tracked pedestrians without "
                 "ground truth; "
@@ -1813,6 +1821,11 @@ class DrlVoFixedDualInference(Node):
             (stamp_ns, tracked_pedestrian_records(message))
         )
         self.pedestrian_track_stamp_ns = stamp_ns
+        self.get_logger().info(
+            f"[DRLVO] pedestrian_source={self.pedestrian_source} "
+            f"tracks={len(message.tracks)}",
+            throttle_duration_sec=2.0,
+        )
 
     def _input_status(
         self,
@@ -1864,10 +1877,13 @@ class DrlVoFixedDualInference(Node):
             float(self.get_parameter("pedestrian_truth_timeout").value),
         ):
             return False, "pedestrian truth missing or stale"
-        if self.pedestrian_source == "tracks" and not time_is_fresh(
-            now_ns,
-            self.pedestrian_track_stamp_ns,
-            float(self.get_parameter("pedestrian_track_timeout").value),
+        if (
+            self.pedestrian_source in EXTERNAL_TRACK_SOURCES
+            and not time_is_fresh(
+                now_ns,
+                self.pedestrian_track_stamp_ns,
+                float(self.get_parameter("pedestrian_track_timeout").value),
+            )
         ):
             return False, "pedestrian tracks missing or stale"
         return True, "ready"
@@ -2096,7 +2112,7 @@ class DrlVoFixedDualInference(Node):
                     throttle_duration_sec=2.0,
                 )
         tracked_pedestrian_map = None
-        if self.pedestrian_source == "tracks":
+        if self.pedestrian_source in EXTERNAL_TRACK_SOURCES:
             reference_stamp_ns = max(scan_01_stamp_ns, scan_02_stamp_ns)
             causal_tracks = latest_causal_sample(
                 self.pedestrian_track_history,
@@ -2165,7 +2181,7 @@ class DrlVoFixedDualInference(Node):
                 if predicted_pedestrian_map is not None
                 else np.zeros(PED_MAP_SHAPE, dtype=np.float32)
             )
-        elif self.pedestrian_source == "tracks":
+        elif self.pedestrian_source in EXTERNAL_TRACK_SOURCES:
             pedestrian_map = (
                 tracked_pedestrian_map
                 if tracked_pedestrian_map is not None

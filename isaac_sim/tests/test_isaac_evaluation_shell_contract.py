@@ -66,6 +66,19 @@ def test_dual_lidar_policy_contract_remains_2000_beams_at_15_hz():
     assert '== "simulation_manager_physics_time"' in readiness
 
 
+def test_dr_spaam_mode_starts_existing_tracker_and_excludes_gt_from_policy():
+    source = LAUNCHER.read_text(encoding="utf-8")
+    assert 'ISAAC_DRLVO_PEDESTRIAN_SOURCE:-oracle' in source
+    assert 'oracle|dr_spaam)' in source
+    assert 'pedestrian_source:="$demo_pedestrian_source"' in source
+    assert 'require_pedestrian_truth:="$demo_require_pedestrian_truth"' in source
+    assert 'oracle_pedestrian_velocity:="$demo_oracle_pedestrian_velocity"' in source
+    assert 'ros2 topic echo --once /pedestrian_tracks' in source
+    assert 'ros2 node info /drl_vo_fixed_dual_inference' in source
+    assert 'DRL-VO unexpectedly subscribed to /pedestrian_ground_truth' in source
+    assert 'DRLVO_DR_SPAAM_INPUT_VERIFIED=PASS' in source
+
+
 def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry():
     source = ISAAC_RUNNER.read_text(encoding="utf-8")
     bridge = ROS_BRIDGE.read_text(encoding="utf-8")

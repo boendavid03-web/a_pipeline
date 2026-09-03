@@ -6,6 +6,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ROS_WS="$PROJECT_ROOT/workspaces/ros2_ws"
 ISAAC_LAUNCHER="$SCRIPT_DIR/run_isaac_6_0_warehouse_people_robot.sh"
+TRAIN_PYTHON="$PROJECT_ROOT/.venvs/train/bin/python"
+DR_SPAAM_ROOT="$PROJECT_ROOT/github_src/drl_vo_nav-drl_vo/2D_lidar_person_detection/dr_spaam"
+DR_SPAAM_ROS2_ROOT="$PROJECT_ROOT/github_src/drl_vo_nav-drl_vo/GenSafeNav-ROS2-main/dr_spaam_ros2"
+DR_SPAAM_NODE="$DR_SPAAM_ROS2_ROOT/dr_spaam_ros2/dr_spaam_w_score_ros.py"
+DR_SPAAM_CHECKPOINT="$DR_SPAAM_ROS2_ROOT/model_weight/ckpt_jrdb_ann_ft_dr_spaam_e20.pth"
+PEDESTRIAN_TRACKER="$ROS_WS/src/semantic_nav_gazebo/scripts/pedestrian_point_tracker.py"
 TASK_ROOT="${TASK_ROOT:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/datasets/20260727_three_bag_online_seed_split_v1}"
 MODEL="${DRL_VO_MODEL:-$TASK_ROOT/training/drl_vo/base_bc/20260727_114455/checkpoints/best.pt}"
 MAP_YAML="${ISAAC_DEMO_MAP_YAML:-$PROJECT_ROOT/runs/20260717_042135_v7_dual/maps/semantic_label/map.yaml}"
@@ -28,6 +34,18 @@ case "${demo_control_mode,,}" in
     policy|teleop) demo_control_mode="${demo_control_mode,,}" ;;
     *) echo "ERROR: ISAAC_DEMO_CONTROL_MODE must be policy or teleop." >&2; exit 2 ;;
 esac
+demo_pedestrian_source="${ISAAC_DRLVO_PEDESTRIAN_SOURCE:-oracle}"
+case "${demo_pedestrian_source,,}" in
+    oracle|dr_spaam) demo_pedestrian_source="${demo_pedestrian_source,,}" ;;
+    *) echo "ERROR: ISAAC_DRLVO_PEDESTRIAN_SOURCE must be oracle or dr_spaam." >&2; exit 2 ;;
+esac
+if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
+    demo_require_pedestrian_truth=false
+    demo_oracle_pedestrian_velocity=false
+else
+    demo_require_pedestrian_truth=true
+    demo_oracle_pedestrian_velocity=true
+fi
 if [[ "$demo_control_mode" == "teleop" ]]; then
     export ISAAC_MANUAL_EPISODE_EVENTS=1
 else
@@ -237,6 +255,7 @@ demo_odom_timeout="${ISAAC_DEMO_ODOM_TIMEOUT:-$default_input_timeout}"
 demo_subgoal_timeout="${ISAAC_DEMO_SUBGOAL_TIMEOUT:-$default_input_timeout}"
 demo_final_goal_timeout="${ISAAC_DEMO_FINAL_GOAL_TIMEOUT:-$default_input_timeout}"
 demo_pedestrian_truth_timeout="${ISAAC_DEMO_PEDESTRIAN_TRUTH_TIMEOUT:-$default_input_timeout}"
+demo_pedestrian_track_timeout="${ISAAC_DEMO_PEDESTRIAN_TRACK_TIMEOUT:-$default_input_timeout}"
 demo_actuation_source_timeout="${ISAAC_DEMO_ACTUATION_SOURCE_TIMEOUT:-180.0}"
 for timeout_spec in \
     "ISAAC_DEMO_SCAN_TIMEOUT=$demo_scan_timeout" \
@@ -244,6 +263,7 @@ for timeout_spec in \
     "ISAAC_DEMO_SUBGOAL_TIMEOUT=$demo_subgoal_timeout" \
     "ISAAC_DEMO_FINAL_GOAL_TIMEOUT=$demo_final_goal_timeout" \
     "ISAAC_DEMO_PEDESTRIAN_TRUTH_TIMEOUT=$demo_pedestrian_truth_timeout" \
+    "ISAAC_DEMO_PEDESTRIAN_TRACK_TIMEOUT=$demo_pedestrian_track_timeout" \
     "ISAAC_DEMO_ACTUATION_SOURCE_TIMEOUT=$demo_actuation_source_timeout"; do
     timeout_name="${timeout_spec%%=*}"
     timeout_value="${timeout_spec#*=}"
@@ -253,6 +273,18 @@ for timeout_spec in \
         exit 2
     fi
 done
+if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
+    for required in \
+        "$TRAIN_PYTHON" \
+        "$DR_SPAAM_NODE" \
+        "$DR_SPAAM_CHECKPOINT" \
+        "$PEDESTRIAN_TRACKER"; do
+        if [[ ! -e "$required" ]]; then
+            echo "ERROR: required DR-SPAAM input is missing: $required" >&2
+            exit 1
+        fi
+    done
+fi
 
 # This launcher never kills stale simulator/controller processes.  An active
 # Gazebo or Isaac run may belong to the user; the ownership checks below fail
@@ -321,12 +353,20 @@ demo_video_dir="$demo_evaluation_output_dir/video"
 
 isaac_pid=""
 policy_pid=""
+detector_pid=""
+tracker_pid=""
 bag_pid=""
 scheduler_pid=""
 cleanup() {
     trap - EXIT INT TERM
     if [[ "$policy_pid" =~ ^[0-9]+$ ]]; then
         kill -INT -- "-$policy_pid" 2>/dev/null || true
+    fi
+    if [[ "$tracker_pid" =~ ^[0-9]+$ ]]; then
+        kill -INT -- "-$tracker_pid" 2>/dev/null || true
+    fi
+    if [[ "$detector_pid" =~ ^[0-9]+$ ]]; then
+        kill -INT -- "-$detector_pid" 2>/dev/null || true
     fi
     if [[ "$isaac_pid" =~ ^[0-9]+$ ]]; then
         kill -TERM -- "-$isaac_pid" 2>/dev/null || true
@@ -341,6 +381,14 @@ cleanup() {
     if [[ "$policy_pid" =~ ^[0-9]+$ ]]; then
         kill -TERM -- "-$policy_pid" 2>/dev/null || true
         wait "$policy_pid" 2>/dev/null || true
+    fi
+    if [[ "$tracker_pid" =~ ^[0-9]+$ ]]; then
+        kill -TERM -- "-$tracker_pid" 2>/dev/null || true
+        wait "$tracker_pid" 2>/dev/null || true
+    fi
+    if [[ "$detector_pid" =~ ^[0-9]+$ ]]; then
+        kill -TERM -- "-$detector_pid" 2>/dev/null || true
+        wait "$detector_pid" 2>/dev/null || true
     fi
     if [[ "$isaac_pid" =~ ^[0-9]+$ ]]; then
         kill -KILL -- "-$isaac_pid" 2>/dev/null || true
@@ -432,6 +480,51 @@ if ! kill -0 "$isaac_pid" 2>/dev/null; then
     exit 1
 fi
 
+if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
+    echo "Starting DR-SPAAM detector and pedestrian tracker..."
+    setsid env \
+        PYTHONPATH="$DR_SPAAM_ROOT:$DR_SPAAM_ROS2_ROOT:${PYTHONPATH:-}" \
+        "$TRAIN_PYTHON" "$DR_SPAAM_NODE" --ros-args \
+        -p weight_file:="$DR_SPAAM_CHECKPOINT" \
+        -p detector_model:=DR-SPAAM \
+        -p conf_thresh:=0.95 \
+        -p stride:=5 \
+        -p panoramic_scan:=true \
+        -p reverse_scan:=true \
+        -p drow_to_ros:=true \
+        -p target_frame:=base_link \
+        -p subscriber.scan.topic:=/scan_merged \
+        >"$log_dir/dr_spaam.log" 2>&1 &
+    detector_pid=$!
+    setsid /usr/bin/python3 "$PEDESTRIAN_TRACKER" --ros-args \
+        -p use_sim_time:=true \
+        -p tracking_frame:=odom \
+        -p input_topic:=/dr_spaam_detections_scored \
+        -p output_topic:=/pedestrian_tracks \
+        -p association_threshold:=0.8 \
+        -p min_hits:=3 \
+        -p max_age:=8 \
+        -p max_coast_time:=0.75 \
+        -p acceleration_sigma:=2.0 \
+        -p measurement_sigma:=0.10 \
+        -p max_prediction_dt:=0.50 \
+        -p measurement_history_size:=8 \
+        -p velocity_fit_min_samples:=3 \
+        -p velocity_fit_min_span:=0.15 \
+        >"$log_dir/tracker.log" 2>&1 &
+    tracker_pid=$!
+    if ! timeout "${ISAAC_DEMO_TRACKS_READY_TIMEOUT:-120}" \
+        ros2 topic echo --once /pedestrian_tracks >/dev/null 2>&1; then
+        echo "ERROR: /pedestrian_tracks did not deliver a message. See $log_dir/dr_spaam.log and $log_dir/tracker.log" >&2
+        exit 1
+    fi
+    if ! kill -0 "$detector_pid" 2>/dev/null || ! kill -0 "$tracker_pid" 2>/dev/null; then
+        echo "ERROR: DR-SPAAM detector or tracker exited before policy startup." >&2
+        exit 1
+    fi
+    echo "DR-SPAAM tracks ready; starting DRL-VO without a ground-truth subscription."
+fi
+
 if [[ "${ISAAC_DEMO_RECORD_BAG:-0}" == "1" || "${ISAAC_DEMO_AUTO_CAPTURE:-0}" == "1" ]]; then
     setsid ros2 bag record \
         -o "$log_dir/rosbag" \
@@ -441,6 +534,7 @@ if [[ "${ISAAC_DEMO_RECORD_BAG:-0}" == "1" || "${ISAAC_DEMO_AUTO_CAPTURE:-0}" ==
         /drl_vo/raw_model_cmd /drl_vo/control_event /drl_vo/actuation_decision \
         /isaac/actuation_state /isaac/reset_pose /isaac/reset_event \
         /navigation_evaluation/inference_metrics \
+        /dr_spaam_detections_scored /pedestrian_tracks \
         /pedestrian_ground_truth \
         /semantic_cnn/final_goal /semantic_cnn/local_subgoal /semantic_cnn/global_path \
         /data_collection/goal_accepted \
@@ -458,16 +552,19 @@ if [[ "$demo_control_mode" == "teleop" ]]; then
     exit $?
 fi
 
-echo "Isaac topics ready; starting DRL-VO base policy. Logs: $log_dir"
+echo "Isaac topics ready; starting DRL-VO base policy with pedestrian_source=$demo_pedestrian_source. Logs: $log_dir"
 setsid ros2 launch semantic_nav_gazebo drl_vo_fixed_dual_start_goal_demo.launch.py \
     start_simulator:=false \
     policy_mode:=base \
     drl_vo_model:="$MODEL" \
     device:="${DRL_VO_DEVICE:-cuda}" \
     publish_policy_actions:=true \
-    pedestrian_source:=oracle \
-    oracle_pedestrian_velocity:=true \
-    require_pedestrian_truth:=true \
+    pedestrian_source:="$demo_pedestrian_source" \
+    oracle_pedestrian_velocity:="$demo_oracle_pedestrian_velocity" \
+    require_pedestrian_truth:="$demo_require_pedestrian_truth" \
+    pedestrian_tracks_topic:=/pedestrian_tracks \
+    pedestrian_track_frame:=odom \
+    pedestrian_track_timeout:="$demo_pedestrian_track_timeout" \
     start_rviz:="${ISAAC_DEMO_RVIZ:-true}" \
     use_sim_time:=true \
     map_yaml:="$MAP_YAML" \
@@ -520,6 +617,18 @@ if ! kill -0 "$policy_pid" 2>/dev/null; then
     echo "ERROR: DRL-VO exited during controller preflight. See $log_dir/drlvo.log" >&2
     exit 1
 fi
+if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
+    policy_node_info="$(ros2 node info /drl_vo_fixed_dual_inference 2>/dev/null || true)"
+    if ! grep -Fq '/pedestrian_tracks' <<<"$policy_node_info"; then
+        echo "ERROR: DRL-VO did not subscribe to /pedestrian_tracks." >&2
+        exit 1
+    fi
+    if grep -Fq '/pedestrian_ground_truth' <<<"$policy_node_info"; then
+        echo "ERROR: DRL-VO unexpectedly subscribed to /pedestrian_ground_truth." >&2
+        exit 1
+    fi
+    echo "DRLVO_DR_SPAAM_INPUT_VERIFIED=PASS topic=/pedestrian_tracks ground_truth_subscription=absent"
+fi
 
 if [[ "$demo_verify_navigation" == "true" ]]; then
     navigation_preflight_log="$log_dir/navigation_preflight.log"
@@ -538,11 +647,11 @@ if [[ "$demo_verify_navigation" == "true" ]]; then
 fi
 
 if [[ "${ISAAC_DEMO_AUTO_CAPTURE:-0}" == "1" ]]; then
-    echo "ISAAC_DRLVO_DEMO_READY scene=custom pedestrians=$isaac_expected_pedestrians seed=$ISAAC_PEDESTRIAN_SEED policy=base lidar=$ISAAC_LIDAR_MODE samples=$ISAAC_LIDAR_SAMPLE_COUNT goal=automatic_scheduler"
+    echo "ISAAC_DRLVO_DEMO_READY scene=custom pedestrians=$isaac_expected_pedestrians seed=$ISAAC_PEDESTRIAN_SEED policy=base pedestrian_source=$demo_pedestrian_source lidar=$ISAAC_LIDAR_MODE samples=$ISAAC_LIDAR_SAMPLE_COUNT goal=automatic_scheduler"
 elif [[ "$demo_goal_picker" == "true" ]]; then
-    echo "ISAAC_DRLVO_DEMO_READY scene=custom pedestrians=$isaac_expected_pedestrians seed=$ISAAC_PEDESTRIAN_SEED policy=base lidar=$ISAAC_LIDAR_MODE samples=$ISAAC_LIDAR_SAMPLE_COUNT goal=waiting_for_popup_selection"
+    echo "ISAAC_DRLVO_DEMO_READY scene=custom pedestrians=$isaac_expected_pedestrians seed=$ISAAC_PEDESTRIAN_SEED policy=base pedestrian_source=$demo_pedestrian_source lidar=$ISAAC_LIDAR_MODE samples=$ISAAC_LIDAR_SAMPLE_COUNT goal=waiting_for_popup_selection"
 else
-    echo "ISAAC_DRLVO_DEMO_READY scene=custom pedestrians=$isaac_expected_pedestrians seed=$ISAAC_PEDESTRIAN_SEED policy=base lidar=$ISAAC_LIDAR_MODE samples=$ISAAC_LIDAR_SAMPLE_COUNT goal=(${ISAAC_DEMO_GOAL_X:-6.0},${ISAAC_DEMO_GOAL_Y:-4.0})"
+    echo "ISAAC_DRLVO_DEMO_READY scene=custom pedestrians=$isaac_expected_pedestrians seed=$ISAAC_PEDESTRIAN_SEED policy=base pedestrian_source=$demo_pedestrian_source lidar=$ISAAC_LIDAR_MODE samples=$ISAAC_LIDAR_SAMPLE_COUNT goal=(${ISAAC_DEMO_GOAL_X:-6.0},${ISAAC_DEMO_GOAL_Y:-4.0})"
 fi
 if [[ "${ISAAC_DEMO_AUTO_CAPTURE:-0}" == "1" ]]; then
     /usr/bin/python3 "$ROS_WS/install/semantic_nav_gazebo/lib/semantic_nav_gazebo/auto_goal_rosbag_scheduler.py" \

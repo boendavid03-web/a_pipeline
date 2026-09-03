@@ -59,6 +59,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class DrlVoFixedDualHelperTests(unittest.TestCase):
+    def test_dr_spaam_is_an_external_track_source(self):
+        self.assertIn("dr_spaam", MODULE.EXTERNAL_TRACK_SOURCES)
+        self.assertIn("tracks", MODULE.EXTERNAL_TRACK_SOURCES)
+        self.assertNotIn("oracle", MODULE.EXTERNAL_TRACK_SOURCES)
+
     def test_external_tracks_adapt_to_existing_pedestrian_map(self):
         track = SimpleNamespace(
             track_id=7,

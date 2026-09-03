@@ -78,6 +78,7 @@ install(
     scripts/fixed_goal_sequence.py
     scripts/fixed_four_video_capture.py
     scripts/isaac_pedestrian_ground_truth_adapter.py
+    scripts/pedestrian_perception_visualizer.py
     scripts/scenario_pedestrian_controller.py
     scripts/odom_path_node.py
     scripts/run_v7_dual_slam.sh
@@ -137,6 +138,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_pedestrian_point_tracker
     test/test_pedestrian_point_tracker.py
+  )
+  ament_add_pytest_test(
+    test_pedestrian_perception_visualizer
+    test/test_pedestrian_perception_visualizer.py
   )
   set(semantic_cnn_test_site_packages
     "${CMAKE_CURRENT_SOURCE_DIR}/../../../..//.venvs/train/lib/python3.10/site-packages"
