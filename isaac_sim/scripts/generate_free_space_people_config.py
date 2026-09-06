@@ -40,6 +40,8 @@ MAX_PEDESTRIAN_COUNT = 50
 DEFAULT_SPAWN_CLEARANCE_M = 1.0
 DEFAULT_MIN_PATROL_SEGMENT_M = 0.5
 DEFAULT_MAX_PATROL_SEGMENT_M = 1.0
+SCENARIO_AB_MODES = ("baseline", "spread_radius")
+SPREAD_RADIUS_FRACTION = 0.75
 
 
 def parse_args() -> argparse.Namespace:
@@ -90,11 +92,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument(
         "--scenario-ab-mode",
-        choices=("baseline",),
+        choices=SCENARIO_AB_MODES,
         default="baseline",
         help=(
-            "Scenario-topology experiment selector. Only the frozen baseline is "
-            "available; this option does not change generation behavior."
+            "Scenario-topology experiment selector. baseline preserves the frozen "
+            "e314f56 output; spread_radius distributes starts across each spawn "
+            "extent and arrivals within the XML waypoint radii."
         ),
     )
     parser.add_argument(
@@ -716,10 +719,13 @@ def load_gazebo_clusters(path: Path) -> list[dict[str, object]]:
     """Read non-robot clusters and resolve their waypoint coordinates."""
     root = ET.parse(path).getroot()
     waypoints = {
-        element.attrib["id"]: (
-            float(element.attrib["x"]),
-            float(element.attrib["y"]),
-        )
+        element.attrib["id"]: {
+            "position": (
+                float(element.attrib["x"]),
+                float(element.attrib["y"]),
+            ),
+            "radius": float(element.attrib.get("r", "0")),
+        }
         for element in root
         if element.tag == "waypoint"
     }
@@ -727,12 +733,12 @@ def load_gazebo_clusters(path: Path) -> list[dict[str, object]]:
     for element in root:
         if element.tag != "agent" or int(element.attrib.get("type", "0")) == 2:
             continue
-        route = [
-            waypoints[child.attrib["id"]]
+        route_ids = [
+            child.attrib["id"]
             for child in element
             if child.tag == "addwaypoint" and child.attrib["id"] in waypoints
         ]
-        if not route:
+        if not route_ids:
             continue
         clusters.append(
             {
@@ -742,12 +748,67 @@ def load_gazebo_clusters(path: Path) -> list[dict[str, object]]:
                     float(element.attrib.get("dx", "0")),
                     float(element.attrib.get("dy", "0")),
                 ),
-                "route": route,
+                "route": [
+                    waypoints[waypoint_id]["position"] for waypoint_id in route_ids
+                ],
+                "route_ids": route_ids,
+                "route_radii": [
+                    waypoints[waypoint_id]["radius"] for waypoint_id in route_ids
+                ],
             }
         )
     if not clusters:
         raise ValueError(f"{path} contains no non-robot waypoint clusters")
     return clusters
+
+
+def spread_spawn_point(
+    center: tuple[float, float],
+    extent: tuple[float, float],
+    sampled_offset: tuple[float, float],
+    cluster_index: int,
+    person_index: int,
+) -> tuple[float, float]:
+    """Push a seeded baseline sample radially to its spawn-extent boundary."""
+    golden_angle = math.pi * (3.0 - math.sqrt(5.0))
+    angle = (
+        math.atan2(sampled_offset[1], sampled_offset[0])
+        + golden_angle * (cluster_index + person_index + 1)
+    )
+    offset_x, offset_y = math.cos(angle), math.sin(angle)
+    scale = 0.5 / max(abs(offset_x), abs(offset_y))
+    return (
+        center[0] + extent[0] * offset_x * scale,
+        center[1] + extent[1] * offset_y * scale,
+    )
+
+
+def spread_waypoint_route(
+    route: list[tuple[float, float]],
+    radii: list[float],
+    sampled_offset: tuple[float, float],
+    person_index: int,
+) -> list[tuple[float, float]]:
+    """Choose deterministic per-person arrivals inside the same waypoint disks."""
+    if len(route) != len(radii):
+        raise ValueError("route and waypoint-radius counts must match")
+    if any(not math.isfinite(radius) or radius <= 0.0 for radius in radii):
+        raise ValueError("spread_radius requires positive finite waypoint radii")
+    base_angle = math.atan2(sampled_offset[1], sampled_offset[0])
+    golden_angle = math.pi * (3.0 - math.sqrt(5.0))
+    return [
+        (
+            center[0]
+            + radius
+            * SPREAD_RADIUS_FRACTION
+            * math.cos(base_angle + golden_angle * (person_index + waypoint_index)),
+            center[1]
+            + radius
+            * SPREAD_RADIUS_FRACTION
+            * math.sin(base_angle + golden_angle * (person_index + waypoint_index)),
+        )
+        for waypoint_index, (center, radius) in enumerate(zip(route, radii))
+    ]
 
 
 def routed_loop(
@@ -839,6 +900,7 @@ def gazebo_compatible_groups(
     minimum_segment: float = DEFAULT_MIN_PATROL_SEGMENT_M,
     maximum_segment: float = DEFAULT_MAX_PATROL_SEGMENT_M,
     fixed_speed: bool = False,
+    scenario_ab_mode: str = "baseline",
 ) -> dict[str, dict[str, object]]:
     """Expand to one IRA group per person so vmax is deterministic per agent."""
     if len(template_groups) != len(clusters):
@@ -852,6 +914,8 @@ def gazebo_compatible_groups(
         raise ValueError("minimum_segment must be a positive finite number")
     if not math.isfinite(maximum_segment) or maximum_segment <= 0.0:
         raise ValueError("maximum_segment must be a positive finite number")
+    if scenario_ab_mode not in SCENARIO_AB_MODES:
+        raise ValueError(f"unsupported scenario_ab_mode: {scenario_ab_mode}")
     generated: dict[str, dict[str, object]] = {}
     occupied_start_cells: list[int] = []
     leg_cache: dict[tuple[int, int, float, float], tuple[int, ...]] = {}
@@ -862,10 +926,38 @@ def gazebo_compatible_groups(
         extent_x, extent_y = cluster["extent"]
         route = cluster["route"]
         for person_index in range(count):
+            # Keep the exact two baseline RNG calls in both A/B modes. This
+            # preserves every later gauss() draw and therefore the speed
+            # sequence while allowing B to change geometry only. The baseline
+            # arithmetic below is deliberately left byte-for-byte equivalent
+            # to the e314f56 implementation.
             requested_start = (
                 center_x + rng.uniform(-extent_x / 2.0, extent_x / 2.0),
                 center_y + rng.uniform(-extent_y / 2.0, extent_y / 2.0),
             )
+            person_route = route
+            if scenario_ab_mode == "spread_radius":
+                sampled_offset = (
+                    (requested_start[0] - center_x) / extent_x
+                    if extent_x
+                    else 0.0,
+                    (requested_start[1] - center_y) / extent_y
+                    if extent_y
+                    else 0.0,
+                )
+                requested_start = spread_spawn_point(
+                    (center_x, center_y),
+                    (extent_x, extent_y),
+                    sampled_offset,
+                    cluster_index,
+                    person_index,
+                )
+                person_route = spread_waypoint_route(
+                    route,
+                    cluster.get("route_radii", []),
+                    sampled_offset,
+                    person_index,
+                )
             start_cell = grid.nearest_separated(
                 *requested_start,
                 occupied_start_cells,
@@ -882,8 +974,8 @@ def gazebo_compatible_groups(
             # so phase each person around the *same cyclic route* instead of
             # creating an artificial queue at route[0].  Route topology and
             # direction are unchanged; only the cyclic entry phase differs.
-            route_phase = person_index % len(route)
-            phased_route = route[route_phase:] + route[:route_phase]
+            route_phase = person_index % len(person_route)
+            phased_route = person_route[route_phase:] + person_route[:route_phase]
             group = deepcopy(template)
             group["num"] = 1
             patrol_found = False
@@ -1006,6 +1098,7 @@ def main() -> int:
             args.min_patrol_segment,
             args.max_patrol_segment,
             args.fixed_speed,
+            args.scenario_ab_mode,
         )
         if args.opposed_pair_test:
             configure_opposed_pair_test(groups)
@@ -1051,6 +1144,7 @@ def main() -> int:
         f"map={args.map_yaml} free_cells={len(grid.free)} static_boxes={len(static_boxes)} "
         f"people={sum(allocation) if allocation is not None else sum(int(group['num']) for group in groups.values())} "
         f"allocation={allocation} seed={args.seed} speed={args.speed:.3f} "
+        f"scenario_ab_mode={args.scenario_ab_mode} "
         f"fixed_speed={args.fixed_speed} ensure_all_clusters={args.ensure_all_clusters} "
         f"points={point_count} clearance_m={args.clearance:.2f} "
         f"spawn_clearance_m={args.spawn_clearance:.2f} output={args.output}"

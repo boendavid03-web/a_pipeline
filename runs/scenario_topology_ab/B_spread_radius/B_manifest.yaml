@@ -1,0 +1,120 @@
+schema: scenario_topology_ab_manifest/v1
+experiment: scenario_topology_ab
+variant: B_spread_radius
+scenario_ab_mode: spread_radius
+branch: experiment/scenario-topology-ab-e314f56
+
+baseline_anchor:
+  commit: e314f560b475cd33c32bbea11d2b9083f2b6b151
+  config_path: runs/scenario_topology_ab/baseline/A_baseline.yaml
+  config_sha256: 76896643184fd7fbfa26c43727cce49452bbe313fdae177de1065acb3a23303d
+  manifest_path: runs/scenario_topology_ab/baseline/baseline_manifest.yaml
+  manifest_sha256: 8619a3b983744e0e993357bc144eeb80a7460e9b7b559befe91a384ff2ce7091
+  equivalence_contract: e314f56_generator == default_mode == explicit_baseline
+
+generator:
+  executable: /usr/bin/python3
+  script: isaac_sim/scripts/generate_free_space_people_config.py
+  source_sha256: 5a322a7bf5df4b163473314be9fabbd8bf6416d89bafa6123680bcaab7794ab4
+  arguments:
+    - --map-yaml
+    - workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.yaml
+    - --template
+    - isaac_sim/scripts/ira_people_demo/custom_eng_lobby_people.yaml
+    - --output
+    - runs/scenario_topology_ab/B_spread_radius/B_spread_radius.yaml
+    - --clearance
+    - "0.55"
+    - --spawn-clearance
+    - "1.0"
+    - --min-patrol-segment
+    - "0.5"
+    - --max-patrol-segment
+    - "1.0"
+    - --world
+    - workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world
+    - --scenario
+    - workspaces/ros2_ws/src/semantic_nav_gazebo/scenarios/lobby/eng_hall_15.xml
+    - --pedestrian-count
+    - "15"
+    - --seed
+    - "7"
+    - --speed
+    - "1.0"
+    - --scenario-ab-mode
+    - spread_radius
+
+parameters:
+  pedestrian_count: 15
+  allocation: [5, 5, 2, 1, 1, 1]
+  seed: 7
+  waypoint_spread_fraction_of_xml_radius: 0.75
+  free_space_clearance_m: 0.55
+  spawn_clearance_m: 1.0
+  min_patrol_segment_m: 0.5
+  max_patrol_segment_m: 1.0
+
+provenance:
+  scenario_xml:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/scenarios/lobby/eng_hall_15.xml
+    sha256: 1e0b9137bad3c3767a50b645ea78cce0a126b236d03a68c12091a42d7d77af80
+  template:
+    path: isaac_sim/scripts/ira_people_demo/custom_eng_lobby_people.yaml
+    sha256: de03392d5344d5bbf0a441696c8070f4cd1d6be18a57227aaa528c285fb8cdc6
+  map_yaml:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.yaml
+    sha256: d97b27c8d8f46d382da85738865a675864b988b2a673fc50a87f4e8a9ff2fcd5
+  map_pgm:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.pgm
+    sha256: f9c6004f0a1457d197b68af66efde38e3c7d978397cc5b601efa15e77d1b93c4
+  world:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world
+    sha256: 040c58fc7064c5823379edbde7478648d3cec88ea010e5e1a47e067b36f8ef5b
+
+forbidden_invariants:
+  ordered_ids_unchanged: true
+  allocation_unchanged: true
+  speed_sequence_unchanged: true
+  seed_unchanged: true
+  route_family_unchanged: true
+  waypoint_order_unchanged: true
+  route_direction_unchanged: true
+  logical_topology_sha256: 71a2affbac26c814085bcb6212aa7bd512cc6088e4c927ca8421adceb71d47ce
+  speed_sequence_mps:
+    - 0.941215
+    - 0.918082
+    - 1.269589
+    - 1.064715
+    - 1.13166
+    - 1.129693
+    - 1.079416
+    - 0.988063
+    - 0.828104
+    - 1.446558
+    - 0.910548
+    - 0.97233
+    - 0.864647
+    - 1.31744
+    - 1.012603
+
+allowed_changes:
+  spawn_distribution_changed: true
+  spawn_changed_people: 14
+  projected_spawn_unchanged_people: [gazebo_d_001]
+  waypoint_radius_arrival_changed: true
+  waypoint_arrival_targets_changed: 50
+  path_changed_people: 15
+  path_endpoint_changed_people: 14
+  baseline_path_points: 1588
+  spread_radius_path_points: 1599
+
+outputs:
+  config_path: runs/scenario_topology_ab/B_spread_radius/B_spread_radius.yaml
+  config_sha256: a884d56465bcc489ccd5196c35bb46a9a49726556be933fc22eaddf52e682751
+  people: 15
+  patrol_points: 1599
+  checksum_path: runs/scenario_topology_ab/B_spread_radius/SHA256SUMS
+
+runtime:
+  isaac_experiment_started: false
+  scope: offline_generation_and_contract_tests_only
