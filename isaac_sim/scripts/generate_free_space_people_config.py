@@ -89,6 +89,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--speed", type=float, default=1.0)
     parser.add_argument(
+        "--scenario-ab-mode",
+        choices=("baseline",),
+        default="baseline",
+        help=(
+            "Scenario-topology experiment selector. Only the frozen baseline is "
+            "available; this option does not change generation behavior."
+        ),
+    )
+    parser.add_argument(
         "--fixed-speed",
         action="store_true",
         help=(

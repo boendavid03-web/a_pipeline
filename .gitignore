@@ -51,6 +51,10 @@ workspaces/ros2_ws/src/semantic_nav_gazebo/models/**/meshes/derived/
 
 runs/*
 !runs/.gitkeep
+!runs/scenario_topology_ab/
+runs/scenario_topology_ab/*
+!runs/scenario_topology_ab/baseline/
+!runs/scenario_topology_ab/baseline/**
 dist/*.tar.zst
 dist/*.sha256
 **/__pycache__/

@@ -1,0 +1,264 @@
+schema: scenario_topology_baseline_manifest/v2
+experiment: scenario_topology_ab
+branch: experiment/scenario-topology-ab-e314f56
+baseline_commit: e314f560b475cd33c32bbea11d2b9083f2b6b151
+
+generator_contract:
+  executable: /usr/bin/python3
+  script: isaac_sim/scripts/generate_free_space_people_config.py
+  arguments:
+    - --map-yaml
+    - workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.yaml
+    - --template
+    - isaac_sim/scripts/ira_people_demo/custom_eng_lobby_people.yaml
+    - --output
+    - "{output}"
+    - --clearance
+    - "0.55"
+    - --spawn-clearance
+    - "1.0"
+    - --min-patrol-segment
+    - "0.5"
+    - --max-patrol-segment
+    - "1.0"
+    - --world
+    - workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world
+    - --scenario
+    - workspaces/ros2_ws/src/semantic_nav_gazebo/scenarios/lobby/eng_hall_15.xml
+    - --pedestrian-count
+    - "15"
+    - --seed
+    - "7"
+    - --speed
+    - "1.0"
+  explicit_baseline_arguments: [--scenario-ab-mode, baseline]
+  byte_identity_variants:
+    - baseline_commit_generator
+    - current_default_generator
+    - current_explicit_baseline_generator
+
+parameters:
+  scenario_ab_mode: baseline
+  pedestrian_count: 15
+  allocation: [5, 5, 2, 1, 1, 1]
+  seed: 7
+  base_speed_mps: 1.0
+  fixed_speed: false
+  ensure_all_clusters: false
+  opposed_pair_test: false
+  free_space_clearance_m: 0.55
+  spawn_clearance_m: 1.0
+  min_patrol_segment_m: 0.5
+  max_patrol_segment_m: 1.0
+  simulation_duration_s: 86400.0
+
+environment:
+  python: {executable: /usr/bin/python3, version: 3.10.12}
+  yaml_parser: {distribution: PyYAML, version: 5.4.1}
+  isaac_sim:
+    version: 6.0.1
+    evidence: isaac_sim/scripts/show_warehouse_people_robot_6_0.py
+
+provenance:
+  generator_at_baseline_commit:
+    path: isaac_sim/scripts/generate_free_space_people_config.py
+    sha256: b20e04a862addf8f76b57f9789d3d22eb50128a4374fa1853650edf25d3af81d
+  scenario_xml:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/scenarios/lobby/eng_hall_15.xml
+    sha256: 1e0b9137bad3c3767a50b645ea78cce0a126b236d03a68c12091a42d7d77af80
+  template:
+    path: isaac_sim/scripts/ira_people_demo/custom_eng_lobby_people.yaml
+    sha256: de03392d5344d5bbf0a441696c8070f4cd1d6be18a57227aaa528c285fb8cdc6
+  map_yaml:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.yaml
+    sha256: d97b27c8d8f46d382da85738865a675864b988b2a673fc50a87f4e8a9ff2fcd5
+  map_pgm:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.pgm
+    sha256: f9c6004f0a1457d197b68af66efde38e3c7d978397cc5b601efa15e77d1b93c4
+  world:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world
+    sha256: 040c58fc7064c5823379edbde7478648d3cec88ea010e5e1a47e067b36f8ef5b
+  route_geometry_helper:
+    path: isaac_sim/scripts/people_route_geometry.py
+    sha256: 1346eb481001bf132132cbc175813dbebc8e344d5eaed7ba671dc92fdc1362e8
+  route_validator:
+    path: isaac_sim/scripts/validate_custom_people_routes.py
+    sha256: 1092bf076a73e144909e688c0de1799df9bbd33a514815598aea2760ffd60876
+  isaac_scene_usda:
+    path: isaac_sim/scenes/a_pipeline_eng_lobby.usda
+    sha256: 18e012a8d1b9614aefa1517bc3be3ac47775e62cd6fba78240a04b4b6652c1dd
+  navmesh_scene_builder:
+    path: isaac_sim/scripts/convert_gazebo_boxes_to_usda.py
+    sha256: cd3d87dfd0fc943150caaebb60cbf37c1268b1411d360b97f159ee3ae0beba04
+  navmesh_build_launcher:
+    path: isaac_sim/scripts/build_custom_scene.sh
+    sha256: 032fcc643490f564d2593dd7711144a1d698fd68b508c0d6e1930c57eefb192b
+  launcher:
+    path: isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh
+    sha256: ba489523e96bde1cc77964014151f78e4fcb4798dcd3db5866e54a1c3dd0fd04
+  isaac_runtime:
+    path: isaac_sim/scripts/show_warehouse_people_robot_6_0.py
+    sha256: 167d41798ca58c9a4bd8a0ddc86bbf6e887a0cd081d43b0b3dc24ab9ef303e0f
+  pedestrian_social_adapter:
+    path: isaac_sim/scripts/pedestrian_social.py
+    sha256: 257bd27e7a0bd9fb776876cad5aa2d888bc150dc7e9b64a2eb68ed9e72c1a7a9
+  steering_adapter:
+    path: isaac_sim/scripts/pedestrian_steering.py
+    sha256: 20238a6495c3433e7c9a1bc13884a6a1f76dc2b9698e12055f51b96de5f41c1f
+  gazebo_social_kernel:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/scripts/gazebo_social_kernel.py
+    sha256: 60eba5c1c32895c44f17ee0bf49ea584c9897af6b8dca27b312c7b1be6c93d8a
+  pedestrian_ground_truth_adapter:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/scripts/isaac_pedestrian_ground_truth_adapter.py
+    sha256: d9f00586a82b8861f53d8fd4d0f4d77b4884d3418a64195ca38fe485cd1f59df
+  adapter_launch:
+    path: workspaces/ros2_ws/src/semantic_nav_gazebo/launch/isaac_collection_support.launch.py
+    sha256: 80a76fe31dac7939e92d4acacb4e0158cf7e27fc63479045ed1239e096a96004
+
+outputs:
+  baseline_config:
+    path: runs/scenario_topology_ab/baseline/A_baseline.yaml
+    sha256: 76896643184fd7fbfa26c43727cce49452bbe313fdae177de1065acb3a23303d
+    people: 15
+    patrol_points: 1588
+
+semantic_snapshot:
+  path_hash_encoding: sha256(canonical-json-utf8; separators=comma-colon; ensure_ascii=false)
+  pedestrian:
+    ordered_ids:
+      - gazebo_a_001
+      - gazebo_a_002
+      - gazebo_a_003
+      - gazebo_a_004
+      - gazebo_a_005
+      - gazebo_b_001
+      - gazebo_b_002
+      - gazebo_b_003
+      - gazebo_b_004
+      - gazebo_b_005
+      - gazebo_c_001
+      - gazebo_c_002
+      - gazebo_d_001
+      - gazebo_e_001
+      - gazebo_f_001
+    allocation: [5, 5, 2, 1, 1, 1]
+    seed: 7
+    speed_sequence_mps:
+      - 0.941215
+      - 0.918082
+      - 1.269589
+      - 1.064715
+      - 1.13166
+      - 1.129693
+      - 1.079416
+      - 0.988063
+      - 0.828104
+      - 1.446558
+      - 0.910548
+      - 0.97233
+      - 0.864647
+      - 1.31744
+      - 1.012603
+    records:
+      - {id: gazebo_a_001, spawn_position: [0.825, 9.475, 0.0], path_point_count: 134, path_sha256: 6c2b84641ff3af2f9544a221d067b2cb7845da8e4775e11da86caf22c2b7ddf6}
+      - {id: gazebo_a_002, spawn_position: [1.725, 9.925, 0.0], path_point_count: 150, path_sha256: 0d516abb2bea9c155e059f80ef6b82ae60562b0b59c1d8bedb8ea237bb94805d}
+      - {id: gazebo_a_003, spawn_position: [0.675, 11.325, 0.0], path_point_count: 95, path_sha256: 17325f41eb1d58f609b8adea6a01fe809bc23a9423ca0d60c4442fe00d4446a4}
+      - {id: gazebo_a_004, spawn_position: [0.675, 8.475, 0.0], path_point_count: 88, path_sha256: 000c4912257a92122f14f48883c623d0223d323fbd640570c46355490e782f26}
+      - {id: gazebo_a_005, spawn_position: [1.625, 11.725, 0.0], path_point_count: 146, path_sha256: fc9d9a3168287945270fb3a6837d8c7af98a910755f571f38cdb26a87ea79b52}
+      - {id: gazebo_b_001, spawn_position: [22.175, 20.325, 0.0], path_point_count: 127, path_sha256: 6aac2b6772a4ab2d52888ca631de3270fd47bfcefdc5813eb3343a1752319fbd}
+      - {id: gazebo_b_002, spawn_position: [22.125, 19.325, 0.0], path_point_count: 141, path_sha256: 6b18039365da07dda5833b562f36cb99c02043361e1f79bea1993528e76217c9}
+      - {id: gazebo_b_003, spawn_position: [21.275, 19.875, 0.0], path_point_count: 120, path_sha256: 80fc15dba04bf449eec0e3b57efd0a5c83eccb0a89f1f11101e5efb10d0f924a}
+      - {id: gazebo_b_004, spawn_position: [21.225, 18.875, 0.0], path_point_count: 86, path_sha256: 65df32e1353fc6623dd265e14f0fc0572d564122aeff27fe32083535d6f910f3}
+      - {id: gazebo_b_005, spawn_position: [20.375, 20.325, 0.0], path_point_count: 124, path_sha256: 86ec3771a9ccf6ef0a141fe68c1b284a3a336eaf6aee91d2e6c6b2f4b1804a8a}
+      - {id: gazebo_c_001, spawn_position: [18.225, 18.875, 0.0], path_point_count: 81, path_sha256: ebe684f9d93334d7710c3b7c83839df9f1bd2b6b7395928830dfbb609ff24c49}
+      - {id: gazebo_c_002, spawn_position: [17.225, 18.725, 0.0], path_point_count: 59, path_sha256: 49573fbb01a49a348efd5837c5472640e545549ee4ffe415f7ea0a06a980180e}
+      - {id: gazebo_d_001, spawn_position: [28.575, 11.025, 0.0], path_point_count: 59, path_sha256: e270d5c3d2db96172db8e7888e55d5ceade01d6082388f7cf3b5ea08cd9fe01f}
+      - {id: gazebo_e_001, spawn_position: [1.975, 14.675, 0.0], path_point_count: 101, path_sha256: f24525621d9302d298d6ac0628ff2c7f2fb8881a484fda69de01a98022cd0255}
+      - {id: gazebo_f_001, spawn_position: [14.225, 15.275, 0.0], path_point_count: 77, path_sha256: fd63f864f7ff9e2742190c2eeef16479b1d89c582801648d0137f042de9040e9}
+  route:
+    families:
+      - {route_family: bookshop_to_coffee, canonical_cyclic_order: [bookshop_entry, bookshop_exit, coffee_entry, coffee_exit], direction: forward}
+      - {route_family: coffee_to_bookshop, canonical_cyclic_order: [coffee_entry, coffee_exit, bookshop_entry, bookshop_exit], direction: forward}
+      - {route_family: coffee_to_north, canonical_cyclic_order: [coffee_entry, bookshop_exit], direction: forward}
+      - {route_family: east_to_west, canonical_cyclic_order: [left_hall, coffee_exit], direction: forward}
+      - {route_family: west_to_lift, canonical_cyclic_order: [enter_lift, enter_westdoor], direction: forward}
+      - {route_family: restroom_to_classroom, canonical_cyclic_order: [enter_restroom, enter_classroom], direction: forward}
+    phases:
+      gazebo_a_001: 0
+      gazebo_a_002: 1
+      gazebo_a_003: 2
+      gazebo_a_004: 3
+      gazebo_a_005: 0
+      gazebo_b_001: 0
+      gazebo_b_002: 1
+      gazebo_b_003: 2
+      gazebo_b_004: 3
+      gazebo_b_005: 0
+      gazebo_c_001: 0
+      gazebo_c_002: 1
+      gazebo_d_001: 0
+      gazebo_e_001: 0
+      gazebo_f_001: 0
+  scenario:
+    simulation_duration_s: 86400.0
+    free_space_clearance_m: 0.55
+    minimum_spawn_separation_m: 1.0
+
+logical_topology_snapshot:
+  waypoint_clusters:
+    - cluster_id: gazebo_a
+      source_agent_order: 0
+      route_family: bookshop_to_coffee
+      waypoints:
+        - {waypoint_id: bookshop_entry, waypoint_order: 0, waypoint_radius_m: 3.0}
+        - {waypoint_id: bookshop_exit, waypoint_order: 1, waypoint_radius_m: 3.0}
+        - {waypoint_id: coffee_entry, waypoint_order: 2, waypoint_radius_m: 3.0}
+        - {waypoint_id: coffee_exit, waypoint_order: 3, waypoint_radius_m: 3.0}
+    - cluster_id: gazebo_b
+      source_agent_order: 1
+      route_family: coffee_to_bookshop
+      waypoints:
+        - {waypoint_id: coffee_entry, waypoint_order: 0, waypoint_radius_m: 3.0}
+        - {waypoint_id: coffee_exit, waypoint_order: 1, waypoint_radius_m: 3.0}
+        - {waypoint_id: bookshop_entry, waypoint_order: 2, waypoint_radius_m: 3.0}
+        - {waypoint_id: bookshop_exit, waypoint_order: 3, waypoint_radius_m: 3.0}
+    - cluster_id: gazebo_c
+      source_agent_order: 2
+      route_family: coffee_to_north
+      waypoints:
+        - {waypoint_id: coffee_entry, waypoint_order: 0, waypoint_radius_m: 3.0}
+        - {waypoint_id: bookshop_exit, waypoint_order: 1, waypoint_radius_m: 3.0}
+    - cluster_id: gazebo_d
+      source_agent_order: 3
+      route_family: east_to_west
+      waypoints:
+        - {waypoint_id: left_hall, waypoint_order: 0, waypoint_radius_m: 3.0}
+        - {waypoint_id: coffee_exit, waypoint_order: 1, waypoint_radius_m: 3.0}
+    - cluster_id: gazebo_e
+      source_agent_order: 4
+      route_family: west_to_lift
+      waypoints:
+        - {waypoint_id: enter_lift, waypoint_order: 0, waypoint_radius_m: 3.0}
+        - {waypoint_id: enter_westdoor, waypoint_order: 1, waypoint_radius_m: 3.0}
+    - cluster_id: gazebo_f
+      source_agent_order: 5
+      route_family: restroom_to_classroom
+      waypoints:
+        - {waypoint_id: enter_restroom, waypoint_order: 0, waypoint_radius_m: 3.0}
+        - {waypoint_id: enter_classroom, waypoint_order: 1, waypoint_radius_m: 3.0}
+  pedestrians:
+    - {id: gazebo_a_001, source_cluster: gazebo_a, route_family: bookshop_to_coffee, route_phase: 0}
+    - {id: gazebo_a_002, source_cluster: gazebo_a, route_family: bookshop_to_coffee, route_phase: 1}
+    - {id: gazebo_a_003, source_cluster: gazebo_a, route_family: bookshop_to_coffee, route_phase: 2}
+    - {id: gazebo_a_004, source_cluster: gazebo_a, route_family: bookshop_to_coffee, route_phase: 3}
+    - {id: gazebo_a_005, source_cluster: gazebo_a, route_family: bookshop_to_coffee, route_phase: 0}
+    - {id: gazebo_b_001, source_cluster: gazebo_b, route_family: coffee_to_bookshop, route_phase: 0}
+    - {id: gazebo_b_002, source_cluster: gazebo_b, route_family: coffee_to_bookshop, route_phase: 1}
+    - {id: gazebo_b_003, source_cluster: gazebo_b, route_family: coffee_to_bookshop, route_phase: 2}
+    - {id: gazebo_b_004, source_cluster: gazebo_b, route_family: coffee_to_bookshop, route_phase: 3}
+    - {id: gazebo_b_005, source_cluster: gazebo_b, route_family: coffee_to_bookshop, route_phase: 0}
+    - {id: gazebo_c_001, source_cluster: gazebo_c, route_family: coffee_to_north, route_phase: 0}
+    - {id: gazebo_c_002, source_cluster: gazebo_c, route_family: coffee_to_north, route_phase: 1}
+    - {id: gazebo_d_001, source_cluster: gazebo_d, route_family: east_to_west, route_phase: 0}
+    - {id: gazebo_e_001, source_cluster: gazebo_e, route_family: west_to_lift, route_phase: 0}
+    - {id: gazebo_f_001, source_cluster: gazebo_f, route_family: restroom_to_classroom, route_phase: 0}
