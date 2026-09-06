@@ -46,7 +46,7 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
         self.assertEqual(result["a"].human_social_component_mps2, (0.0, 0.0))
         self.assertEqual(result["b"].human_social_component_mps2, (0.0, 0.0))
 
-    def test_head_on_people_slow_and_choose_stable_opposite_lateral_sides(self) -> None:
+    def test_symmetric_head_on_preserves_gazebo_zero_lateral_response(self) -> None:
         controller = self.make_controller()
         result = controller.update(
             {
@@ -59,8 +59,10 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
 
         self.assertLess(result["a"].human_social_component_mps2[0], 0.0)
         self.assertGreater(result["b"].human_social_component_mps2[0], 0.0)
-        self.assertLess(result["a"].final_desired_velocity_mps[1], 0.0)
-        self.assertGreater(result["b"].final_desired_velocity_mps[1], 0.0)
+        self.assertEqual(result["a"].gazebo_raw_velocity_mps[1], 0.0)
+        self.assertEqual(result["b"].gazebo_raw_velocity_mps[1], 0.0)
+        self.assertEqual(result["a"].final_desired_velocity_mps[1], 0.0)
+        self.assertEqual(result["b"].final_desired_velocity_mps[1], 0.0)
         self.assertLess(result["a"].speed_command_mps, 1.0)
         self.assertLess(result["b"].speed_command_mps, 1.0)
 
@@ -111,8 +113,8 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
         )["a"]
 
         self.assertEqual(result.robot_social_component_mps2, (0.0, 0.0))
-        self.assertEqual(
-            result.robot_personal_space_component_mps2, (0.0, 0.0)
+        self.assertLess(
+            math.hypot(*result.robot_personal_space_component_mps2), 1.0e-30
         )
 
     def test_robot_personal_space_force_grows_continuously(self) -> None:
@@ -176,7 +178,7 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
                 robot_clearance_m=0.80,
             )
 
-    def test_multistep_head_on_encounter_is_finite_and_side_stable(self) -> None:
+    def test_multistep_symmetric_head_on_approach_has_no_invented_bias(self) -> None:
         controller = PedestrianSocialForceController(
             SocialForceParameters(smoothing_time_sec=0.1)
         )
@@ -186,8 +188,12 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
         lateral_signs = {"a": 0, "b": 0}
         sign_flips = {"a": 0, "b": 0}
         minimum_distance = math.inf
+        maximum_lateral = 0.0
 
-        for _ in range(160):
+        # Stop before the centers cross.  Once they pass, the original Gazebo
+        # interaction angle can become pi and is no longer a head-on theta=0
+        # case.
+        for _ in range(20):
             states = {
                 name: pedestrian(
                     tuple(positions[name]),
@@ -199,6 +205,11 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
             outputs = controller.update(states, None, 0.05)
             for name, output in outputs.items():
                 velocity = output.final_desired_velocity_mps
+                maximum_lateral = max(
+                    maximum_lateral,
+                    abs(output.gazebo_raw_velocity_mps[1]),
+                    abs(velocity[1]),
+                )
                 sign = 0 if abs(velocity[1]) < 1.0e-8 else math.copysign(1, velocity[1])
                 if lateral_signs[name] and sign and sign != lateral_signs[name]:
                     sign_flips[name] += 1
@@ -214,34 +225,38 @@ class PedestrianSocialForceControllerTest(unittest.TestCase):
             )
 
         self.assertGreater(minimum_distance, 0.45)
+        self.assertEqual(maximum_lateral, 0.0)
         self.assertEqual(sign_flips, {"a": 0, "b": 0})
 
-    def test_multistep_robot_encounter_avoids_oriented_footprint(self) -> None:
-        controller = PedestrianSocialForceController(
-            SocialForceParameters(smoothing_time_sec=0.1)
+    def test_robot_obb_changes_safety_metric_but_not_shared_raw_velocity(self) -> None:
+        state = {"a": pedestrian((-1.0, 0.2), (0.5, 0.0), (1.0, 0.0))}
+        compact = self.make_controller().update(
+            state,
+            RobotMotionState((0.0, 0.0), (0.0, 0.0), 0.0, (0.2, 0.2)),
+            0.05,
+        )["a"]
+        wide = self.make_controller().update(
+            state,
+            RobotMotionState((0.0, 0.0), (0.0, 0.0), 0.0, (0.8, 0.6)),
+            0.05,
+        )["a"]
+
+        self.assertEqual(
+            compact.gazebo_robot_social_raw_mps2,
+            wide.gazebo_robot_social_raw_mps2,
         )
-        robot = RobotMotionState((0.0, 0.0), (0.0, 0.0), 0.0, (0.35, 0.30))
-        position = [-3.0, 0.0]
-        velocity = [1.0, 0.0]
-        minimum_clearance = math.inf
-
-        for _ in range(160):
-            output = controller.update(
-                {"a": pedestrian(tuple(position), tuple(velocity), (1.0, 0.0))},
-                robot,
-                0.05,
-            )["a"]
-            minimum_clearance = min(
-                minimum_clearance, output.robot_footprint_clearance_m
-            )
-            self.assertLessEqual(
-                math.hypot(*output.applied_social_accel_mps2), 4.0 + 1.0e-9
-            )
-            velocity = list(output.final_desired_velocity_mps)
-            position[0] += 0.05 * velocity[0]
-            position[1] += 0.05 * velocity[1]
-
-        self.assertGreater(minimum_clearance, 0.53)
+        self.assertEqual(
+            compact.gazebo_robot_personal_space_raw_mps2,
+            wide.gazebo_robot_personal_space_raw_mps2,
+        )
+        self.assertEqual(
+            compact.gazebo_raw_velocity_mps,
+            wide.gazebo_raw_velocity_mps,
+        )
+        self.assertNotEqual(
+            compact.robot_footprint_clearance_m,
+            wide.robot_footprint_clearance_m,
+        )
 
 
 class SocialQualityTrackerTest(unittest.TestCase):

@@ -208,7 +208,7 @@ def test_gazebo_social_mode_uses_persistent_full_2d_follow_target():
     assert 'legacy|native_avoidance|gazebo_social' in warehouse_launcher
     assert 'PEDESTRIAN_SOCIAL_MODE == "gazebo_social"' in source
     assert "agent.get_linear_velocity(True)" in adapter
-    assert '"actual_navigation_velocity_source": "pose_derived_position_delta"' in adapter
+    assert '"actual_navigation_velocity_source": actual_velocity_sources[path]' in adapter
     assert '"behavior_agent_reported_navigation_velocity_mps"' in adapter
     assert "authored_midpoint_mps" in adapter
     assert ".get_target_location()" in adapter
@@ -222,7 +222,17 @@ def test_gazebo_social_mode_uses_persistent_full_2d_follow_target():
     assert "CUSTOM_FREE_SPACE_CLEARANCE_M" in source
     assert '"locomotion_target_free_space_constrained"' in adapter
     assert '"free_space_constrained_target_count"' in adapter
-    assert "output.final_desired_velocity_mps" in adapter
+    assert "output.isaac_adapter_output_velocity_mps" in adapter
+    assert '"gazebo_raw_velocity_mps"' in adapter
+    assert '"isaac_adapter_input_velocity_mps"' in adapter
+    assert '"isaac_adapter_output_velocity_mps"' in adapter
+    assert '"solver_to_adapter_velocity_error_mps"' in adapter
+    assert '"adapter_to_actual_velocity_error_mps"' in adapter
+    assert '"solver_to_actual_velocity_error_mps"' in adapter
+    assert '"shared_gazebo_kernel_path"' in adapter
+    assert '"gazebo_solver_dt_sec"' in adapter
+    assert '"isaac_adapter_dt_sec"' in adapter
+    assert '"emergency_dodge_active"' in adapter
     assert "[float(point[0]), float(point[1]), float(point[2])]" in adapter
     assert '"lateral_vector_applied_directly": True' in adapter
     assert '"patrol_execution": "persistent_follow_moving_target"' in adapter

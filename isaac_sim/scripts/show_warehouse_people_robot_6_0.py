@@ -34,6 +34,7 @@ from pedestrian_social import (
     SocialForceParameters,
     SocialQualityTracker,
     SocialYieldPlanner,
+    gazebo_social_kernel_source_path,
 )
 from pedestrian_steering import PatrolPolylineCursor, steering_target_from_velocity
 from rtx_lidar_scan import project_rtx_returns
@@ -1611,9 +1612,18 @@ class BehaviorAgentSocialMotion:
         self.maximum_sample_displacement_m = 0.0
         self.maximum_actual_lateral_delta_mps = 0.0
         self.maximum_commanded_lateral_mps = 0.0
+        self.maximum_gazebo_raw_lateral_mps = 0.0
         self.maximum_actual_lateral_mps = 0.0
+        self.gazebo_raw_lateral_sample_count = 0
         self.lateral_command_sample_count = 0
         self.actual_lateral_motion_sample_count = 0
+        self.velocity_error_sample_count = 0
+        self.solver_to_adapter_velocity_error_sum_mps = 0.0
+        self.adapter_to_actual_velocity_error_sum_mps = 0.0
+        self.solver_to_actual_velocity_error_sum_mps = 0.0
+        self.maximum_solver_to_adapter_velocity_error_mps = 0.0
+        self.maximum_adapter_to_actual_velocity_error_mps = 0.0
+        self.maximum_solver_to_actual_velocity_error_mps = 0.0
         self.free_space_constrained_target_count = 0
         self.current_freeze_sec = {path: 0.0 for path in initial_positions}
         self.maximum_freeze_sec = {path: 0.0 for path in initial_positions}
@@ -1625,9 +1635,12 @@ class BehaviorAgentSocialMotion:
             self.trace_file.write(
                 json.dumps(
                     {
-                        "schema": "isaac_pedestrian_social_steering/v1",
+                        "schema": "isaac_pedestrian_social_steering/v2",
                         "type": "header",
                         "adapter": "behavior_agent_persistent_follow_target_2d",
+                        "shared_gazebo_kernel_path": str(
+                            gazebo_social_kernel_source_path()
+                        ),
                     },
                     sort_keys=True,
                 )
@@ -1856,12 +1869,15 @@ class BehaviorAgentSocialMotion:
     def update(
         self,
         positions: dict[str, np.ndarray],
+        robot_center_stage: np.ndarray,
         robot_collision_center_stage: np.ndarray,
         robot_yaw: float,
         robot_collision_dimensions_m: np.ndarray,
         robot_world_velocity_mps: tuple[float, float],
         sim_time: float,
         inhibited_paths=(),
+        emergency_dodge_paths=(),
+        emergency_resume_paths=(),
     ) -> None:
         dt = (
             PEDESTRIAN_PUBLISH_PERIOD_SEC
@@ -1872,6 +1888,7 @@ class BehaviorAgentSocialMotion:
         states: dict[str, PedestrianMotionState] = {}
         positions_m: dict[str, tuple[float, float]] = {}
         actual_velocities_mps: dict[str, tuple[float, float]] = {}
+        actual_velocity_sources: dict[str, str] = {}
         navigation_reported_velocities_mps: dict[str, tuple[float, float]] = {}
         base_directions: dict[str, tuple[float, float]] = {}
         for path, position_stage in positions.items():
@@ -1901,8 +1918,23 @@ class BehaviorAgentSocialMotion:
                 else navigation_reported_velocity_mps
             )
             base_direction = self.patrol_cursors[path].desired_direction(position_m)
+            facing = agent.get_facing_direction()
+            facing_stage = np.asarray(
+                [float(facing.x), float(facing.y), float(facing.z)], dtype=float
+            )
+            heading_direction_array = stage_to_ros_vector(facing_stage)[:2]
+            heading_yaw = (
+                math.atan2(heading_direction_array[1], heading_direction_array[0])
+                if float(np.linalg.norm(heading_direction_array)) > 1.0e-9
+                else math.atan2(base_direction[1], base_direction[0])
+            )
             positions_m[path] = position_m
             actual_velocities_mps[path] = actual_velocity_mps
+            actual_velocity_sources[path] = (
+                "pose_derived_position_delta"
+                if previous_position_m is not None
+                else "behavior_agent_reported_navigation_velocity_first_sample"
+            )
             navigation_reported_velocities_mps[path] = (
                 navigation_reported_velocity_mps
             )
@@ -1912,12 +1944,13 @@ class BehaviorAgentSocialMotion:
                 velocity_mps=actual_velocity_mps,
                 desired_direction=base_direction,
                 preferred_speed_mps=self.preferred_speeds_mps[path],
+                yaw_rad=heading_yaw,
             )
         planar_dimension_index = 1 if STAGE_UP_AXIS == "Z" else 2
         robot_state = RobotMotionState(
             position_m=tuple(
                 float(value)
-                for value in stage_to_ros_vector(robot_collision_center_stage)[:2]
+                for value in stage_to_ros_vector(robot_center_stage)[:2]
             ),
             velocity_mps=robot_world_velocity_mps,
             yaw_rad=float(robot_yaw),
@@ -1926,9 +1959,15 @@ class BehaviorAgentSocialMotion:
                 0.5
                 * float(robot_collision_dimensions_m[planar_dimension_index]),
             ),
+            footprint_center_m=tuple(
+                float(value)
+                for value in stage_to_ros_vector(robot_collision_center_stage)[:2]
+            ),
         )
         outputs = self.controller.update(states, robot_state, dt)
         inhibited = set(inhibited_paths)
+        emergency_dodge = set(emergency_dodge_paths)
+        emergency_resume = set(emergency_resume_paths)
         debug: dict[str, dict[str, object]] = {}
         for path, output in outputs.items():
             is_inhibited = path in inhibited
@@ -1939,7 +1978,7 @@ class BehaviorAgentSocialMotion:
                 self._ensure_follow(path)
                 steering_command = steering_target_from_velocity(
                     positions_m[path],
-                    output.final_desired_velocity_mps,
+                    output.isaac_adapter_output_velocity_mps,
                     PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
                 )
                 applied_target_m, free_space_constrained = (
@@ -1962,13 +2001,17 @@ class BehaviorAgentSocialMotion:
             base_direction = base_directions[path]
             left_direction = -base_direction[1], base_direction[0]
             desired_forward = sum(
-                output.final_desired_velocity_mps[index]
+                output.isaac_adapter_output_velocity_mps[index]
                 * base_direction[index]
                 for index in range(2)
             )
-            desired_lateral = sum(
-                output.final_desired_velocity_mps[index]
-                * left_direction[index]
+            desired_lateral = output.adapter_lateral_component_mps
+            raw_forward = sum(
+                output.gazebo_raw_velocity_mps[index] * base_direction[index]
+                for index in range(2)
+            )
+            raw_lateral = sum(
+                output.gazebo_raw_velocity_mps[index] * left_direction[index]
                 for index in range(2)
             )
             actual_velocity = actual_velocities_mps[path]
@@ -1983,11 +2026,16 @@ class BehaviorAgentSocialMotion:
             self.maximum_commanded_lateral_mps = max(
                 self.maximum_commanded_lateral_mps, abs(desired_lateral)
             )
+            self.maximum_gazebo_raw_lateral_mps = max(
+                self.maximum_gazebo_raw_lateral_mps, abs(raw_lateral)
+            )
             self.maximum_actual_lateral_mps = max(
                 self.maximum_actual_lateral_mps, abs(actual_lateral)
             )
             if abs(desired_lateral) >= 0.02:
                 self.lateral_command_sample_count += 1
+            if abs(raw_lateral) >= 0.02:
+                self.gazebo_raw_lateral_sample_count += 1
             if abs(actual_lateral) >= 0.02:
                 self.actual_lateral_motion_sample_count += 1
             previous_lateral = self.previous_actual_lateral_mps.get(path)
@@ -2004,8 +2052,40 @@ class BehaviorAgentSocialMotion:
                     math.dist(previous_position, positions_m[path]),
                 )
             self.previous_positions_m[path] = positions_m[path]
+            solver_to_adapter_error = math.dist(
+                output.gazebo_raw_velocity_mps,
+                output.isaac_adapter_output_velocity_mps,
+            )
+            adapter_to_actual_error = math.dist(
+                output.isaac_adapter_output_velocity_mps,
+                actual_velocity,
+            )
+            solver_to_actual_error = math.dist(
+                output.gazebo_raw_velocity_mps,
+                actual_velocity,
+            )
+            self.velocity_error_sample_count += 1
+            self.solver_to_adapter_velocity_error_sum_mps += (
+                solver_to_adapter_error
+            )
+            self.adapter_to_actual_velocity_error_sum_mps += (
+                adapter_to_actual_error
+            )
+            self.solver_to_actual_velocity_error_sum_mps += solver_to_actual_error
+            self.maximum_solver_to_adapter_velocity_error_mps = max(
+                self.maximum_solver_to_adapter_velocity_error_mps,
+                solver_to_adapter_error,
+            )
+            self.maximum_adapter_to_actual_velocity_error_mps = max(
+                self.maximum_adapter_to_actual_velocity_error_mps,
+                adapter_to_actual_error,
+            )
+            self.maximum_solver_to_actual_velocity_error_mps = max(
+                self.maximum_solver_to_actual_velocity_error_mps,
+                solver_to_actual_error,
+            )
             locomotion_speed_command_mps = math.hypot(
-                *output.final_desired_velocity_mps
+                *output.isaac_adapter_output_velocity_mps
             )
             if (
                 not is_inhibited
@@ -2031,18 +2111,95 @@ class BehaviorAgentSocialMotion:
             facing_stage = np.asarray(
                 [float(facing.x), float(facing.y), float(facing.z)], dtype=float
             )
+            heading_direction = tuple(
+                float(value) for value in stage_to_ros_vector(facing_stage)[:2]
+            )
+            heading_yaw = math.atan2(heading_direction[1], heading_direction[0])
+            adapter_yaw = math.atan2(
+                output.isaac_adapter_output_velocity_mps[1],
+                output.isaac_adapter_output_velocity_mps[0],
+            )
             debug[path] = {
                 "position_m": list(positions_m[path]),
                 "actual_navigation_velocity_mps": list(actual_velocity),
-                "actual_navigation_velocity_source": "pose_derived_position_delta",
+                "actual_navigation_velocity_source": actual_velocity_sources[path],
+                "actual_pose_derived_velocity_mps": (
+                    list(actual_velocity)
+                    if actual_velocity_sources[path] == "pose_derived_position_delta"
+                    else None
+                ),
                 "behavior_agent_reported_navigation_velocity_mps": list(
                     navigation_reported_velocities_mps[path]
                 ),
                 "actual_navigation_forward_mps": actual_forward,
                 "actual_navigation_lateral_mps": actual_lateral,
+                "route_desired_direction": list(base_direction),
                 "base_patrol_direction": list(base_direction),
-                "heading_direction": list(stage_to_ros_vector(facing_stage)[:2]),
+                "preferred_speed_mps": self.preferred_speeds_mps[path],
+                "gazebo_robot_center_position_m": list(robot_state.position_m),
+                "isaac_robot_footprint_center_position_m": list(
+                    robot_state.footprint_center_m
+                ),
+                "heading_direction": list(heading_direction),
+                "heading_error_rad": math.atan2(
+                    math.sin(adapter_yaw - heading_yaw),
+                    math.cos(adapter_yaw - heading_yaw),
+                ),
                 "desired_component_mps": list(output.desired_component_mps),
+                "gazebo_solver_dt_sec": output.gazebo_raw_dt_sec,
+                "gazebo_desired_acceleration_mps2": list(
+                    output.gazebo_desired_acceleration_mps2
+                ),
+                "gazebo_human_social_raw_mps2": list(
+                    output.gazebo_human_social_raw_mps2
+                ),
+                "gazebo_human_social_weighted_mps2": list(
+                    output.gazebo_human_social_weighted_mps2
+                ),
+                "gazebo_robot_social_raw_mps2": list(
+                    output.gazebo_robot_social_raw_mps2
+                ),
+                "gazebo_robot_social_weighted_mps2": list(
+                    output.gazebo_robot_social_weighted_mps2
+                ),
+                "gazebo_robot_personal_space_raw_mps2": list(
+                    output.gazebo_robot_personal_space_raw_mps2
+                ),
+                "gazebo_robot_personal_space_weighted_mps2": list(
+                    output.gazebo_robot_personal_space_weighted_mps2
+                ),
+                "gazebo_core_acceleration_mps2": list(
+                    output.gazebo_core_acceleration_mps2
+                ),
+                "gazebo_raw_pre_clip_velocity_mps": list(
+                    output.gazebo_raw_pre_clip_velocity_mps
+                ),
+                "gazebo_raw_velocity_mps": list(
+                    output.gazebo_raw_velocity_mps
+                ),
+                "gazebo_raw_forward_component_mps": raw_forward,
+                "gazebo_raw_lateral_component_mps": raw_lateral,
+                "isaac_adapter_dt_sec": output.isaac_adapter_dt_sec,
+                "isaac_adapter_input_velocity_mps": list(
+                    output.isaac_adapter_input_velocity_mps
+                ),
+                "isaac_adapter_output_velocity_mps": list(
+                    output.isaac_adapter_output_velocity_mps
+                ),
+                "adapter_forward_component_mps": (
+                    output.adapter_forward_component_mps
+                ),
+                "adapter_lateral_component_mps": (
+                    output.adapter_lateral_component_mps
+                ),
+                "adapter_dt_limited": output.adapter_dt_limited,
+                "adapter_acceleration_limited": (
+                    output.adapter_acceleration_limited
+                ),
+                "adapter_correction_limited": output.adapter_correction_limited,
+                "adapter_lateral_limited": output.adapter_lateral_limited,
+                "adapter_angle_limited": output.adapter_angle_limited,
+                "adapter_smoothing_applied": output.adapter_smoothing_applied,
                 "human_social_component_mps2": list(
                     output.human_social_component_mps2
                 ),
@@ -2056,7 +2213,7 @@ class BehaviorAgentSocialMotion:
                     output.applied_social_accel_mps2
                 ),
                 "final_desired_velocity_mps": list(
-                    output.final_desired_velocity_mps
+                    output.isaac_adapter_output_velocity_mps
                 ),
                 "desired_forward_component_mps": desired_forward,
                 "desired_lateral_component_mps": desired_lateral,
@@ -2064,10 +2221,24 @@ class BehaviorAgentSocialMotion:
                 "locomotion_speed_command_mps": (
                     locomotion_speed_command_mps if not is_inhibited else 0.0
                 ),
+                "set_speed_command_mps": (
+                    locomotion_speed_command_mps if not is_inhibited else 0.0
+                ),
                 "locomotion_steering_velocity_mps": list(
-                    output.final_desired_velocity_mps
+                    output.isaac_adapter_output_velocity_mps
+                ),
+                "solver_to_adapter_velocity_error_mps": solver_to_adapter_error,
+                "adapter_to_actual_velocity_error_mps": adapter_to_actual_error,
+                "solver_to_actual_velocity_error_mps": solver_to_actual_error,
+                "adapter_to_actual_lateral_error_mps": (
+                    desired_lateral - actual_lateral
                 ),
                 "locomotion_requested_target_position_m": (
+                    list(steering_command.target_position_m)
+                    if steering_command is not None
+                    else None
+                ),
+                "requested_target_m": (
                     list(steering_command.target_position_m)
                     if steering_command is not None
                     else None
@@ -2075,9 +2246,11 @@ class BehaviorAgentSocialMotion:
                 "locomotion_target_position_m": list(
                     self.last_target_positions_m[path]
                 ),
+                "applied_target_m": list(self.last_target_positions_m[path]),
                 "locomotion_target_free_space_constrained": (
                     free_space_constrained
                 ),
+                "free_space_constrained": free_space_constrained,
                 "behavior_agent_reported_target_m": list(
                     stage_to_ros_vector(reported_target_stage)[:2]
                 ),
@@ -2085,6 +2258,7 @@ class BehaviorAgentSocialMotion:
                 "follow_task_running": self.agents[path].is_task_running(
                     self.follow_task_ids[path]
                 ),
+                "follow_restart_count": self.follow_restart_count,
                 "target_written_this_update": target_written,
                 "robot_footprint_clearance_m": (
                     output.robot_footprint_clearance_m
@@ -2093,13 +2267,16 @@ class BehaviorAgentSocialMotion:
                     output.robot_personal_space_violation
                 ),
                 "inhibited_by_emergency": is_inhibited,
+                "emergency_inhibited": is_inhibited,
+                "emergency_dodge_active": path in emergency_dodge,
+                "emergency_dodge_resume_pending": path in emergency_resume,
             }
         self.latest_debug = debug
         if self.trace_file is not None:
             self.trace_file.write(
                 json.dumps(
                     {
-                        "schema": "isaac_pedestrian_social_steering/v1",
+                        "schema": "isaac_pedestrian_social_steering/v2",
                         "type": "sample",
                         "sim_time": sim_time,
                         "people": debug,
@@ -2138,6 +2315,7 @@ class BehaviorAgentSocialMotion:
             ),
             "ira_private_scheduler_suspended": True,
             "parameters": asdict(self.controller.parameters),
+            "shared_gazebo_kernel_path": str(gazebo_social_kernel_source_path()),
             "preferred_speeds_mps": self.preferred_speeds_mps,
             "speed_update_count": self.speed_update_count,
             "inhibited_update_count": self.inhibited_update_count,
@@ -2150,13 +2328,47 @@ class BehaviorAgentSocialMotion:
                 self.maximum_actual_lateral_delta_mps
             ),
             "maximum_commanded_lateral_mps": self.maximum_commanded_lateral_mps,
+            "maximum_gazebo_raw_lateral_mps": (
+                self.maximum_gazebo_raw_lateral_mps
+            ),
             "maximum_actual_lateral_mps": self.maximum_actual_lateral_mps,
             "lateral_command_sample_count": self.lateral_command_sample_count,
+            "gazebo_raw_lateral_sample_count": (
+                self.gazebo_raw_lateral_sample_count
+            ),
             "actual_lateral_motion_sample_count": (
                 self.actual_lateral_motion_sample_count
             ),
             "free_space_constrained_target_count": (
                 self.free_space_constrained_target_count
+            ),
+            "velocity_error_sample_count": self.velocity_error_sample_count,
+            "mean_solver_to_adapter_velocity_error_mps": (
+                self.solver_to_adapter_velocity_error_sum_mps
+                / self.velocity_error_sample_count
+                if self.velocity_error_sample_count
+                else None
+            ),
+            "mean_adapter_to_actual_velocity_error_mps": (
+                self.adapter_to_actual_velocity_error_sum_mps
+                / self.velocity_error_sample_count
+                if self.velocity_error_sample_count
+                else None
+            ),
+            "mean_solver_to_actual_velocity_error_mps": (
+                self.solver_to_actual_velocity_error_sum_mps
+                / self.velocity_error_sample_count
+                if self.velocity_error_sample_count
+                else None
+            ),
+            "maximum_solver_to_adapter_velocity_error_mps": (
+                self.maximum_solver_to_adapter_velocity_error_mps
+            ),
+            "maximum_adapter_to_actual_velocity_error_mps": (
+                self.maximum_adapter_to_actual_velocity_error_mps
+            ),
+            "maximum_solver_to_actual_velocity_error_mps": (
+                self.maximum_solver_to_actual_velocity_error_mps
             ),
             "maximum_freeze_sec_by_person": self.maximum_freeze_sec,
             "patrol_cursors": {
@@ -5898,6 +6110,7 @@ def main() -> int:
                         )
                     pedestrian_social_motion.update(
                         sampled_people_positions,
+                        navigation_position,
                         collision_proxy.center(
                             navigation_position, navigation_yaw
                         ),
@@ -5906,6 +6119,16 @@ def main() -> int:
                         robot_world_velocity_mps,
                         sim_time,
                         inhibited_social_motion_paths,
+                        (
+                            pedestrian_robot_avoidance.active_dodge_task_ids
+                            if pedestrian_robot_avoidance is not None
+                            else ()
+                        ),
+                        (
+                            pedestrian_robot_avoidance.patrol_resume_times
+                            if pedestrian_robot_avoidance is not None
+                            else ()
+                        ),
                     )
                 social_snapshot = pedestrian_social_tracker.update(
                     {

@@ -1,21 +1,77 @@
-"""Pure social-motion logic and pairwise pedestrian quality metrics.
+"""Pure shared-social integration, Isaac adaptation, and quality metrics.
 
-The module deliberately has no Isaac Sim or ROS dependency.  The continuous
-controller mirrors the interaction-direction force used by the Gazebo
-pedestrian controller, but returns a bounded desired velocity for an external
-adapter instead of integrating or teleporting a simulated character itself.
+The module deliberately has no Isaac Sim or ROS dependency.  Its raw layer
+loads the project Gazebo social kernel from the single source file used by the
+Gazebo controller.  Isaac-only smoothing and steering limits are applied only
+after that raw Gazebo velocity has been retained in the output contract.
 One tracker ``update`` call represents one sampled simulation frame.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import importlib.util
 import math
+from pathlib import Path
+import sys
 from typing import Mapping, Sequence
 
 
 Pair = tuple[str, str]
 Vector2 = tuple[float, float]
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+GAZEBO_SOCIAL_KERNEL_PATH = (
+    PROJECT_ROOT
+    / "workspaces/ros2_ws/src/semantic_nav_gazebo/scripts/gazebo_social_kernel.py"
+).resolve()
+_KERNEL_MODULE_NAME = "a_pipeline_shared_gazebo_social_kernel"
+
+
+def _load_shared_gazebo_social_kernel():
+    """Load the exact project source file without relying on ambient PYTHONPATH."""
+
+    if not GAZEBO_SOCIAL_KERNEL_PATH.is_file():
+        raise ImportError(
+            f"shared Gazebo social kernel is missing: {GAZEBO_SOCIAL_KERNEL_PATH}"
+        )
+    existing = sys.modules.get(_KERNEL_MODULE_NAME)
+    if existing is not None:
+        loaded_path = Path(existing.__file__).resolve()
+        if loaded_path != GAZEBO_SOCIAL_KERNEL_PATH:
+            raise ImportError(
+                "shared Gazebo social kernel module resolved to the wrong file: "
+                f"expected={GAZEBO_SOCIAL_KERNEL_PATH}, actual={loaded_path}"
+            )
+        return existing
+    spec = importlib.util.spec_from_file_location(
+        _KERNEL_MODULE_NAME, GAZEBO_SOCIAL_KERNEL_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            f"could not load shared Gazebo social kernel: {GAZEBO_SOCIAL_KERNEL_PATH}"
+        )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[_KERNEL_MODULE_NAME] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(_KERNEL_MODULE_NAME, None)
+        raise
+    return module
+
+
+_GAZEBO_KERNEL = _load_shared_gazebo_social_kernel()
+KinematicState = _GAZEBO_KERNEL.KinematicState
+compute_social_interaction_core = _GAZEBO_KERNEL.compute_social_interaction_core
+velocity_step = _GAZEBO_KERNEL.velocity_step
+
+
+def gazebo_social_kernel_source_path() -> Path:
+    """Return the verified source-of-truth file used by the Isaac raw layer."""
+
+    return Path(_GAZEBO_KERNEL.__file__).resolve()
 
 
 @dataclass(frozen=True)
@@ -26,21 +82,23 @@ class PedestrianMotionState:
     velocity_mps: Vector2
     desired_direction: Vector2
     preferred_speed_mps: float
+    yaw_rad: float | None = None
 
 
 @dataclass(frozen=True)
 class RobotMotionState:
-    """True robot state plus its oriented collision-proxy half extents."""
+    """Robot-center social state plus separate Isaac collision geometry."""
 
     position_m: Vector2
     velocity_mps: Vector2
     yaw_rad: float
     half_extents_m: Vector2
+    footprint_center_m: Vector2 | None = None
 
 
 @dataclass(frozen=True)
 class SocialForceParameters:
-    """Numerical contract for Gazebo-style force-to-steering conversion."""
+    """Shared-kernel parameters plus explicitly Isaac-only adapter limits."""
 
     neighbor_range_m: float = 10.0
     relaxation_time_sec: float = 0.5
@@ -51,11 +109,6 @@ class SocialForceParameters:
     robot_radius_m: float = 0.47
     robot_clearance_m: float = 1.0
     robot_personal_space_sigma_m: float = 0.2
-    interaction_lambda: float = 2.0
-    interaction_gamma: float = 0.35
-    interaction_n: float = 2.0
-    interaction_n_prime: float = 3.0
-    head_on_bias_rad: float = 0.02
     smoothing_time_sec: float = 0.35
     max_total_social_accel_mps2: float = 4.0
     max_speed_correction_mps: float = 0.65
@@ -72,10 +125,6 @@ class SocialForceParameters:
             "robot_radius_m",
             "robot_clearance_m",
             "robot_personal_space_sigma_m",
-            "interaction_lambda",
-            "interaction_gamma",
-            "interaction_n",
-            "interaction_n_prime",
             "smoothing_time_sec",
             "max_total_social_accel_mps2",
             "max_speed_correction_mps",
@@ -89,7 +138,6 @@ class SocialForceParameters:
             "human_social_force_weight",
             "robot_social_force_weight",
             "robot_personal_space_force_weight",
-            "head_on_bias_rad",
             "minimum_command_speed_mps",
         )
         for name in nonnegative:
@@ -102,21 +150,67 @@ class SocialForceParameters:
             )
         if self.max_steering_angle_rad >= 0.5 * math.pi:
             raise ValueError("max_steering_angle_rad must be smaller than pi/2")
+        if not math.isclose(
+            self.robot_social_force_weight,
+            self.human_social_force_weight,
+            rel_tol=0.0,
+            abs_tol=0.0,
+        ):
+            raise ValueError(
+                "shared Gazebo kernel requires robot_social_force_weight to "
+                "equal human_social_force_weight"
+            )
 
 
 @dataclass(frozen=True)
 class SocialMotionOutput:
-    """Bounded continuous social correction for one pedestrian."""
+    """Raw shared-kernel result followed by the Isaac actuator result."""
 
     desired_component_mps: Vector2
-    human_social_component_mps2: Vector2
-    robot_social_component_mps2: Vector2
-    robot_personal_space_component_mps2: Vector2
+    gazebo_desired_acceleration_mps2: Vector2
+    gazebo_human_social_raw_mps2: Vector2
+    gazebo_human_social_weighted_mps2: Vector2
+    gazebo_robot_social_raw_mps2: Vector2
+    gazebo_robot_social_weighted_mps2: Vector2
+    gazebo_robot_personal_space_raw_mps2: Vector2
+    gazebo_robot_personal_space_weighted_mps2: Vector2
+    gazebo_core_acceleration_mps2: Vector2
+    gazebo_raw_pre_clip_velocity_mps: Vector2
+    gazebo_raw_velocity_mps: Vector2
+    gazebo_raw_dt_sec: float
+    isaac_adapter_dt_sec: float
+    isaac_adapter_input_velocity_mps: Vector2
+    isaac_adapter_output_velocity_mps: Vector2
+    adapter_forward_component_mps: float
+    adapter_lateral_component_mps: float
+    adapter_dt_limited: bool
+    adapter_acceleration_limited: bool
+    adapter_correction_limited: bool
+    adapter_lateral_limited: bool
+    adapter_angle_limited: bool
+    adapter_smoothing_applied: bool
     applied_social_accel_mps2: Vector2
-    final_desired_velocity_mps: Vector2
     speed_command_mps: float
     robot_footprint_clearance_m: float | None
     robot_personal_space_violation: bool
+
+    # Compatibility aliases for existing evaluators.  Their meanings are now
+    # unambiguous: weighted kernel terms and the post-kernel Isaac command.
+    @property
+    def human_social_component_mps2(self) -> Vector2:
+        return self.gazebo_human_social_weighted_mps2
+
+    @property
+    def robot_social_component_mps2(self) -> Vector2:
+        return self.gazebo_robot_social_weighted_mps2
+
+    @property
+    def robot_personal_space_component_mps2(self) -> Vector2:
+        return self.gazebo_robot_personal_space_weighted_mps2
+
+    @property
+    def final_desired_velocity_mps(self) -> Vector2:
+        return self.isaac_adapter_output_velocity_mps
 
 
 def resolve_social_mode(value: str) -> str:
@@ -184,22 +278,148 @@ def oriented_box_clearance(
     return signed_clearance, normal_world, nearest_world
 
 
-class PedestrianSocialForceController:
-    """Convert Gazebo-style social forces into stable desired velocities.
+@dataclass(frozen=True)
+class IsaacAdapterResult:
+    input_velocity_mps: Vector2
+    output_velocity_mps: Vector2
+    dt_sec: float
+    forward_component_mps: float
+    lateral_component_mps: float
+    applied_social_accel_mps2: Vector2
+    dt_limited: bool
+    acceleration_limited: bool
+    correction_limited: bool
+    lateral_limited: bool
+    angle_limited: bool
+    smoothing_applied: bool
 
-    The controller does not own a simulator task.  It keeps only a low-pass
-    state per pedestrian and can therefore be unit-tested with ordinary Python.
-    """
+
+class IsaacActuatorAdapter:
+    """Apply only Isaac locomotion stabilizations after the Gazebo raw step."""
+
+    def __init__(self, parameters: SocialForceParameters) -> None:
+        self.parameters = parameters
+        self._smoothed_velocity: dict[str, Vector2] = {}
+
+    def reset(self) -> None:
+        self._smoothed_velocity.clear()
+
+    def retain(self, names: set[str]) -> None:
+        self._smoothed_velocity = {
+            name: value
+            for name, value in self._smoothed_velocity.items()
+            if name in names
+        }
+
+    def update(
+        self,
+        name: str,
+        state: PedestrianMotionState,
+        core,
+        gazebo_raw_velocity: Vector2,
+        solver_dt_sec: float,
+    ) -> IsaacAdapterResult:
+        parameters = self.parameters
+        desired_direction = state.desired_direction
+        desired_velocity = _scale(desired_direction, state.preferred_speed_mps)
+        adapter_dt = min(solver_dt_sec, parameters.maximum_dt_sec)
+        dt_limited = adapter_dt != solver_dt_sec
+
+        social_accel = _add(
+            core.social_weighted,
+            core.robot_personal_space_weighted,
+        )
+        applied_social_accel = _limit_norm(
+            social_accel, parameters.max_total_social_accel_mps2
+        )
+        acceleration_limited = not _vectors_close(
+            social_accel, applied_social_accel
+        )
+
+        # The exact kernel output is always the adapter input.  Reconstruct a
+        # bounded first candidate only when an Isaac acceleration or dt limit
+        # is active; otherwise preserve the shared post-vmax vector verbatim.
+        candidate = gazebo_raw_velocity
+        if dt_limited or acceleration_limited:
+            candidate = _add(
+                state.velocity_mps,
+                _scale(
+                    _add(core.desired_weighted, applied_social_accel),
+                    adapter_dt,
+                ),
+            )
+            candidate = _limit_norm(candidate, state.preferred_speed_mps)
+
+        raw_correction = _sub(candidate, desired_velocity)
+        correction = _limit_norm(
+            raw_correction, parameters.max_speed_correction_mps
+        )
+        correction_limited = not _vectors_close(raw_correction, correction)
+        bounded_velocity = _add(desired_velocity, correction)
+        lateral_direction = (-desired_direction[1], desired_direction[0])
+        forward = max(0.0, _dot(bounded_velocity, desired_direction))
+        forward = min(state.preferred_speed_mps, forward)
+
+        requested_lateral = _dot(bounded_velocity, lateral_direction)
+        lateral = max(
+            -parameters.max_lateral_speed_mps,
+            min(parameters.max_lateral_speed_mps, requested_lateral),
+        )
+        lateral_limited = not math.isclose(
+            lateral, requested_lateral, rel_tol=0.0, abs_tol=1.0e-15
+        )
+        angle_lateral_limit = math.tan(
+            parameters.max_steering_angle_rad
+        ) * max(forward, parameters.minimum_command_speed_mps)
+        before_angle_limit = lateral
+        lateral = max(-angle_lateral_limit, min(angle_lateral_limit, lateral))
+        angle_limited = not math.isclose(
+            lateral, before_angle_limit, rel_tol=0.0, abs_tol=1.0e-15
+        )
+
+        bounded_velocity = _add(
+            _scale(desired_direction, forward),
+            _scale(lateral_direction, lateral),
+        )
+        bounded_velocity = _limit_norm(
+            bounded_velocity, state.preferred_speed_mps
+        )
+        previous = self._smoothed_velocity.get(name, desired_velocity)
+        alpha = 1.0 - math.exp(-adapter_dt / parameters.smoothing_time_sec)
+        smoothed = _add(
+            previous, _scale(_sub(bounded_velocity, previous), alpha)
+        )
+        smoothed = _limit_norm(smoothed, state.preferred_speed_mps)
+        self._smoothed_velocity[name] = smoothed
+        smoothing_applied = not _vectors_close(smoothed, bounded_velocity)
+        return IsaacAdapterResult(
+            input_velocity_mps=gazebo_raw_velocity,
+            output_velocity_mps=smoothed,
+            dt_sec=adapter_dt,
+            forward_component_mps=_dot(smoothed, desired_direction),
+            lateral_component_mps=_dot(smoothed, lateral_direction),
+            applied_social_accel_mps2=applied_social_accel,
+            dt_limited=dt_limited,
+            acceleration_limited=acceleration_limited,
+            correction_limited=correction_limited,
+            lateral_limited=lateral_limited,
+            angle_limited=angle_limited,
+            smoothing_applied=smoothing_applied,
+        )
+
+
+class PedestrianSocialForceController:
+    """Run the shared Gazebo kernel, then the isolated Isaac adapter."""
 
     def __init__(self, parameters: SocialForceParameters | None = None) -> None:
         self.parameters = parameters or SocialForceParameters()
-        self._smoothed_velocity: dict[str, Vector2] = {}
+        self.adapter = IsaacActuatorAdapter(self.parameters)
         self.update_count = 0
         self.personal_space_violation_samples = 0
         self.minimum_robot_footprint_clearance_m: float | None = None
 
     def reset(self) -> None:
-        self._smoothed_velocity.clear()
+        self.adapter.reset()
         self.update_count = 0
         self.personal_space_violation_samples = 0
         self.minimum_robot_footprint_clearance_m = None
@@ -212,156 +432,124 @@ class PedestrianSocialForceController:
     ) -> dict[str, SocialMotionOutput]:
         states = _validated_motion_states(pedestrians)
         robot_state = _validated_robot_state(robot)
-        dt = float(dt_sec)
-        if not math.isfinite(dt) or dt <= 0.0:
+        solver_dt = float(dt_sec)
+        if not math.isfinite(solver_dt) or solver_dt <= 0.0:
             raise ValueError("dt_sec must be a finite positive number")
-        dt = min(dt, self.parameters.maximum_dt_sec)
-        self._smoothed_velocity = {
-            name: value
-            for name, value in self._smoothed_velocity.items()
-            if name in states
-        }
+        self.adapter.retain(set(states))
+        shared_robot_state = (
+            KinematicState(robot_state.position_m, robot_state.velocity_mps)
+            if robot_state is not None
+            else None
+        )
         outputs: dict[str, SocialMotionOutput] = {}
         for name in sorted(states):
             state = states[name]
-            desired_direction = _unit(state.desired_direction)
-            desired_velocity = _scale(desired_direction, state.preferred_speed_mps)
-            human_social = (0.0, 0.0)
-            for other_name in sorted(states):
-                if other_name == name:
-                    continue
-                other = states[other_name]
-                separation_fallback = (
-                    (1.0, 0.0) if name < other_name else (-1.0, 0.0)
-                )
-                pair_force = self._interaction_force(
-                    state.position_m,
-                    state.velocity_mps,
-                    other.position_m,
-                    other.velocity_mps,
-                    separation_fallback,
-                )
-                human_social = _add(human_social, pair_force)
-            human_social = _scale(
-                human_social, self.parameters.human_social_force_weight
+            desired_direction = state.desired_direction
+            desired_velocity = _scale(
+                desired_direction, state.preferred_speed_mps
+            )
+            pedestrian_yaw = (
+                state.yaw_rad
+                if state.yaw_rad is not None
+                else math.atan2(desired_direction[1], desired_direction[0])
+            )
+            core = compute_social_interaction_core(
+                pedestrian_position=state.position_m,
+                pedestrian_yaw=pedestrian_yaw,
+                pedestrian_velocity=state.velocity_mps,
+                desired_direction=desired_direction,
+                vmax=state.preferred_speed_mps,
+                relaxation_time=self.parameters.relaxation_time_sec,
+                desired_force_factor=1.0,
+                human_neighbors=(
+                    KinematicState(other.position_m, other.velocity_mps)
+                    for other_name, other in sorted(states.items())
+                    if other_name != name
+                ),
+                robot_state=shared_robot_state,
+                neighbor_range=self.parameters.neighbor_range_m,
+                force_social=self.parameters.human_social_force_weight,
+                robot_clearance=self.parameters.robot_clearance_m,
+                sigma_robot_personal_space=(
+                    self.parameters.robot_personal_space_sigma_m
+                ),
+                force_robot_personal_space=(
+                    self.parameters.robot_personal_space_force_weight
+                ),
+            )
+            step = velocity_step(
+                state.velocity_mps,
+                core.core_acceleration,
+                solver_dt,
+                state.preferred_speed_mps,
+            )
+            adapter = self.adapter.update(
+                name,
+                state,
+                core,
+                step.post_clip_velocity,
+                solver_dt,
             )
 
-            robot_social = (0.0, 0.0)
-            robot_personal = (0.0, 0.0)
+            # OBB geometry is retained strictly as Isaac safety/quality
+            # evidence.  It cannot influence any shared force or raw velocity.
             robot_clearance = None
             robot_violation = False
             if robot_state is not None:
-                robot_clearance, outward, nearest = oriented_box_clearance(
+                robot_clearance, _outward, _nearest = oriented_box_clearance(
                     state.position_m,
-                    robot_state.position_m,
+                    (
+                        robot_state.footprint_center_m
+                        if robot_state.footprint_center_m is not None
+                        else robot_state.position_m
+                    ),
                     robot_state.yaw_rad,
                     robot_state.half_extents_m,
                 )
-                if robot_clearance <= self.parameters.neighbor_range_m:
-                    if robot_clearance <= 1.0e-6:
-                        nearest = _add(
-                            state.position_m,
-                            _scale(outward, -1.0e-6),
-                        )
-                    robot_social = _scale(
-                        self._interaction_force(
-                            state.position_m,
-                            state.velocity_mps,
-                            nearest,
-                            robot_state.velocity_mps,
-                            _scale(outward, -1.0),
-                        ),
-                        self.parameters.robot_social_force_weight,
-                    )
-                    personal_clearance = max(
-                        self.parameters.agent_radius_m,
-                        self.parameters.robot_clearance_m
-                        - self.parameters.robot_radius_m,
-                    )
-                    exponent = -(
-                        robot_clearance - personal_clearance
-                    ) / self.parameters.robot_personal_space_sigma_m
-                    amount = math.exp(max(-60.0, min(12.0, exponent)))
-                    robot_personal = _scale(
-                        outward,
-                        amount
-                        * self.parameters.robot_personal_space_force_weight,
-                    )
-                    robot_violation = robot_clearance < personal_clearance
-                    if robot_violation:
-                        self.personal_space_violation_samples += 1
+                personal_clearance = max(
+                    self.parameters.agent_radius_m,
+                    self.parameters.robot_clearance_m
+                    - self.parameters.robot_radius_m,
+                )
+                robot_violation = robot_clearance < personal_clearance
+                if robot_violation:
+                    self.personal_space_violation_samples += 1
                 if (
                     self.minimum_robot_footprint_clearance_m is None
-                    or robot_clearance
-                    < self.minimum_robot_footprint_clearance_m
+                    or robot_clearance < self.minimum_robot_footprint_clearance_m
                 ):
                     self.minimum_robot_footprint_clearance_m = robot_clearance
 
-            social_accel = _limit_norm(
-                _add(human_social, robot_social, robot_personal),
-                self.parameters.max_total_social_accel_mps2,
-            )
-            desired_accel = _scale(
-                _sub(desired_velocity, state.velocity_mps),
-                1.0 / self.parameters.relaxation_time_sec,
-            )
-            raw_velocity = _add(
-                state.velocity_mps,
-                _scale(_add(desired_accel, social_accel), dt),
-            )
-            correction = _limit_norm(
-                _sub(raw_velocity, desired_velocity),
-                self.parameters.max_speed_correction_mps,
-            )
-            bounded_velocity = _add(desired_velocity, correction)
-            lateral_direction = (-desired_direction[1], desired_direction[0])
-            forward = max(0.0, _dot(bounded_velocity, desired_direction))
-            forward = min(state.preferred_speed_mps, forward)
-            lateral = max(
-                -self.parameters.max_lateral_speed_mps,
-                min(
-                    self.parameters.max_lateral_speed_mps,
-                    _dot(bounded_velocity, lateral_direction),
-                ),
-            )
-            angle_lateral_limit = math.tan(
-                self.parameters.max_steering_angle_rad
-            ) * max(forward, self.parameters.minimum_command_speed_mps)
-            lateral = max(
-                -angle_lateral_limit, min(angle_lateral_limit, lateral)
-            )
-            bounded_velocity = _add(
-                _scale(desired_direction, forward),
-                _scale(lateral_direction, lateral),
-            )
-            bounded_velocity = _limit_norm(
-                bounded_velocity, state.preferred_speed_mps
-            )
-            previous = self._smoothed_velocity.get(name, desired_velocity)
-            alpha = 1.0 - math.exp(-dt / self.parameters.smoothing_time_sec)
-            smoothed = _add(previous, _scale(_sub(bounded_velocity, previous), alpha))
-            smoothed = _limit_norm(smoothed, state.preferred_speed_mps)
-            self._smoothed_velocity[name] = smoothed
-            command_speed = max(0.0, _dot(smoothed, desired_direction))
-            if state.preferred_speed_mps > 0.0:
-                command_speed = min(
-                    state.preferred_speed_mps,
-                    max(
-                        min(
-                            self.parameters.minimum_command_speed_mps,
-                            state.preferred_speed_mps,
-                        ),
-                        command_speed,
-                    ),
-                )
             outputs[name] = SocialMotionOutput(
                 desired_component_mps=desired_velocity,
-                human_social_component_mps2=human_social,
-                robot_social_component_mps2=robot_social,
-                robot_personal_space_component_mps2=robot_personal,
-                applied_social_accel_mps2=social_accel,
-                final_desired_velocity_mps=smoothed,
-                speed_command_mps=command_speed,
+                gazebo_desired_acceleration_mps2=core.desired_acceleration,
+                gazebo_human_social_raw_mps2=core.human_social_raw,
+                gazebo_human_social_weighted_mps2=core.human_social_weighted,
+                gazebo_robot_social_raw_mps2=core.robot_social_raw,
+                gazebo_robot_social_weighted_mps2=core.robot_social_weighted,
+                gazebo_robot_personal_space_raw_mps2=(
+                    core.robot_personal_space_raw
+                ),
+                gazebo_robot_personal_space_weighted_mps2=(
+                    core.robot_personal_space_weighted
+                ),
+                gazebo_core_acceleration_mps2=core.core_acceleration,
+                gazebo_raw_pre_clip_velocity_mps=step.pre_clip_velocity,
+                gazebo_raw_velocity_mps=step.post_clip_velocity,
+                gazebo_raw_dt_sec=solver_dt,
+                isaac_adapter_dt_sec=adapter.dt_sec,
+                isaac_adapter_input_velocity_mps=adapter.input_velocity_mps,
+                isaac_adapter_output_velocity_mps=adapter.output_velocity_mps,
+                adapter_forward_component_mps=adapter.forward_component_mps,
+                adapter_lateral_component_mps=adapter.lateral_component_mps,
+                adapter_dt_limited=adapter.dt_limited,
+                adapter_acceleration_limited=adapter.acceleration_limited,
+                adapter_correction_limited=adapter.correction_limited,
+                adapter_lateral_limited=adapter.lateral_limited,
+                adapter_angle_limited=adapter.angle_limited,
+                adapter_smoothing_applied=adapter.smoothing_applied,
+                applied_social_accel_mps2=adapter.applied_social_accel_mps2,
+                speed_command_mps=_norm(adapter.output_velocity_mps),
                 robot_footprint_clearance_m=robot_clearance,
                 robot_personal_space_violation=robot_violation,
             )
@@ -371,6 +559,9 @@ class PedestrianSocialForceController:
     def summary(self) -> dict[str, object]:
         return {
             "update_count": self.update_count,
+            "shared_gazebo_kernel_path": str(gazebo_social_kernel_source_path()),
+            "raw_dt_semantics": "unclamped_social_tick_dt",
+            "adapter_maximum_dt_sec": self.parameters.maximum_dt_sec,
             "personal_space_violation_samples": (
                 self.personal_space_violation_samples
             ),
@@ -378,69 +569,6 @@ class PedestrianSocialForceController:
                 self.minimum_robot_footprint_clearance_m
             ),
         }
-
-    def _interaction_force(
-        self,
-        position: Vector2,
-        velocity: Vector2,
-        other_position: Vector2,
-        other_velocity: Vector2,
-        zero_distance_direction: Vector2,
-    ) -> Vector2:
-        parameters = self.parameters
-        difference = _sub(other_position, position)
-        distance = _norm(difference)
-        if distance > parameters.neighbor_range_m:
-            return (0.0, 0.0)
-        if distance < 1.0e-6:
-            difference_direction = _unit(zero_distance_direction)
-            distance = 1.0e-6
-        else:
-            difference_direction = _scale(difference, 1.0 / distance)
-        velocity_difference = _sub(velocity, other_velocity)
-        interaction = _add(
-            _scale(velocity_difference, parameters.interaction_lambda),
-            difference_direction,
-        )
-        interaction_length = _norm(interaction)
-        if interaction_length < 1.0e-9:
-            return (0.0, 0.0)
-        interaction_direction = _scale(interaction, 1.0 / interaction_length)
-        theta = _normalize_angle(
-            math.atan2(difference_direction[1], difference_direction[0])
-            - math.atan2(interaction_direction[1], interaction_direction[0])
-        )
-        closing = _dot(velocity_difference, difference_direction) > 1.0e-4
-        if closing and abs(theta) < parameters.head_on_bias_rad:
-            # Exact mirror encounters have no mathematical side preference.
-            # A small stable right-hand bias avoids frame-to-frame sign flips.
-            theta = parameters.head_on_bias_rad
-        b = max(1.0e-6, parameters.interaction_gamma * interaction_length)
-        common = -distance / b
-        velocity_amount = -math.exp(
-            max(
-                -60.0,
-                min(
-                    12.0,
-                    common
-                    - (parameters.interaction_n_prime * b * theta) ** 2,
-                ),
-            )
-        )
-        angle_amount = -_sign(theta) * math.exp(
-            max(
-                -60.0,
-                min(
-                    12.0,
-                    common - (parameters.interaction_n * b * theta) ** 2,
-                ),
-            )
-        )
-        perpendicular = (-interaction_direction[1], interaction_direction[0])
-        return _add(
-            _scale(interaction_direction, velocity_amount),
-            _scale(perpendicular, angle_amount),
-        )
 
 
 @dataclass(frozen=True)
@@ -719,11 +847,15 @@ def _validated_motion_states(
         speed = float(state.preferred_speed_mps)
         if not math.isfinite(speed) or speed <= 0.0:
             raise ValueError(f"preferred speed for {name!r} must be positive")
+        yaw = None if state.yaw_rad is None else float(state.yaw_rad)
+        if yaw is not None and not math.isfinite(yaw):
+            raise ValueError(f"yaw for {name!r} must be finite or None")
         validated[name] = PedestrianMotionState(
             position_m=position,
             velocity_mps=velocity,
             desired_direction=_unit(direction),
             preferred_speed_mps=speed,
+            yaw_rad=yaw,
         )
     return validated
 
@@ -743,7 +875,18 @@ def _validated_robot_state(
     yaw = float(robot.yaw_rad)
     if not math.isfinite(yaw):
         raise ValueError("robot yaw must be finite")
-    return RobotMotionState(position, velocity, yaw, half_extents)
+    footprint_center = (
+        None
+        if robot.footprint_center_m is None
+        else _finite_vector2("robot footprint center", robot.footprint_center_m)
+    )
+    return RobotMotionState(
+        position,
+        velocity,
+        yaw,
+        half_extents,
+        footprint_center,
+    )
 
 
 def _add(*vectors: Vector2) -> Vector2:
@@ -778,6 +921,13 @@ def _limit_norm(vector: Vector2, maximum: float) -> Vector2:
     if length <= maximum or length < 1.0e-12:
         return vector
     return _scale(vector, maximum / length)
+
+
+def _vectors_close(left: Vector2, right: Vector2) -> bool:
+    return all(
+        math.isclose(left[index], right[index], rel_tol=0.0, abs_tol=1.0e-15)
+        for index in range(2)
+    )
 
 
 def _normalize_angle(value: float) -> float:
