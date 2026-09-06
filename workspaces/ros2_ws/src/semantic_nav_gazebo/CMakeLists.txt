@@ -93,6 +93,12 @@ install(
 )
 
 install(
+  FILES
+    scripts/gazebo_social_kernel.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
   TARGETS
     cmd_vel_ign_relay
     pedestrian_actor_pose_bridge
@@ -106,6 +112,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_scenario_pedestrian_time
     test/test_scenario_pedestrian_time.py
+  )
+  ament_add_pytest_test(
+    test_gazebo_social_kernel
+    test/test_gazebo_social_kernel.py
   )
   ament_add_pytest_test(
     test_navigation_evaluation_core

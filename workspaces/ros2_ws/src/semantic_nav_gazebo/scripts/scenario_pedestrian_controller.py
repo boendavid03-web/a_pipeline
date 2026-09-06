@@ -41,6 +41,14 @@ import subprocess
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
+from gazebo_social_kernel import (
+    KinematicState,
+    compute_social_interaction_core,
+    desired_acceleration,
+    robot_personal_space_force,
+    social_force_from_neighbor,
+    velocity_step,
+)
 import rclpy
 from geometry_msgs.msg import Pose, PoseArray
 from nav_msgs.msg import Odometry
@@ -739,32 +747,64 @@ class ScenarioPedestrianController(Node):
 
     def _compute_forces(self, dt):
         for agent in self.agents:
-            desired_x, desired_y = self._desired_force(agent)
-            social_x, social_y = self._social_force(agent)
+            desired_direction = self._update_desired_direction(agent)
+            robot_state = self._robot_kinematic_state()
+            core = compute_social_interaction_core(
+                pedestrian_position=(agent.x, agent.y),
+                pedestrian_yaw=agent.yaw,
+                pedestrian_velocity=(agent.vx, agent.vy),
+                desired_direction=desired_direction,
+                vmax=agent.vmax,
+                relaxation_time=self.relaxation_time,
+                desired_force_factor=agent.desired_force_factor,
+                human_neighbors=(
+                    KinematicState(
+                        position=(other.x, other.y),
+                        velocity=(other.vx, other.vy),
+                    )
+                    for other in self.agents
+                    if other is not agent
+                ),
+                robot_state=robot_state,
+                neighbor_range=self.neighbor_range,
+                force_social=self.force_social,
+                robot_clearance=self.robot_clearance,
+                sigma_robot_personal_space=self.sigma_robot_personal_space,
+                force_robot_personal_space=self.force_robot_personal_space,
+            )
             obstacle_x, obstacle_y = self._obstacle_force(agent)
-            robot_x, robot_y = self._robot_personal_space_force(agent)
             additional_x, additional_y = self._additional_forces(agent, dt)
 
+            # Keep the original Gazebo term order around external forces.
             agent.ax = (
-                agent.desired_force_factor * desired_x
-                + self.force_social * social_x
+                core.desired_weighted[0]
+                + core.social_weighted[0]
                 + self.force_obstacle * obstacle_x
-                + self.force_robot_personal_space * robot_x
+                + core.robot_personal_space_weighted[0]
                 + additional_x
             )
             agent.ay = (
-                agent.desired_force_factor * desired_y
-                + self.force_social * social_y
+                core.desired_weighted[1]
+                + core.social_weighted[1]
                 + self.force_obstacle * obstacle_y
-                + self.force_robot_personal_space * robot_y
+                + core.robot_personal_space_weighted[1]
                 + additional_y
             )
 
     def _desired_force(self, agent):
+        desired_direction = self._update_desired_direction(agent)
+        return desired_acceleration(
+            (agent.vx, agent.vy),
+            desired_direction,
+            agent.vmax,
+            self.relaxation_time,
+        )
+
+    def _update_desired_direction(self, agent):
         if not agent.waypoints:
             agent.desired_dir_x = 0.0
             agent.desired_dir_y = 0.0
-            return -agent.vx / self.relaxation_time, -agent.vy / self.relaxation_time
+            return agent.desired_dir_x, agent.desired_dir_y
 
         target = agent.waypoints[agent.waypoint_index]
         dx = target.x - agent.x
@@ -781,7 +821,7 @@ class ScenarioPedestrianController(Node):
         if distance < 1e-6:
             agent.desired_dir_x = 0.0
             agent.desired_dir_y = 0.0
-            return -agent.vx / self.relaxation_time, -agent.vy / self.relaxation_time
+            return agent.desired_dir_x, agent.desired_dir_y
 
         # Matches ROS 1 AreaWaypoint::closestPoint: agents aim through the
         # waypoint area and switch destination once they are inside its radius.
@@ -799,10 +839,7 @@ class ScenarioPedestrianController(Node):
 
         agent.desired_dir_x = desired_x
         agent.desired_dir_y = desired_y
-        return (
-            (desired_x * agent.vmax - agent.vx) / self.relaxation_time,
-            (desired_y * agent.vmax - agent.vy) / self.relaxation_time,
-        )
+        return desired_x, desired_y
 
     def _additional_forces(self, agent, dt):
         force_x, force_y = self._random_force(agent, dt)
@@ -975,47 +1012,13 @@ class ScenarioPedestrianController(Node):
         return force_x, force_y
 
     def _social_force_from_neighbor(self, agent, other_x, other_y, other_vx, other_vy):
-        lambda_importance = 2.0
-        gamma = 0.35
-        n = 2.0
-        n_prime = 3.0
-
-        diff_x = other_x - agent.x
-        diff_y = other_y - agent.y
-        distance = math.hypot(diff_x, diff_y)
-        if distance < 1e-6 or distance > self.neighbor_range:
-            return 0.0, 0.0
-
-        diff_dir_x = diff_x / distance
-        diff_dir_y = diff_y / distance
-        vel_diff_x = agent.vx - other_vx
-        vel_diff_y = agent.vy - other_vy
-        interaction_x = lambda_importance * vel_diff_x + diff_dir_x
-        interaction_y = lambda_importance * vel_diff_y + diff_dir_y
-        interaction_len = math.hypot(interaction_x, interaction_y)
-        if interaction_len < 1e-6:
-            return 0.0, 0.0
-
-        interaction_dir_x = interaction_x / interaction_len
-        interaction_dir_y = interaction_y / interaction_len
-        theta = self._angle_between(
-            interaction_dir_x, interaction_dir_y, diff_dir_x, diff_dir_y
-        )
-        b = max(1e-6, gamma * interaction_len)
-
-        force_velocity_amount = -math.exp(
-            -distance / b - (n_prime * b * theta) * (n_prime * b * theta)
-        )
-        force_angle_amount = -self._sign(theta) * math.exp(
-            -distance / b - (n * b * theta) * (n * b * theta)
-        )
-
-        return (
-            force_velocity_amount * interaction_dir_x
-            + force_angle_amount * (-interaction_dir_y),
-            force_velocity_amount * interaction_dir_y
-            + force_angle_amount * interaction_dir_x,
-        )
+        return social_force_from_neighbor(
+            (agent.x, agent.y),
+            (agent.vx, agent.vy),
+            (other_x, other_y),
+            (other_vx, other_vy),
+            self.neighbor_range,
+        ).force
 
     def _robot_state_is_fresh(self):
         return simulation_stamp_is_fresh(
@@ -1024,25 +1027,25 @@ class ScenarioPedestrianController(Node):
             self.robot_state_timeout,
         )
 
-    def _robot_personal_space_force(self, agent):
+    def _robot_kinematic_state(self):
         if not self._robot_state_is_fresh():
+            return None
+        return KinematicState(
+            position=(self.robot_x, self.robot_y),
+            velocity=(self.robot_vx, self.robot_vy),
+        )
+
+    def _robot_personal_space_force(self, agent):
+        robot_state = self._robot_kinematic_state()
+        if robot_state is None:
             return 0.0, 0.0
-
-        diff_x = agent.x - self.robot_x
-        diff_y = agent.y - self.robot_y
-        distance = math.hypot(diff_x, diff_y)
-        if distance < 1e-6:
-            # An exact overlap has no geometric normal. Push opposite the
-            # pedestrian heading so the next capped motion step separates it.
-            direction_x = -math.cos(agent.yaw)
-            direction_y = -math.sin(agent.yaw)
-        else:
-            direction_x = diff_x / distance
-            direction_y = diff_y / distance
-
-        clearance = distance - self.robot_clearance
-        force_amount = math.exp(-clearance / self.sigma_robot_personal_space)
-        return force_amount * direction_x, force_amount * direction_y
+        return robot_personal_space_force(
+            (agent.x, agent.y),
+            agent.yaw,
+            robot_state.position,
+            self.robot_clearance,
+            self.sigma_robot_personal_space,
+        )
 
     def _obstacle_force(self, agent):
         nearest = self._nearest_obstacle(agent.x, agent.y)
@@ -1063,13 +1066,10 @@ class ScenarioPedestrianController(Node):
         old_x = agent.x
         old_y = agent.y
 
-        agent.vx += dt * agent.ax
-        agent.vy += dt * agent.ay
-
-        speed = math.hypot(agent.vx, agent.vy)
-        if speed > agent.vmax:
-            agent.vx = agent.vx / speed * agent.vmax
-            agent.vy = agent.vy / speed * agent.vmax
+        step = velocity_step(
+            (agent.vx, agent.vy), (agent.ax, agent.ay), dt, agent.vmax
+        )
+        agent.vx, agent.vy = step.post_clip_velocity
 
         agent.x += dt * agent.vx
         agent.y += dt * agent.vy

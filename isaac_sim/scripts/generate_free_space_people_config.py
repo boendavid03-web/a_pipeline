@@ -7,9 +7,10 @@ that a person can safely occupy it.  The generated patrol is an A* route on
 the free cells after inflating every non-free cell by the requested pedestrian
 clearance.  When a Gazebo scenario XML is supplied, its non-robot agent
 clusters remain authoritative for route topology and population weights.  The
-requested total is allocated with the same largest-remainder rule as
-``scenario_pedestrian_controller.py`` and each person receives a deterministic
-Gaussian speed sampled from the same seed.
+requested total normally uses the same largest-remainder rule as
+``scenario_pedestrian_controller.py``. Optional visualization flags can
+reserve one person for every route cluster and give every person the exact
+requested patrol speed.
 """
 
 from __future__ import annotations
@@ -87,6 +88,23 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--speed", type=float, default=1.0)
+    parser.add_argument(
+        "--fixed-speed",
+        action="store_true",
+        help=(
+            "Give every generated pedestrian the exact requested speed. "
+            "Native collision avoidance may still slow or steer an agent "
+            "during a close encounter."
+        ),
+    )
+    parser.add_argument(
+        "--ensure-all-clusters",
+        action="store_true",
+        help=(
+            "When the requested population is large enough, allocate at "
+            "least one pedestrian to every non-empty route cluster."
+        ),
+    )
     parser.add_argument(
         "--opposed-pair-test",
         action="store_true",
@@ -643,7 +661,12 @@ def make_loop(
     return [grid.world(cell) for cell in cells]
 
 
-def allocate_pedestrian_counts(configured: list[int], requested: int) -> list[int]:
+def allocate_pedestrian_counts(
+    configured: list[int],
+    requested: int,
+    *,
+    ensure_all_clusters: bool = False,
+) -> list[int]:
     """Match Gazebo's proportional largest-remainder population allocation."""
     if requested < -1:
         raise ValueError("pedestrian_count must be -1 or a non-negative integer")
@@ -654,13 +677,22 @@ def allocate_pedestrian_counts(configured: list[int], requested: int) -> list[in
     total = sum(configured)
     if total <= 0:
         raise ValueError("requested pedestrians but the scenario has no clusters")
-    scaled = [requested * count / total for count in configured]
-    allocated = [int(value) for value in scaled]
+    active = [index for index, count in enumerate(configured) if count > 0]
+    allocated = [0] * len(configured)
+    reserved = 0
+    if ensure_all_clusters and requested >= len(active):
+        for index in active:
+            allocated[index] = 1
+        reserved = len(active)
+    remaining = requested - reserved
+    scaled = [remaining * count / total for count in configured]
+    extras = [int(value) for value in scaled]
+    allocated = [base + extra for base, extra in zip(allocated, extras)]
     remainder = requested - sum(allocated)
     priority = sorted(
         range(len(configured)),
         key=lambda index: (
-            scaled[index] - allocated[index],
+            scaled[index] - extras[index],
             configured[index],
             -index,
         ),
@@ -797,6 +829,7 @@ def gazebo_compatible_groups(
     spawn_clearance: float = DEFAULT_SPAWN_CLEARANCE_M,
     minimum_segment: float = DEFAULT_MIN_PATROL_SEGMENT_M,
     maximum_segment: float = DEFAULT_MAX_PATROL_SEGMENT_M,
+    fixed_speed: bool = False,
 ) -> dict[str, dict[str, object]]:
     """Expand to one IRA group per person so vmax is deterministic per agent."""
     if len(template_groups) != len(clusters):
@@ -833,7 +866,7 @@ def gazebo_compatible_groups(
             occupied_start_cells.append(start_cell)
             start_world = grid.world(start_cell)
             start = (float(start_world[0]), float(start_world[1]))
-            speed = max(0.1, rng.gauss(base_speed, 0.26))
+            speed = base_speed if fixed_speed else max(0.1, rng.gauss(base_speed, 0.26))
             # Gazebo's social-force controller can safely let a whole cluster
             # converge on the same first waypoint.  Isaac BehaviorAgent's
             # reciprocal avoidance is weaker for same-direction followers,
@@ -949,6 +982,7 @@ def main() -> int:
         allocation = allocate_pedestrian_counts(
             [int(cluster["count"]) for cluster in clusters],
             args.pedestrian_count,
+            ensure_all_clusters=args.ensure_all_clusters,
         )
         config["isaacsim.replicator.agent"]["seed"] = args.seed
         groups = gazebo_compatible_groups(
@@ -962,6 +996,7 @@ def main() -> int:
             args.spawn_clearance,
             args.min_patrol_segment,
             args.max_patrol_segment,
+            args.fixed_speed,
         )
         if args.opposed_pair_test:
             configure_opposed_pair_test(groups)
@@ -1007,6 +1042,7 @@ def main() -> int:
         f"map={args.map_yaml} free_cells={len(grid.free)} static_boxes={len(static_boxes)} "
         f"people={sum(allocation) if allocation is not None else sum(int(group['num']) for group in groups.values())} "
         f"allocation={allocation} seed={args.seed} speed={args.speed:.3f} "
+        f"fixed_speed={args.fixed_speed} ensure_all_clusters={args.ensure_all_clusters} "
         f"points={point_count} clearance_m={args.clearance:.2f} "
         f"spawn_clearance_m={args.spawn_clearance:.2f} output={args.output}"
         f" min_patrol_segment_m={args.min_patrol_segment:.2f}"

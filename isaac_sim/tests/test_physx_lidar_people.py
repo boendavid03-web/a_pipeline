@@ -12,10 +12,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from physx_lidar_people import (  # noqa: E402
     ENDPOINT_HIT_WORLD_TOLERANCE_M,
+    classify_query_hit_paths,
     endpoint_hit_world_diagnostic,
     endpoint_ranges_from_world_geometry,
     is_ignored_person_query_collider,
     is_ignored_robot_query_collider,
+    merge_native_and_analytic_ranges,
     native_depth_diagnostic,
     nearest_ray_capsule_intersections,
     physics_capture_due,
@@ -44,6 +46,64 @@ def test_scene_query_hit_value_supports_mapping_and_raycast_hit_object(
     hit, name, expected
 ):
     assert scene_query_hit_value(hit, name) == expected
+
+
+def test_hit_path_classification_reuses_cached_results():
+    paths = [
+        "/World/Floor",
+        "/World/Characters/person/Physics/BodyCollider",
+        "/World/Robot/chassis",
+        "/World/Floor",
+        None,
+    ]
+    cache = {}
+
+    normalized, people, robot, characters = classify_query_hit_paths(paths, cache)
+
+    assert normalized == (
+        "/World/Floor",
+        "/World/Characters/person/Physics/BodyCollider",
+        "/World/Robot/chassis",
+        "/World/Floor",
+        "",
+    )
+    assert people.tolist() == [False, True, False, False, False]
+    assert robot.tolist() == [False, False, True, False, False]
+    assert characters.tolist() == [False, True, False, False, False]
+    assert len(cache) == 4
+    assert cache["/World/Floor"] == (False, False, False)
+
+
+def test_bulk_range_merge_preserves_native_fallback_and_analytic_priority():
+    ranges, analytic, physx, no_return = merge_native_and_analytic_ranges(
+        native_ranges_m=[2.0, 1.0, 4.0, math.inf, 80.0],
+        collision_paths=["/World/Wall", "/World/Robot", "/World/Wall", "", "/World/Wall"],
+        ignored_mask=[False, True, False, False, False],
+        fallback_ranges_m=[math.inf, 3.0, math.inf, math.inf, math.inf],
+        analytic_distances_stage=[math.inf, 1.5, 2.0, math.inf, 60.0],
+        stage_meters_per_unit=1.0,
+        range_min_m=0.5,
+        range_max_m=50.0,
+    )
+
+    assert ranges == pytest.approx([2.0, 2.0, 2.5, None, 50.0], nan_ok=True)
+    assert analytic.tolist() == [False, True, True, False, True]
+    assert physx.tolist() == [True, False, False, False, False]
+    assert no_return.tolist() == [False, False, False, True, False]
+
+
+def test_bulk_range_merge_rejects_mismatched_shapes():
+    with pytest.raises(ValueError, match="matching lengths"):
+        merge_native_and_analytic_ranges(
+            native_ranges_m=[1.0],
+            collision_paths=[],
+            ignored_mask=[False],
+            fallback_ranges_m=[math.inf],
+            analytic_distances_stage=[math.inf],
+            stage_meters_per_unit=1.0,
+            range_min_m=0.5,
+            range_max_m=50.0,
+        )
 
 
 def test_hits_finite_cylinder_side_and_normalizes_ray_direction():
@@ -97,6 +157,75 @@ def test_vectorized_batch_returns_nearest_leg_and_preserves_occlusion():
     assert distances[0] == pytest.approx(0.9)
     assert indices.tolist() == [0, -1]
     assert math.isinf(distances[1])
+
+
+def test_matrix_dot_implementation_matches_direct_broadcast_reference():
+    """Guard the optimized hot path against geometric output drift."""
+    rng = np.random.default_rng(7)
+    origins = rng.normal(size=(31, 3))
+    directions = rng.normal(size=(31, 3))
+    starts = rng.normal(size=(9, 3))
+    ends = starts + rng.normal(size=(9, 3)) * 0.4
+    radii = rng.uniform(0.04, 0.12, size=9)
+
+    actual = ray_capsule_intersection_matrix(
+        origins, directions, starts, ends, radii
+    )
+
+    normalized = directions / np.linalg.norm(directions, axis=1)[:, None]
+    origin = origins[:, None, :]
+    direction = normalized[:, None, :]
+    start = starts[None, :, :]
+    axis = (ends - starts)[None, :, :]
+    length_sq = np.sum(axis * axis, axis=2)
+    origin_from_start = origin - start
+    axis_dot_direction = np.sum(axis * direction, axis=2)
+    axis_dot_origin = np.sum(axis * origin_from_start, axis=2)
+    direction_dot_origin = np.sum(direction * origin_from_start, axis=2)
+    origin_length_sq = np.sum(origin_from_start * origin_from_start, axis=2)
+    radius_sq = np.square(radii)[None, :]
+    quadratic_a = length_sq - np.square(axis_dot_direction)
+    quadratic_b = (
+        length_sq * direction_dot_origin
+        - axis_dot_origin * axis_dot_direction
+    )
+    quadratic_c = (
+        length_sq * origin_length_sq
+        - np.square(axis_dot_origin)
+        - radius_sq * length_sq
+    )
+    discriminant = np.square(quadratic_b) - quadratic_a * quadratic_c
+    cylinder_valid = (quadratic_a > 1.0e-12) & (discriminant >= 0.0)
+    root = np.sqrt(np.maximum(discriminant, 0.0))
+    safe_a = np.where(cylinder_valid, quadratic_a, 1.0)
+    candidates = []
+    for numerator in (-quadratic_b - root, -quadratic_b + root):
+        distance = numerator / safe_a
+        axial = axis_dot_origin + distance * axis_dot_direction
+        valid = (
+            cylinder_valid
+            & (distance >= 0.0)
+            & (axial >= 0.0)
+            & (axial <= length_sq)
+        )
+        candidates.append(np.where(valid, distance, np.inf))
+    for center, start_cap in ((start, True), (ends[None, :, :], False)):
+        relative = origin - center
+        sphere_b = np.sum(direction * relative, axis=2)
+        sphere_c = np.sum(relative * relative, axis=2) - radius_sq
+        sphere_discriminant = np.square(sphere_b) - sphere_c
+        sphere_valid = sphere_discriminant >= 0.0
+        sphere_root = np.sqrt(np.maximum(sphere_discriminant, 0.0))
+        for distance in (-sphere_b - sphere_root, -sphere_b + sphere_root):
+            axial = axis_dot_origin + distance * axis_dot_direction
+            cap_valid = axial <= 0.0 if start_cap else axial >= length_sq
+            valid = sphere_valid & (distance >= 0.0) & cap_valid
+            candidates.append(np.where(valid, distance, np.inf))
+    expected = np.minimum.reduce(candidates)
+
+    assert np.array_equal(np.isfinite(actual), np.isfinite(expected))
+    finite = np.isfinite(expected)
+    assert actual[finite] == pytest.approx(expected[finite], abs=1.0e-11)
 
 
 def test_tilted_capsule_uses_complete_shin_foot_axis():

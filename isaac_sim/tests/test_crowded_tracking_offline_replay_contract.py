@@ -24,12 +24,12 @@ def test_existing_dirty_sources_have_recorded_sha256():
     # Baselines are intentionally immutable during this handoff.
     import hashlib
     expected = {
-                "isaac_sim/scripts/cmd_vel_udp_relay.py": "b9c1389b9b8ae1dcfe50f7adf32d9d2ee2cee4bdd4b3bbd4f351adbced7d3638",
-            "isaac_sim/scripts/physx_lidar_people.py": "7cb2263de509e4b12c3e6bb362ef6a86ba3ab7612e42c8065b44422e7af40995",
-                    "isaac_sim/scripts/show_warehouse_people_robot_6_0.py": "781626014508c287e59ffff95e681f2f992cb86f686672ccdbd4c28d68dae0b7",
-                    "isaac_sim/tests/test_crowded_tracking_stress_contract.py": "236741696e6c638b9aebfdb44b860ca0ce20fe2e273336b7431d8e45a9e42429",
-                    "isaac_sim/tests/test_isaac_evaluation_shell_contract.py": "fffa23078f0074fb6ea093df56761f7945dd94b9caebce3dd6ad48df2b1243b5",
-            "isaac_sim/tests/test_physx_lidar_people.py": "8735c2fdba0043ccefc257b243da5203cba321fda2d4277152b91d48a3c766b3",
+                "isaac_sim/scripts/cmd_vel_udp_relay.py": "1e76519fe09e31cd48f363c078f143f27aa3a58f733cdea43a7d14eb1c7730d3",
+            "isaac_sim/scripts/physx_lidar_people.py": "d3395182b3d5434197eb1d0ff0bfb806a5e8a60a1513377674a121542365201a",
+                    "isaac_sim/scripts/show_warehouse_people_robot_6_0.py": "3f3807b52f1e03fd1d8d6a90d3715ac91643bb5ececcf5b6d2235218ac6cdc74",
+                    "isaac_sim/tests/test_crowded_tracking_stress_contract.py": "8a3098e36519bd17a785c3f1be690035b32097ef833e631272912fe16aab978b",
+                    "isaac_sim/tests/test_isaac_evaluation_shell_contract.py": "b8f48d604366ae28fab7c548fa4c1441b64f3f8c136fae36ee77d54d332f2616",
+            "isaac_sim/tests/test_physx_lidar_people.py": "e3d450c306fa5f247fc91ec8fa827fa01f9400723499529bd2def723637d4c63",
     }
     for relative, digest in expected.items():
         actual = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()

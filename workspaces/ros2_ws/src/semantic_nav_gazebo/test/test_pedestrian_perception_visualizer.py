@@ -1,6 +1,8 @@
+import math
 import struct
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sensor_msgs.msg import PointCloud2, PointField
@@ -9,7 +11,10 @@ from sensor_msgs.msg import PointCloud2, PointField
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from pedestrian_perception_visualizer import read_scored_points  # noqa: E402
+from pedestrian_perception_visualizer import (  # noqa: E402
+    read_scored_points,
+    transform_vector_xy,
+)
 
 
 def scored_cloud(values):
@@ -56,5 +61,25 @@ def test_visualizer_source_keeps_ground_truth_out_of_tracker_inputs():
     source = (SCRIPTS / "pedestrian_perception_visualizer.py").read_text(encoding="utf-8")
     assert "self.ground_truth_callback" in source
     assert "self._ground_truth_markers" in source
+    assert '"ground_truth_id"' in source
+    assert '"ground_truth_velocity"' in source
+    assert "pedestrian.velocity.linear.x" in source
     assert "self.tracker" not in source
     assert "/pedestrian_visualization" in source
+
+
+def test_velocity_transform_rotates_without_applying_translation():
+    half_angle = math.pi / 4.0
+    transform = SimpleNamespace(
+        transform=SimpleNamespace(
+            rotation=SimpleNamespace(
+                x=0.0,
+                y=0.0,
+                z=math.sin(half_angle),
+                w=math.cos(half_angle),
+            ),
+            translation=SimpleNamespace(x=100.0, y=-50.0),
+        )
+    )
+
+    assert transform_vector_xy(transform, 1.0, 0.0) == pytest.approx((0.0, 1.0))

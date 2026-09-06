@@ -245,6 +245,44 @@ class GazeboPeopleConfigTest(unittest.TestCase):
         self.assertEqual(allocate_pedestrian_counts(weights, 19), [7, 6, 3, 1, 1, 1])
         self.assertEqual(sum(allocate_pedestrian_counts(weights, 50)), 50)
 
+    def test_direction_coverage_reserves_every_active_cluster(self) -> None:
+        weights = [5, 5, 2, 1, 1, 1]
+
+        allocation = allocate_pedestrian_counts(
+            weights, 8, ensure_all_clusters=True
+        )
+
+        self.assertEqual(allocation, [2, 2, 1, 1, 1, 1])
+        self.assertEqual(sum(allocation), 8)
+        self.assertTrue(all(count >= 1 for count in allocation))
+
+    def test_fixed_speed_is_exact_for_every_generated_person(self) -> None:
+        clusters = load_gazebo_clusters(SCENARIO)
+        allocation = allocate_pedestrian_counts(
+            [int(cluster["count"]) for cluster in clusters],
+            8,
+            ensure_all_clusters=True,
+        )
+
+        groups = gazebo_compatible_groups(
+            template_groups(),
+            clusters,
+            allocation,
+            FakeFreeSpace(),
+            random.Random(21),
+            0.8,
+            maximum_segment=100.0,
+            fixed_speed=True,
+        )
+
+        self.assertEqual(len(groups), 8)
+        self.assertTrue(
+            all(
+                group["routines"][0]["patrol"]["speed_range"] == [0.8, 0.8]
+                for group in groups.values()
+            )
+        )
+
     def test_generation_is_seeded_and_assigns_one_speed_per_person(self) -> None:
         clusters = load_gazebo_clusters(SCENARIO)
         allocation = allocate_pedestrian_counts(

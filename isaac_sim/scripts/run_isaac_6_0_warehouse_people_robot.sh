@@ -10,9 +10,11 @@ PYTHON_SCRIPT="$SCRIPT_DIR/show_warehouse_people_robot_6_0.py"
 ROS_RELAY_SCRIPT="$SCRIPT_DIR/cmd_vel_udp_relay.py"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEFAULT_CUSTOM_SCENE_USD="$PROJECT_ROOT/isaac_sim/scenes/a_pipeline_eng_lobby.usda"
+EMPTY_SCENE_USD="$PROJECT_ROOT/isaac_sim/scenes/a_pipeline_empty_people.usda"
 CUSTOM_IRA_TEMPLATE="$SCRIPT_DIR/ira_people_demo/custom_eng_lobby_people.yaml"
 CUSTOM_ROUTE_GENERATOR="$SCRIPT_DIR/generate_free_space_people_config.py"
 CUSTOM_ROUTE_VALIDATOR="$SCRIPT_DIR/validate_custom_people_routes.py"
+EMPTY_ROUTE_GENERATOR="$SCRIPT_DIR/generate_empty_field_people_config.py"
 CUSTOM_GAZEBO_WORLD="$PROJECT_ROOT/workspaces/ros2_ws/src/semantic_nav_gazebo/worlds/gazebo_eng_lobby.world"
 CUSTOM_GAZEBO_SCENARIO="$PROJECT_ROOT/workspaces/ros2_ws/src/semantic_nav_gazebo/scenarios/lobby/eng_hall_15.xml"
 DEFAULT_CUSTOM_FREE_SPACE_MAP="$PROJECT_ROOT/workspaces/ros2_ws/src/semantic_nav_gazebo/maps/gazebo_eng_lobby/gazebo_eng_lobby.yaml"
@@ -181,9 +183,9 @@ fi
 export ISAAC_SCENE="${ISAAC_SCENE:-warehouse}"
 export ISAAC_SCENE="${ISAAC_SCENE,,}"
 case "$ISAAC_SCENE" in
-    warehouse|simple_room|hospital|digital_twin_warehouse|custom) ;;
+    warehouse|simple_room|hospital|digital_twin_warehouse|custom|empty) ;;
     *)
-        echo "ERROR: ISAAC_SCENE must be warehouse, simple_room, hospital, digital_twin_warehouse, or custom." >&2
+        echo "ERROR: ISAAC_SCENE must be warehouse, simple_room, hospital, digital_twin_warehouse, custom, or empty." >&2
         exit 2
         ;;
 esac
@@ -191,7 +193,7 @@ esac
 # authored NavMesh plus a matching offline IRA patrol configuration.  An
 # arbitrary custom override cannot safely reuse the lobby's coordinates.
 CUSTOM_SCENE_USD="$(realpath -m -- "${ISAAC_CUSTOM_SCENE_USD:-$DEFAULT_CUSTOM_SCENE_USD}")"
-if [[ "$ISAAC_SCENE" == "warehouse" \
+if [[ "$ISAAC_SCENE" == "warehouse" || "$ISAAC_SCENE" == "empty" \
     || ( "$ISAAC_SCENE" == "custom" && "$CUSTOM_SCENE_USD" == "$DEFAULT_CUSTOM_SCENE_USD" ) ]]; then
     export ISAAC_ENABLE_PEOPLE="${ISAAC_ENABLE_PEOPLE:-1}"
 else
@@ -209,10 +211,12 @@ case "$ISAAC_SCENE" in
     hospital) SCENE_USD="$ASSET_ROOT/Isaac/Environments/Hospital/hospital.usd" ;;
     digital_twin_warehouse) SCENE_USD="$ASSET_ROOT/Isaac/Environments/Digital_Twin_Warehouse/small_warehouse_digital_twin.usd" ;;
     custom) SCENE_USD="$CUSTOM_SCENE_USD" ;;
+    empty) SCENE_USD="$EMPTY_SCENE_USD" ;;
 esac
 export ISAAC_CUSTOM_SCENE_USD="$SCENE_USD"
-if [[ "$ISAAC_SCENE" != "warehouse" && "$ISAAC_SCENE" != "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
-    echo "ERROR: ISAAC_ENABLE_PEOPLE=1 is supported only with ISAAC_SCENE=warehouse or custom." >&2
+if [[ "$ISAAC_SCENE" != "warehouse" && "$ISAAC_SCENE" != "custom" \
+    && "$ISAAC_SCENE" != "empty" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
+    echo "ERROR: ISAAC_ENABLE_PEOPLE=1 is supported only with ISAAC_SCENE=warehouse, custom, or empty." >&2
     exit 2
 fi
 if [[ "$ISAAC_SCENE" == "custom" && "$SCENE_USD" != "$DEFAULT_CUSTOM_SCENE_USD" \
@@ -222,14 +226,24 @@ if [[ "$ISAAC_SCENE" == "custom" && "$SCENE_USD" != "$DEFAULT_CUSTOM_SCENE_USD" 
     exit 2
 fi
 
-if [[ "$ISAAC_SCENE" == "custom" ]]; then
-    export ISAAC_PEDESTRIAN_COUNT="${ISAAC_PEDESTRIAN_COUNT:--1}"
+if [[ "$ISAAC_SCENE" == "custom" || "$ISAAC_SCENE" == "empty" ]]; then
+    if [[ "$ISAAC_SCENE" == "empty" ]]; then
+        export ISAAC_PEDESTRIAN_COUNT="${ISAAC_PEDESTRIAN_COUNT:-8}"
+    else
+        export ISAAC_PEDESTRIAN_COUNT="${ISAAC_PEDESTRIAN_COUNT:--1}"
+    fi
     export ISAAC_PEDESTRIAN_SEED="${ISAAC_PEDESTRIAN_SEED:-7}"
     export ISAAC_PEDESTRIAN_SPEED="${ISAAC_PEDESTRIAN_SPEED:-1.0}"
     export ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST="${ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST:-0}"
+    export ISAAC_PEDESTRIAN_FIXED_SPEED="${ISAAC_PEDESTRIAN_FIXED_SPEED:-0}"
+    export ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS="${ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS:-0}"
     if [[ ! "$ISAAC_PEDESTRIAN_COUNT" =~ ^-?[0-9]+$ ]] \
         || (( ISAAC_PEDESTRIAN_COUNT < -1 || ISAAC_PEDESTRIAN_COUNT > 50 )); then
         echo "ERROR: ISAAC_PEDESTRIAN_COUNT must be -1 or an integer from 0 through 50." >&2
+        exit 2
+    fi
+    if [[ "$ISAAC_SCENE" == "empty" && "$ISAAC_PEDESTRIAN_COUNT" == "-1" ]]; then
+        echo "ERROR: empty scene requires an explicit pedestrian count from 0 through 50." >&2
         exit 2
     fi
     if [[ ! "$ISAAC_PEDESTRIAN_SEED" =~ ^[0-9]+$ ]] \
@@ -247,6 +261,17 @@ if [[ "$ISAAC_SCENE" == "custom" ]]; then
         0|false|no|off) ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST="0" ;;
         *) echo "ERROR: ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST must be a boolean value." >&2; exit 2 ;;
     esac
+    case "${ISAAC_PEDESTRIAN_FIXED_SPEED,,}" in
+        1|true|yes|on) ISAAC_PEDESTRIAN_FIXED_SPEED="1" ;;
+        0|false|no|off) ISAAC_PEDESTRIAN_FIXED_SPEED="0" ;;
+        *) echo "ERROR: ISAAC_PEDESTRIAN_FIXED_SPEED must be a boolean value." >&2; exit 2 ;;
+    esac
+    case "${ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS,,}" in
+        1|true|yes|on) ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS="1" ;;
+        0|false|no|off) ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS="0" ;;
+        *) echo "ERROR: ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS must be a boolean value." >&2; exit 2 ;;
+    esac
+    export ISAAC_PEDESTRIAN_FIXED_SPEED ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS
     if [[ "$ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" == "1" \
         && "$ISAAC_PEDESTRIAN_COUNT" != "2" ]]; then
         echo "ERROR: ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST=1 requires ISAAC_PEDESTRIAN_COUNT=2." >&2
@@ -339,6 +364,14 @@ if [[ "$ISAAC_SCENE" == "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
         if [[ "$ISAAC_PEDESTRIAN_OPPOSED_PAIR_TEST" == "1" ]]; then
             opposed_pair_args+=(--opposed-pair-test)
         fi
+        fixed_speed_args=()
+        if [[ "$ISAAC_PEDESTRIAN_FIXED_SPEED" == "1" ]]; then
+            fixed_speed_args+=(--fixed-speed)
+        fi
+        direction_coverage_args=()
+        if [[ "$ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS" == "1" ]]; then
+            direction_coverage_args+=(--ensure-all-clusters)
+        fi
         /usr/bin/python3 "$CUSTOM_ROUTE_GENERATOR" \
             --map-yaml "$ISAAC_PEDESTRIAN_FREE_SPACE_MAP_YAML" \
             --template "$CUSTOM_IRA_TEMPLATE" \
@@ -351,6 +384,8 @@ if [[ "$ISAAC_SCENE" == "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
             --pedestrian-count "$ISAAC_PEDESTRIAN_COUNT" \
             --seed "$ISAAC_PEDESTRIAN_SEED" \
             --speed "$ISAAC_PEDESTRIAN_SPEED" \
+            "${fixed_speed_args[@]}" \
+            "${direction_coverage_args[@]}" \
             "${opposed_pair_args[@]}"
     fi
     /usr/bin/python3 "$CUSTOM_ROUTE_VALIDATOR" \
@@ -360,6 +395,20 @@ if [[ "$ISAAC_SCENE" == "custom" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
         --min-start-separation "${ISAAC_EXPLICIT_CUSTOM_IRA_MIN_START_SEPARATION_M:-$ISAAC_PEDESTRIAN_SPAWN_CLEARANCE_M}"
     export ISAAC_CUSTOM_IRA_CONFIG="$generated_config"
     echo "ISAAC_SLAM_FREE_SPACE_PATROL map=$ISAAC_PEDESTRIAN_FREE_SPACE_MAP_YAML config=$generated_config"
+elif [[ "$ISAAC_SCENE" == "empty" && "$ISAAC_ENABLE_PEOPLE" == "1" ]]; then
+    if [[ ! -f "$EMPTY_ROUTE_GENERATOR" ]]; then
+        echo "ERROR: empty-field route generator is missing: $EMPTY_ROUTE_GENERATOR" >&2
+        exit 1
+    fi
+    generated_config="$LOG_DIR/empty_people_out_and_back.yaml"
+    /usr/bin/python3 "$EMPTY_ROUTE_GENERATOR" \
+        --scene "$EMPTY_SCENE_USD" \
+        --output "$generated_config" \
+        --pedestrian-count "$ISAAC_PEDESTRIAN_COUNT" \
+        --seed "$ISAAC_PEDESTRIAN_SEED" \
+        --speed "$ISAAC_PEDESTRIAN_SPEED"
+    export ISAAC_CUSTOM_IRA_CONFIG="$generated_config"
+    echo "ISAAC_EMPTY_FIELD_PATROL scene=$EMPTY_SCENE_USD config=$generated_config"
 fi
 # Isaac Sim 6.0.1 embeds Python 3.12, while Ubuntu 22.04 Humble's rclpy is
 # built for Python 3.10.  Keep ROS entirely in external system-Python
@@ -420,9 +469,9 @@ esac
 export ISAAC_PEDESTRIAN_SOCIAL_MODE="${ISAAC_PEDESTRIAN_SOCIAL_MODE:-legacy}"
 export ISAAC_PEDESTRIAN_SOCIAL_MODE="${ISAAC_PEDESTRIAN_SOCIAL_MODE,,}"
 case "$ISAAC_PEDESTRIAN_SOCIAL_MODE" in
-    legacy|gazebo_social) ;;
+    legacy|native_avoidance|gazebo_social) ;;
     *)
-        echo "ERROR: ISAAC_PEDESTRIAN_SOCIAL_MODE must be legacy or gazebo_social." >&2
+        echo "ERROR: ISAAC_PEDESTRIAN_SOCIAL_MODE must be legacy, native_avoidance, or gazebo_social." >&2
         exit 2
         ;;
 esac

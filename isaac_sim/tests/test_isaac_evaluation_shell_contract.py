@@ -8,6 +8,14 @@ WAREHOUSE_LAUNCHER = (
     ROOT / "isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh"
 )
 ROS_BRIDGE = ROOT / "isaac_sim/scripts/cmd_vel_udp_relay.py"
+PERCEPTION_VISUALIZATION_LAUNCH = (
+    ROOT
+    / "workspaces/ros2_ws/src/semantic_nav_gazebo/launch/pedestrian_perception_visualization_demo.launch.py"
+)
+PERCEPTION_VISUALIZATION_RVIZ = (
+    ROOT
+    / "workspaces/ros2_ws/src/semantic_nav_gazebo/rviz/pedestrian_perception_visualization_demo.rviz"
+)
 
 
 def test_launcher_records_complete_evaluation_contract_and_never_mass_kills():
@@ -75,8 +83,13 @@ def test_dr_spaam_mode_starts_existing_tracker_and_excludes_gt_from_policy():
     assert 'oracle_pedestrian_velocity:="$demo_oracle_pedestrian_velocity"' in source
     assert 'ros2 topic echo --once /pedestrian_tracks' in source
     assert 'ros2 node info /drl_vo_fixed_dual_inference' in source
+    assert '--no-daemon --spin-time 2.0' in source
+    assert 'for _ in $(seq 1 10)' in source
     assert 'DRL-VO unexpectedly subscribed to /pedestrian_ground_truth' in source
     assert 'DRLVO_DR_SPAAM_INPUT_VERIFIED=PASS' in source
+    assert source.index("Starting DR-SPAAM detector") < source.index(
+        "Starting Isaac walking-people scene"
+    )
 
 
 def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry():
@@ -93,7 +106,7 @@ def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry()
     assert "SimulationManager.get_simulation_time()" in source
     assert "def merge_native_physx_scan(" in source
     assert "native_ranges_m" in source
-    assert "query.raycast_all(" in source
+    assert "scene_query.raycast_all(" in source
     assert "ray_start_offsets_outside_box(" in source
     assert "raycast_all" in source
     assert "candidate_distance_m = (" in source
@@ -101,6 +114,9 @@ def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry()
     assert '"robot_pose": robot_pose' in source
     assert '"pedestrians": pedestrians' in source
     assert "current_pedestrian_positions" in source
+    assert "classify_query_hit_paths(" in source
+    assert "merge_native_and_analytic_ranges(" in source
+    assert "ISAAC_PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ" in source
     assert 'payload.get("schema") == LIDAR_TELEMETRY_SCHEMA' in bridge
     assert "self.clock_pub.publish(clock)" in bridge
     assert "self.publish_odometry(pose, self.actual_velocity)" in bridge
@@ -108,6 +124,17 @@ def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry()
     assert "lidar_udp_rx_count" in bridge
     assert "lidar_ros_pub_count" in bridge
     assert "def make_laser_ranges(" not in source
+
+
+def test_gui_renderer_is_high_quality_selectable_and_reapplied_after_stage_load():
+    source = ISAAC_RUNNER.read_text(encoding="utf-8")
+
+    assert '"ISAAC_RENDERER"' in source
+    assert '"realtimepathtracing": "RealTimePathTracing"' in source
+    assert '"raytracedlighting": "RaytracedLighting"' in source
+    assert '"width": ARGS.width' in source
+    assert '"height": ARGS.height' in source
+    assert "simulation_app.reset_render_settings()" in source
 
 
 def test_dynamic_velocity_command_is_applied_at_physx_rate():
@@ -178,7 +205,7 @@ def test_gazebo_social_mode_uses_persistent_full_2d_follow_target():
     ]
 
     assert 'ISAAC_PEDESTRIAN_SOCIAL_MODE:-legacy' in launcher
-    assert 'legacy|gazebo_social' in launcher
+    assert 'legacy|native_avoidance|gazebo_social' in warehouse_launcher
     assert 'PEDESTRIAN_SOCIAL_MODE == "gazebo_social"' in source
     assert "agent.get_linear_velocity(True)" in adapter
     assert '"actual_navigation_velocity_source": "pose_derived_position_delta"' in adapter
@@ -204,7 +231,38 @@ def test_gazebo_social_mode_uses_persistent_full_2d_follow_target():
     assert ".move_along(" not in adapter
     assert ".dodge(" not in adapter
     assert '"patrol_task_replacement": True' in adapter
-    assert 'agent.set_auto_avoidance_enabled(social_mode == "legacy")' in source
+    assert 'social_mode in {"legacy", "native_avoidance"}' in source
     assert '"behavior_agent_persistent_follow_target_2d"' in source
     assert 'social_motion["target_write_count"] <= result["people"]' in source
     assert 'result["pedestrian_robot_dodge_count"] != 0' in source
+
+
+def test_perception_visualization_defaults_to_empty_field_without_map():
+    launch = PERCEPTION_VISUALIZATION_LAUNCH.read_text(encoding="utf-8")
+    rviz = PERCEPTION_VISUALIZATION_RVIZ.read_text(encoding="utf-8")
+
+    assert '"scene", default_value="empty"' in launch
+    assert '"people_count", default_value="8"' in launch
+    assert '"pedestrian_social_mode", default_value="native_avoidance"' in launch
+    assert '"pedestrian_avoidance_mode", default_value="native"' in launch
+    assert '"fixed_speed", default_value="true"' in launch
+    assert '"ensure_all_directions", default_value="true"' in launch
+    assert '"ISAAC_PEDESTRIAN_FIXED_SPEED"' in launch
+    assert '"ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS"' in launch
+    assert '"ISAAC_SCENE": LaunchConfiguration("scene")' in launch
+    assert '"start_map_server", default_value="false"' in launch
+    map_display = rviz[rviz.index("Class: rviz_default_plugins/Map") :]
+    assert "Enabled: false" in map_display.split("- Class:", 1)[0]
+    assert "does\nnot start DRL-VO, navigation, or any controller" in launch
+
+
+def test_empty_scene_launcher_generates_matching_people_config():
+    launcher = WAREHOUSE_LAUNCHER.read_text(encoding="utf-8")
+    source = ISAAC_RUNNER.read_text(encoding="utf-8")
+
+    assert 'EMPTY_SCENE_USD="$PROJECT_ROOT/isaac_sim/scenes/a_pipeline_empty_people.usda"' in launcher
+    assert 'EMPTY_ROUTE_GENERATOR="$SCRIPT_DIR/generate_empty_field_people_config.py"' in launcher
+    assert 'warehouse|simple_room|hospital|digital_twin_warehouse|custom|empty' in launcher
+    assert 'ISAAC_EMPTY_FIELD_PATROL' in launcher
+    assert '"empty": {' in source
+    assert 'SCENE_NAME in {"custom", "empty"}' in source

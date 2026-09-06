@@ -399,6 +399,60 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
+    echo "Starting DR-SPAAM detector and pedestrian tracker..."
+    setsid env \
+        PYTHONUNBUFFERED=1 \
+        PYTHONPATH="$DR_SPAAM_ROOT:$DR_SPAAM_ROS2_ROOT:${PYTHONPATH:-}" \
+        "$TRAIN_PYTHON" "$DR_SPAAM_NODE" --ros-args \
+        -p weight_file:="$DR_SPAAM_CHECKPOINT" \
+        -p detector_model:=DR-SPAAM \
+        -p conf_thresh:=0.95 \
+        -p stride:=5 \
+        -p panoramic_scan:=true \
+        -p reverse_scan:=true \
+        -p drow_to_ros:=true \
+        -p target_frame:=base_link \
+        -p subscriber.scan.topic:=/scan_merged \
+        >"$log_dir/dr_spaam.log" 2>&1 &
+    detector_pid=$!
+    setsid /usr/bin/python3 "$PEDESTRIAN_TRACKER" --ros-args \
+        -p use_sim_time:=true \
+        -p tracking_frame:=odom \
+        -p input_topic:=/dr_spaam_detections_scored \
+        -p output_topic:=/pedestrian_tracks \
+        -p association_threshold:=0.8 \
+        -p min_hits:=3 \
+        -p max_age:=8 \
+        -p max_coast_time:=0.75 \
+        -p acceleration_sigma:=2.0 \
+        -p measurement_sigma:=0.10 \
+        -p max_prediction_dt:=0.50 \
+        -p measurement_history_size:=8 \
+        -p velocity_fit_min_samples:=3 \
+        -p velocity_fit_min_span:=0.15 \
+        >"$log_dir/tracker.log" 2>&1 &
+    tracker_pid=$!
+    perception_nodes_ready=0
+    for _ in $(seq 1 30); do
+        if ! kill -0 "$detector_pid" 2>/dev/null \
+            || ! kill -0 "$tracker_pid" 2>/dev/null; then
+            break
+        fi
+        perception_nodes="$(ros2 node list --no-daemon 2>/dev/null || true)"
+        if grep -qx '/dr_spaam_ros' <<<"$perception_nodes" \
+            && grep -qx '/pedestrian_point_tracker' <<<"$perception_nodes"; then
+            perception_nodes_ready=1
+            break
+        fi
+        sleep 1
+    done
+    if (( ! perception_nodes_ready )); then
+        echo "ERROR: DR-SPAAM detector or tracker did not become ready. See $log_dir/dr_spaam.log and $log_dir/tracker.log" >&2
+        exit 1
+    fi
+fi
+
 echo "Starting Isaac walking-people scene (ROS domain $ROS_DOMAIN_ID)..."
 echo "Control mode: $demo_control_mode; LiDAR: $ISAAC_LIDAR_MODE ${ISAAC_LIDAR_SAMPLE_COUNT}x2 @ ${ISAAC_LIDAR_RATE_HZ} Hz; pedestrian social: $ISAAC_PEDESTRIAN_SOCIAL_MODE"
 setsid "$ISAAC_LAUNCHER" "$@" >"$log_dir/isaac.log" 2>&1 &
@@ -481,38 +535,6 @@ if ! kill -0 "$isaac_pid" 2>/dev/null; then
 fi
 
 if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
-    echo "Starting DR-SPAAM detector and pedestrian tracker..."
-    setsid env \
-        PYTHONPATH="$DR_SPAAM_ROOT:$DR_SPAAM_ROS2_ROOT:${PYTHONPATH:-}" \
-        "$TRAIN_PYTHON" "$DR_SPAAM_NODE" --ros-args \
-        -p weight_file:="$DR_SPAAM_CHECKPOINT" \
-        -p detector_model:=DR-SPAAM \
-        -p conf_thresh:=0.95 \
-        -p stride:=5 \
-        -p panoramic_scan:=true \
-        -p reverse_scan:=true \
-        -p drow_to_ros:=true \
-        -p target_frame:=base_link \
-        -p subscriber.scan.topic:=/scan_merged \
-        >"$log_dir/dr_spaam.log" 2>&1 &
-    detector_pid=$!
-    setsid /usr/bin/python3 "$PEDESTRIAN_TRACKER" --ros-args \
-        -p use_sim_time:=true \
-        -p tracking_frame:=odom \
-        -p input_topic:=/dr_spaam_detections_scored \
-        -p output_topic:=/pedestrian_tracks \
-        -p association_threshold:=0.8 \
-        -p min_hits:=3 \
-        -p max_age:=8 \
-        -p max_coast_time:=0.75 \
-        -p acceleration_sigma:=2.0 \
-        -p measurement_sigma:=0.10 \
-        -p max_prediction_dt:=0.50 \
-        -p measurement_history_size:=8 \
-        -p velocity_fit_min_samples:=3 \
-        -p velocity_fit_min_span:=0.15 \
-        >"$log_dir/tracker.log" 2>&1 &
-    tracker_pid=$!
     if ! timeout "${ISAAC_DEMO_TRACKS_READY_TIMEOUT:-120}" \
         ros2 topic echo --once /pedestrian_tracks >/dev/null 2>&1; then
         echo "ERROR: /pedestrian_tracks did not deliver a message. See $log_dir/dr_spaam.log and $log_dir/tracker.log" >&2
@@ -618,7 +640,20 @@ if ! kill -0 "$policy_pid" 2>/dev/null; then
     exit 1
 fi
 if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
-    policy_node_info="$(ros2 node info /drl_vo_fixed_dual_inference 2>/dev/null || true)"
+    # Query the graph directly and allow discovery to converge.  A one-shot
+    # daemon-backed lookup can lag behind the freshly launched policy even
+    # after the policy has already received /pedestrian_tracks.
+    policy_node_info=""
+    for _ in $(seq 1 10); do
+        policy_node_info="$(
+            ros2 node info /drl_vo_fixed_dual_inference \
+                --no-daemon --spin-time 2.0 2>/dev/null || true
+        )"
+        if grep -Fq '/pedestrian_tracks' <<<"$policy_node_info"; then
+            break
+        fi
+        sleep 0.5
+    done
     if ! grep -Fq '/pedestrian_tracks' <<<"$policy_node_info"; then
         echo "ERROR: DRL-VO did not subscribe to /pedestrian_tracks." >&2
         exit 1

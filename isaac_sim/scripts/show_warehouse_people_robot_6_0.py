@@ -51,6 +51,7 @@ SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 LAUNCHER_SHA256 = os.environ.get("ISAAC_LAUNCHER_SHA256", "unknown")
 PROJECT_ROOT = SCRIPT_DIR.parents[1]
 DEFAULT_CUSTOM_SCENE_USD = PROJECT_ROOT / "isaac_sim/scenes/a_pipeline_eng_lobby.usda"
+EMPTY_SCENE_USD = PROJECT_ROOT / "isaac_sim/scenes/a_pipeline_empty_people.usda"
 CUSTOM_SCENE_USD = Path(
     os.environ.get("ISAAC_CUSTOM_SCENE_USD", str(DEFAULT_CUSTOM_SCENE_USD))
 ).expanduser().resolve()
@@ -125,6 +126,16 @@ SCENE_SPECS = {
         "camera_target": (16.0, 12.0, 0.5),
         "auto_frame": False,
         "ira_people_supported": CUSTOM_SCENE_USD == DEFAULT_CUSTOM_SCENE_USD.resolve(),
+        "ira_config": CUSTOM_IRA_CONFIG,
+    },
+    # Project-owned obstacle-free floor for perception demonstrations. People
+    # follow generated two-point out-and-back routes across the open NavMesh.
+    "empty": {
+        "path": EMPTY_SCENE_USD,
+        "spawn_ros": (0.0, -9.5, 0.01),
+        "camera_eye": (16.0, -18.0, 22.0),
+        "camera_target": (0.0, 0.0, 0.5),
+        "ira_people_supported": True,
         "ira_config": CUSTOM_IRA_CONFIG,
     },
 }
@@ -313,6 +324,18 @@ LIDAR_SAMPLE_COUNT = environment_integer(
     MAX_LIDAR_SAMPLE_COUNT,
     unit="samples",
 )
+PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ = environment_integer(
+    "ISAAC_PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ",
+    1,
+    1,
+    LIDAR_RATE_HZ,
+    unit="Hz",
+)
+if LIDAR_RATE_HZ % PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ != 0:
+    raise SystemExit(
+        "ERROR: ISAAC_PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ must divide "
+        "ISAAC_LIDAR_RATE_HZ exactly"
+    )
 MIN_SIMULATION_FRAME_RATE_HZ = environment_integer(
     "ISAAC_MIN_SIMULATION_FRAME_RATE_HZ",
     1,
@@ -337,7 +360,7 @@ LIDAR_PUBLISH_PERIOD_SEC = 1.0 / float(LIDAR_RATE_HZ)
 PEDESTRIAN_SOCIAL_MODE = environment_choice(
     "ISAAC_PEDESTRIAN_SOCIAL_MODE",
     "legacy",
-    {"gazebo_social", "legacy"},
+    {"gazebo_social", "legacy", "native_avoidance"},
 )
 PEDESTRIAN_SOCIAL_MASS_KG = environment_float(
     "ISAAC_PEDESTRIAN_SOCIAL_MASS_KG", 20.0, 0.1, 1000.0, unit="kg"
@@ -555,8 +578,8 @@ PEOPLE_ENABLED = environment_flag(
 )
 if PEOPLE_ENABLED and not SCENE_SPEC["ira_people_supported"]:
     raise SystemExit(
-        "ERROR: ISAAC_ENABLE_PEOPLE=1 requires warehouse or the default project "
-        f"engineering-lobby USD; {SCENE_NAME} has no compatible IRA patrol configuration"
+        "ERROR: ISAAC_ENABLE_PEOPLE=1 requires a scene with a compatible IRA "
+        f"patrol configuration; {SCENE_NAME} does not provide one"
     )
 PEDESTRIAN_AVOIDANCE_MODE = pedestrian_avoidance_mode()
 PEDESTRIAN_ROBOT_OBJECT_AVOIDANCE_ENABLED = (
@@ -753,6 +776,15 @@ RTX_LIDAR_ASSET_SHA256 = (
     if LIDAR_MODE == "rtx"
     else None
 )
+RENDERER_MODE = environment_choice(
+    "ISAAC_RENDERER",
+    "raytracedlighting",
+    {"raytracedlighting", "realtimepathtracing"},
+)
+RENDERER_NAME = {
+    "raytracedlighting": "RaytracedLighting",
+    "realtimepathtracing": "RealTimePathTracing",
+}[RENDERER_MODE]
 
 
 from isaacsim import SimulationApp  # noqa: E402
@@ -761,7 +793,7 @@ from isaacsim import SimulationApp  # noqa: E402
 simulation_app = SimulationApp(
     {
         "headless": ARGS.headless,
-        "renderer": "RaytracedLighting",
+        "renderer": RENDERER_NAME,
         "enable_motion_bvh": LIDAR_MODE == "rtx",
         "multi_gpu": False,
         "width": ARGS.width,
@@ -801,10 +833,12 @@ from isaacsim.core.utils.extensions import enable_extension  # noqa: E402
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdGeom, UsdPhysics, UsdShade, UsdSkel  # noqa: E402
 from physx_lidar_people import (  # noqa: E402
     ENDPOINT_HIT_WORLD_TOLERANCE_M,
+    classify_query_hit_paths,
     endpoint_hit_world_diagnostic,
     endpoint_ranges_from_world_geometry,
     is_ignored_person_query_collider,
     is_ignored_robot_query_collider,
+    merge_native_and_analytic_ranges,
     native_depth_diagnostic,
     nearest_ray_capsule_intersections,
     physics_capture_due,
@@ -1278,12 +1312,18 @@ def configure_pedestrian_robot_avoidance(
             missing.append(path)
             continue
         # Obstacle avoidance is the continuous NavMesh/velocity layer and
-        # remains enabled in both social modes.  BehaviorAgent auto avoidance
+        # remains enabled in every pedestrian motion mode. BehaviorAgent auto
+        # avoidance
         # may launch a discrete task of its own, so gazebo_social disables it;
         # the explicit close-clearance dodge below is then the sole emergency
         # task replacement.  Legacy behavior remains selectable.
         agent.set_obstacle_avoidance_enabled(True)
-        agent.set_auto_avoidance_enabled(social_mode == "legacy")
+        # ``native_avoidance`` is the stock warehouse-style BehaviorAgent
+        # reciprocal avoidance path: no Social Force steering and no discrete
+        # stop/yield controller, while pedestrians still steer around people.
+        agent.set_auto_avoidance_enabled(
+            social_mode in {"legacy", "native_avoidance"}
+        )
         agent.set_auto_avoidance_mass(PEDESTRIAN_SOCIAL_MASS_KG)
         object_avoidance_enabled = mode != "off"
         if object_avoidance_enabled:
@@ -2976,6 +3016,11 @@ def merge_native_physx_scan(
     native_ranges_m: np.ndarray,
     native_hit_paths: np.ndarray,
     leg_snapshot: AnalyticLegSnapshot | None = None,
+    *,
+    scene_query: object | None = None,
+    hit_path_classification_cache: dict[str, tuple[bool, bool, bool]] | None = None,
+    ray_directions_robot: np.ndarray | None = None,
+    collect_detailed_diagnostics: bool = False,
 ) -> tuple[list[float | None], dict[str, object]]:
     """Merge native batched PhysX returns with the analytic leg model."""
     scale = STAGE_METERS_PER_UNIT
@@ -2999,21 +3044,37 @@ def merge_native_physx_scan(
     minimum_stage = LIDAR_RANGE_MIN_M / scale
     maximum_query_stage = (LIDAR_RANGE_MAX_M - LIDAR_RANGE_MIN_M) / scale
     angle_increment = 2.0 * math.pi / LIDAR_SAMPLE_COUNT
-    world_angles = (
-        sensor_yaw
-        - math.pi
-        + np.arange(LIDAR_SAMPLE_COUNT, dtype=float) * angle_increment
-    )
-    cosine = np.cos(world_angles)
-    sine = np.sin(world_angles)
-    if STAGE_UP_AXIS == "Z":
-        directions = np.column_stack(
-            (cosine, sine, np.zeros(LIDAR_SAMPLE_COUNT, dtype=float))
-        )
+    if ray_directions_robot is not None:
+        template = np.asarray(ray_directions_robot, dtype=float)
+        if template.shape != (LIDAR_SAMPLE_COUNT, 3):
+            raise RuntimeError(
+                "cached PhysX scan directions have the wrong shape: "
+                f"expected={(LIDAR_SAMPLE_COUNT, 3)}, actual={template.shape}"
+            )
+        cosine, sine = math.cos(robot_yaw), math.sin(robot_yaw)
+        directions = template.copy()
+        if STAGE_UP_AXIS == "Z":
+            directions[:, 0] = cosine * template[:, 0] - sine * template[:, 1]
+            directions[:, 1] = sine * template[:, 0] + cosine * template[:, 1]
+        else:
+            directions[:, 0] = cosine * template[:, 0] + sine * template[:, 2]
+            directions[:, 2] = -sine * template[:, 0] + cosine * template[:, 2]
     else:
-        directions = np.column_stack(
-            (cosine, np.zeros(LIDAR_SAMPLE_COUNT, dtype=float), -sine)
+        world_angles = (
+            sensor_yaw
+            - math.pi
+            + np.arange(LIDAR_SAMPLE_COUNT, dtype=float) * angle_increment
         )
+        cosine = np.cos(world_angles)
+        sine = np.sin(world_angles)
+        if STAGE_UP_AXIS == "Z":
+            directions = np.column_stack(
+                (cosine, sine, np.zeros(LIDAR_SAMPLE_COUNT, dtype=float))
+            )
+        else:
+            directions = np.column_stack(
+                (cosine, np.zeros(LIDAR_SAMPLE_COUNT, dtype=float), -sine)
+            )
     origins = sensor_position[None, :] + directions * minimum_stage
     analytic_started = time.perf_counter()
     if leg_snapshot is None:
@@ -3045,129 +3106,127 @@ def merge_native_physx_scan(
         "analytic_hits_by_leg": {},
         "unknown_character_hit_paths": [],
     }
-    unknown_character_hit_paths: set[str] = set()
-    analytic_hits_by_leg: dict[str, list[tuple[int, float]]] = {}
-    ranges: list[float | None] = []
     scan_started = time.perf_counter()
+    (
+        collision_paths,
+        ignored_person_mask,
+        ignored_robot_mask,
+        character_mask,
+    ) = classify_query_hit_paths(
+        native_hit_paths,
+        hit_path_classification_cache,
+    )
+    ignored_mask = ignored_person_mask | ignored_robot_mask
+    unknown_character_hit_paths = {
+        collision_paths[index]
+        for index in np.flatnonzero(character_mask & ~ignored_person_mask)
+    }
     fallback_elapsed_ms = 0.0
-    for index in range(LIDAR_SAMPLE_COUNT):
+    fallback_ranges_m = np.full(LIDAR_SAMPLE_COUNT, np.inf, dtype=float)
+    fallback_indices = np.flatnonzero(ignored_mask)
+    stats["fallback_beams"] = int(fallback_indices.size)
+    stats["ignored_closest_hits"] = int(fallback_indices.size)
+    stats["ignored_person_closest_hits"] = int(
+        np.count_nonzero(ignored_person_mask)
+    )
+    stats["ignored_robot_closest_hits"] = int(
+        np.count_nonzero(ignored_robot_mask)
+    )
+    if fallback_indices.size and scene_query is None:
+        scene_query = omni.physx.get_physx_scene_query_interface()
+    for index in fallback_indices:
         direction = directions[index]
         origin = origins[index]
-        collision_path = str(native_hit_paths[index] or "")
-        native_distance_m = float(native_ranges_m[index])
-        physx_distance_m = (
-            native_distance_m
-            if collision_path
-            and math.isfinite(native_distance_m)
-            and LIDAR_RANGE_MIN_M <= native_distance_m <= LIDAR_RANGE_MAX_M
-            else math.inf
-        )
-        ignored_person = is_ignored_person_query_collider(collision_path)
-        ignored_robot = is_ignored_robot_query_collider(collision_path)
-        if ignored_person or ignored_robot:
-            physx_distance_m = math.inf
-            stats["fallback_beams"] = int(stats["fallback_beams"]) + 1
-            stats["ignored_closest_hits"] = int(stats["ignored_closest_hits"]) + 1
-            if ignored_person:
-                stats["ignored_person_closest_hits"] = int(
-                    stats["ignored_person_closest_hits"]
-                ) + 1
-            if ignored_robot:
-                stats["ignored_robot_closest_hits"] = int(
-                    stats["ignored_robot_closest_hits"]
-                ) + 1
+        fallback_distance_m = math.inf
 
-            def report_all(candidate: object) -> bool:
-                nonlocal physx_distance_m
-                candidate_path = str(
-                    scene_query_hit_value(candidate, "collision", "")
-                )
-                candidate_person = is_ignored_person_query_collider(candidate_path)
-                candidate_robot = is_ignored_robot_query_collider(candidate_path)
-                if candidate_person or candidate_robot:
-                    stats["ignored_all_hits"] = int(stats["ignored_all_hits"]) + 1
-                    if candidate_person:
-                        stats["ignored_person_all_hits"] = int(
-                            stats["ignored_person_all_hits"]
-                        ) + 1
-                    if candidate_robot:
-                        stats["ignored_robot_all_hits"] = int(
-                            stats["ignored_robot_all_hits"]
-                        ) + 1
-                    return True
-                if "/World/Characters/" in candidate_path:
-                    unknown_character_hit_paths.add(candidate_path)
-                candidate_distance_stage = float(
-                    scene_query_hit_value(candidate, "distance", math.inf)
-                )
-                candidate_distance_m = (
-                    LIDAR_RANGE_MIN_M + candidate_distance_stage * scale
-                )
-                if candidate_distance_m < physx_distance_m:
-                    physx_distance_m = candidate_distance_m
-                return True
-
-            fallback_started = time.perf_counter()
-            query = omni.physx.get_physx_scene_query_interface()
-            query.raycast_all(
-                tuple(origin), tuple(direction), maximum_query_stage, report_all
+        def report_all(candidate: object) -> bool:
+            nonlocal fallback_distance_m
+            candidate_path = str(
+                scene_query_hit_value(candidate, "collision", "")
             )
-            fallback_elapsed_ms += (time.perf_counter() - fallback_started) * 1000.0
-        elif "/World/Characters/" in collision_path:
-            unknown_character_hit_paths.add(collision_path)
+            candidate_person = is_ignored_person_query_collider(candidate_path)
+            candidate_robot = is_ignored_robot_query_collider(candidate_path)
+            if candidate_person or candidate_robot:
+                stats["ignored_all_hits"] = int(stats["ignored_all_hits"]) + 1
+                if candidate_person:
+                    stats["ignored_person_all_hits"] = int(
+                        stats["ignored_person_all_hits"]
+                    ) + 1
+                if candidate_robot:
+                    stats["ignored_robot_all_hits"] = int(
+                        stats["ignored_robot_all_hits"]
+                    ) + 1
+                return True
+            if "/World/Characters/" in candidate_path:
+                unknown_character_hit_paths.add(candidate_path)
+            candidate_distance_stage = float(
+                scene_query_hit_value(candidate, "distance", math.inf)
+            )
+            candidate_distance_m = (
+                LIDAR_RANGE_MIN_M + candidate_distance_stage * scale
+            )
+            if candidate_distance_m < fallback_distance_m:
+                fallback_distance_m = candidate_distance_m
+            return True
 
-        analytic_distance_stage = float(analytic_distances[index])
-        analytic_distance_m = (
-            LIDAR_RANGE_MIN_M + analytic_distance_stage * scale
-            if math.isfinite(analytic_distance_stage)
-            else math.inf
+        fallback_started = time.perf_counter()
+        scene_query.raycast_all(
+            tuple(origin), tuple(direction), maximum_query_stage, report_all
         )
-        if analytic_distance_m < physx_distance_m:
-            selected_distance_m = analytic_distance_m
-            stats["analytic_accepted_beams"] = int(
-                stats["analytic_accepted_beams"]
-            ) + 1
-            leg_index = int(analytic_leg_indices[index])
-            if leg_snapshot is not None and leg_index >= 0:
-                label = leg_snapshot.labels[leg_index]
-                analytic_hits_by_leg.setdefault(label, []).append(
-                    (index, analytic_distance_m)
-                )
-        else:
-            selected_distance_m = physx_distance_m
-            if math.isfinite(selected_distance_m):
-                stats["physx_accepted_beams"] = int(
-                    stats["physx_accepted_beams"]
-                ) + 1
+        fallback_elapsed_ms += (time.perf_counter() - fallback_started) * 1000.0
+        fallback_ranges_m[index] = fallback_distance_m
 
-        if math.isfinite(selected_distance_m):
-            ranges.append(min(LIDAR_RANGE_MAX_M, selected_distance_m))
-        else:
-            ranges.append(None)
-            stats["no_return_beams"] = int(stats["no_return_beams"]) + 1
+    (
+        ranges,
+        analytic_selected_mask,
+        physx_selected_mask,
+        no_return_mask,
+    ) = merge_native_and_analytic_ranges(
+        native_ranges_m,
+        collision_paths,
+        ignored_mask,
+        fallback_ranges_m,
+        analytic_distances,
+        stage_meters_per_unit=scale,
+        range_min_m=LIDAR_RANGE_MIN_M,
+        range_max_m=LIDAR_RANGE_MAX_M,
+    )
+    stats["analytic_accepted_beams"] = int(
+        np.count_nonzero(analytic_selected_mask)
+    )
+    stats["physx_accepted_beams"] = int(np.count_nonzero(physx_selected_mask))
+    stats["no_return_beams"] = int(np.count_nonzero(no_return_mask))
     stats["fallback_ratio"] = int(stats["fallback_beams"]) / LIDAR_SAMPLE_COUNT
     full_scan_ms = (time.perf_counter() - scan_started) * 1000.0
     stats["timing_ms"] = {
         "analytic_leg_merge": analytic_merge_ms,
         "raycast_all_fallback": fallback_elapsed_ms,
         "hit_path_filtering": max(
-            0.0, full_scan_ms - fallback_elapsed_ms - analytic_merge_ms
+            0.0, full_scan_ms - fallback_elapsed_ms
         ),
         "full_scan_postprocess": full_scan_ms + analytic_merge_ms,
     }
-    stats["analytic_hits_by_leg"] = {
-        label: {
-            "count": len(hits),
-            "mean_angle_rad": math.atan2(
-                sum(math.sin(-math.pi + index * angle_increment) for index, _ in hits),
-                sum(math.cos(-math.pi + index * angle_increment) for index, _ in hits),
-            ),
-            "range_m_min": min(distance for _, distance in hits),
-            "range_m_max": max(distance for _, distance in hits),
-            "range_m_mean": sum(distance for _, distance in hits) / len(hits),
-        }
-        for label, hits in analytic_hits_by_leg.items()
-    }
+    if collect_detailed_diagnostics and leg_snapshot is not None:
+        local_angles = -math.pi + np.arange(LIDAR_SAMPLE_COUNT) * angle_increment
+        for leg_index, label in enumerate(leg_snapshot.labels):
+            hit_indices = np.flatnonzero(
+                analytic_selected_mask & (analytic_leg_indices == leg_index)
+            )
+            if not hit_indices.size:
+                continue
+            hit_ranges = np.asarray(
+                [ranges[index] for index in hit_indices], dtype=float
+            )
+            stats["analytic_hits_by_leg"][label] = {
+                "count": int(hit_indices.size),
+                "mean_angle_rad": math.atan2(
+                    float(np.sin(local_angles[hit_indices]).sum()),
+                    float(np.cos(local_angles[hit_indices]).sum()),
+                ),
+                "range_m_min": float(np.min(hit_ranges)),
+                "range_m_max": float(np.max(hit_ranges)),
+                "range_m_mean": float(np.mean(hit_ranges)),
+            }
     stats["unknown_character_hit_paths"] = sorted(unknown_character_hit_paths)
     return ranges, stats
 
@@ -3215,6 +3274,7 @@ class PhysxDualLidarScheduler:
             name: deque(maxlen=256)
             for name in (
                 "native_reading_fetch",
+                "geometry_diagnostics",
                 "hit_path_filtering",
                 "raycast_all_fallback",
                 "analytic_leg_merge",
@@ -3226,6 +3286,7 @@ class PhysxDualLidarScheduler:
         self.capture_wall_times: deque[float] = deque(maxlen=256)
         self.capture_count = 0
         self.missed_capture_count = 0
+        self.geometry_diagnostic_count = 0
         self.failure: Exception | None = None
         self.physics_steps = 0
         self.physics_sim_time = float(timeline.get_current_time())
@@ -3243,6 +3304,13 @@ class PhysxDualLidarScheduler:
                 f"physics_hz={physics_hz}, lidar_hz={LIDAR_RATE_HZ}"
             )
         self._capture_period_steps = physics_hz // LIDAR_RATE_HZ
+        self._geometry_diagnostic_period_pairs = (
+            LIDAR_RATE_HZ // PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ
+        )
+        self._hit_path_classification_cache: dict[
+            str, tuple[bool, bool, bool]
+        ] = {}
+        self._scene_query = omni.physx.get_physx_scene_query_interface()
         self._qualification_app_update_sequence: int | None = None
         self._qualification_samples: list[dict[str, float | int]] = []
         self._qualification_written = False
@@ -3256,6 +3324,7 @@ class PhysxDualLidarScheduler:
         ray_directions = np.column_stack(
             (np.cos(local_angles), np.sin(local_angles), np.zeros(LIDAR_SAMPLE_COUNT))
         )
+        self._scan_directions_robot: dict[str, np.ndarray] = {}
         UsdGeom.Xform.Define(stage, PHYSX_SENSOR_ROOT)
         for topic, prim_name, mount, mount_yaw in self._specs:
             mount_xy = np.asarray(mount[:2], dtype=float)
@@ -3266,6 +3335,21 @@ class PhysxDualLidarScheduler:
                     s * ray_directions[:, 0] + c * ray_directions[:, 1],
                 )
             )
+            if STAGE_UP_AXIS == "Z":
+                self._scan_directions_robot[topic] = np.column_stack(
+                    (
+                        robot_directions_xy,
+                        np.zeros(LIDAR_SAMPLE_COUNT, dtype=float),
+                    )
+                )
+            else:
+                self._scan_directions_robot[topic] = np.column_stack(
+                    (
+                        robot_directions_xy[:, 0],
+                        np.zeros(LIDAR_SAMPLE_COUNT, dtype=float),
+                        -robot_directions_xy[:, 1],
+                    )
+                )
             offsets_m = ray_start_offsets_outside_box(
                 mount_xy,
                 robot_directions_xy,
@@ -3409,7 +3493,7 @@ class PhysxDualLidarScheduler:
             )
 
     def _native_scan(
-        self, topic: str
+        self, topic: str, *, run_geometry_diagnostics: bool
     ) -> tuple[np.ndarray, np.ndarray, float, int | None]:
         started = time.perf_counter()
         reading = self._sensors[topic].get_sensor_reading()
@@ -3436,17 +3520,12 @@ class PhysxDualLidarScheduler:
             raise RuntimeError(
                 f"native PhysX reading cadence is not 15 Hz: sensor={self._paths[topic]}, delta={delta:.9f}"
             )
-        depths = np.asarray(reading.depths, dtype=float).reshape(-1)
         endpoints = np.asarray(reading.ray_end_points_world, dtype=float).reshape(-1, 3)
         origins = np.asarray(reading.ray_origins_world, dtype=float).reshape(-1, 3)
         paths = np.asarray(reading.hit_prim_paths, dtype=object).reshape(-1)
-        try:
-            hit_positions = np.asarray(reading.hit_positions, dtype=float).reshape(-1, 3)
-        except Exception:
-            hit_positions = np.empty((0, 3), dtype=float)
-        if depths.size != LIDAR_SAMPLE_COUNT or paths.size != LIDAR_SAMPLE_COUNT:
+        if paths.size != LIDAR_SAMPLE_COUNT:
             raise RuntimeError(
-                f"native PhysX count mismatch: sensor={self._paths[topic]}, depths={depths.size}, paths={paths.size}, expected={LIDAR_SAMPLE_COUNT}"
+                f"native PhysX path count mismatch: sensor={self._paths[topic]}, paths={paths.size}, expected={LIDAR_SAMPLE_COUNT}"
             )
         if endpoints.shape != (LIDAR_SAMPLE_COUNT, 3) or origins.shape != (LIDAR_SAMPLE_COUNT, 3):
             raise RuntimeError(f"native PhysX endpoint shape mismatch: sensor={self._paths[topic]}")
@@ -3456,40 +3535,56 @@ class PhysxDualLidarScheduler:
             self._ray_start_offsets_m[topic],
             STAGE_METERS_PER_UNIT,
         )
-        depth_diagnostic = native_depth_diagnostic(
-            depths,
-            endpoint_ranges,
-            self._ray_start_offsets_m[topic],
-            STAGE_METERS_PER_UNIT,
-        )
-        self._native_depth_diagnostic[topic] = depth_diagnostic
-        if int(depth_diagnostic["disagreement_count"] or 0) > 0:
-            self._native_depth_warning_count += 1
-            if topic not in self._native_depth_warning_printed:
-                self._native_depth_warning_printed.add(topic)
-                print(
-                    "[WAREHOUSE-ROBOT] WARNING: native PhysX depth/endpoint "
-                    "disagreement is non-fatal; endpoint geometry remains the "
-                    "range source: "
-                    + json.dumps(
-                        {"sensor": topic, **depth_diagnostic}, sort_keys=True
-                    ),
-                    flush=True,
+        if run_geometry_diagnostics:
+            diagnostic_started = time.perf_counter()
+            depths = np.asarray(reading.depths, dtype=float).reshape(-1)
+            if depths.size != LIDAR_SAMPLE_COUNT:
+                raise RuntimeError(
+                    f"native PhysX depth count mismatch: sensor={self._paths[topic]}, depths={depths.size}, expected={LIDAR_SAMPLE_COUNT}"
                 )
+            try:
+                hit_positions = np.asarray(
+                    reading.hit_positions, dtype=float
+                ).reshape(-1, 3)
+            except Exception:
+                hit_positions = np.empty((0, 3), dtype=float)
+            depth_diagnostic = native_depth_diagnostic(
+                depths,
+                endpoint_ranges,
+                self._ray_start_offsets_m[topic],
+                STAGE_METERS_PER_UNIT,
+            )
+            self._native_depth_diagnostic[topic] = depth_diagnostic
+            if int(depth_diagnostic["disagreement_count"] or 0) > 0:
+                self._native_depth_warning_count += 1
+                if topic not in self._native_depth_warning_printed:
+                    self._native_depth_warning_printed.add(topic)
+                    print(
+                        "[WAREHOUSE-ROBOT] WARNING: native PhysX depth/endpoint "
+                        "disagreement is non-fatal; endpoint geometry remains the "
+                        "range source: "
+                        + json.dumps(
+                            {"sensor": topic, **depth_diagnostic}, sort_keys=True
+                        ),
+                        flush=True,
+                    )
 
-        sensor_matrix = np.asarray(
-            UsdGeom.Xformable(self._authoring[topic].prims[0])
-            .ComputeLocalToWorldTransform(Usd.TimeCode.Default()),
-            dtype=float,
-        )
-        self._endpoint_hit_diagnostic[topic] = endpoint_hit_world_diagnostic(
-            endpoints,
-            hit_positions,
-            paths,
-            sensor_matrix,
-            STAGE_METERS_PER_UNIT,
-            tolerance_m=ENDPOINT_HIT_WORLD_TOLERANCE_M,
-        )
+            sensor_matrix = np.asarray(
+                UsdGeom.Xformable(self._authoring[topic].prims[0])
+                .ComputeLocalToWorldTransform(Usd.TimeCode.Default()),
+                dtype=float,
+            )
+            self._endpoint_hit_diagnostic[topic] = endpoint_hit_world_diagnostic(
+                endpoints,
+                hit_positions,
+                paths,
+                sensor_matrix,
+                STAGE_METERS_PER_UNIT,
+                tolerance_m=ENDPOINT_HIT_WORLD_TOLERANCE_M,
+            )
+            self._timing_samples["geometry_diagnostics"].append(
+                (time.perf_counter() - diagnostic_started) * 1000.0
+            )
         self._last_native_times[topic] = current_time
         self._native_delta_sec[topic] = delta
         return (
@@ -3515,13 +3610,19 @@ class PhysxDualLidarScheduler:
         scan_stats: dict[str, dict[str, object]] = {}
         reading_times: list[float] = []
         reading_trace: dict[str, dict[str, object]] = {}
+        run_geometry_diagnostics = (
+            self.capture_count % self._geometry_diagnostic_period_pairs == 0
+        )
         for topic, _prim_name, mount, mount_yaw in self._specs:
             (
                 native_ranges,
                 paths,
                 reading_time,
                 reading_physics_step,
-            ) = self._native_scan(topic)
+            ) = self._native_scan(
+                topic,
+                run_geometry_diagnostics=run_geometry_diagnostics,
+            )
             reading_times.append(reading_time)
             reading_trace[topic] = {
                 "reading_physics_step": reading_physics_step,
@@ -3531,7 +3632,19 @@ class PhysxDualLidarScheduler:
                 "reading_time": reading_time,
             }
             ranges, stats = merge_native_physx_scan(
-                robot_position, robot_yaw, mount, mount_yaw, native_ranges, paths, leg_snapshot
+                robot_position,
+                robot_yaw,
+                mount,
+                mount_yaw,
+                native_ranges,
+                paths,
+                leg_snapshot,
+                scene_query=self._scene_query,
+                hit_path_classification_cache=self._hit_path_classification_cache,
+                ray_directions_robot=self._scan_directions_robot[topic],
+                collect_detailed_diagnostics=bool(
+                    self.people_lidar and self.people_lidar.debug
+                ),
             )
             scans[topic] = {**metadata, "ranges": ranges}
             scan_stats[topic] = stats
@@ -3546,6 +3659,8 @@ class PhysxDualLidarScheduler:
                 self._timing_samples["analytic_leg_merge"].append(
                     float(timing.get("analytic_leg_merge", 0.0))
                 )
+        if run_geometry_diagnostics:
+            self.geometry_diagnostic_count += 1
         if max(reading_times) - min(reading_times) > 1.0e-9:
             raise RuntimeError(f"native PhysX front/rear readings were not paired: times={reading_times}")
         if self.people_lidar and leg_snapshot is not None:
@@ -3661,6 +3776,8 @@ class PhysxDualLidarScheduler:
             "missed_capture_count": self.missed_capture_count,
             "duplicate_native_reading_count": self._duplicate_native_reading_count,
             "depth_diagnostic_warning_count": self._native_depth_warning_count,
+            "geometry_diagnostic_rate_hz": PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ,
+            "geometry_diagnostic_count": self.geometry_diagnostic_count,
             "native_depth_diagnostic": dict(self._native_depth_diagnostic),
             "endpoint_hit_diagnostic": dict(self._endpoint_hit_diagnostic),
             "endpoint_hit_tolerance_m": ENDPOINT_HIT_WORLD_TOLERANCE_M,
@@ -4447,6 +4564,11 @@ def main() -> int:
         print("[WAREHOUSE-ROBOT] Isaac Sim version: 6.0.1", flush=True)
         print(f"[WAREHOUSE-ROBOT] Local asset root: {ASSET_ROOT}", flush=True)
         print(f"[WAREHOUSE-ROBOT] Scene: {SCENE_NAME} ({SCENE_USD})", flush=True)
+        print(
+            f"[WAREHOUSE-ROBOT] Renderer: {RENDERER_NAME} "
+            f"at {ARGS.width}x{ARGS.height}",
+            flush=True,
+        )
         print(f"[WAREHOUSE-ROBOT] People enabled: {PEOPLE_ENABLED}", flush=True)
         if PEOPLE_ENABLED:
             print(f"[WAREHOUSE-ROBOT] HumanMotionLibrary USD: {MOTION_LIBRARY_USD}", flush=True)
@@ -4464,7 +4586,7 @@ def main() -> int:
 
             from isaacsim.replicator.agent.core import api as ira
 
-            if SCENE_NAME == "custom":
+            if SCENE_NAME in {"custom", "empty"}:
                 import NavSchema
 
                 probe_success, probe_error = wait_for_task(
@@ -4472,7 +4594,7 @@ def main() -> int:
                         omni.usd.get_context().open_stage_async(str(SCENE_USD))
                     ),
                     ARGS.setup_timeout,
-                    "probing custom NavMesh stage",
+                    "probing pedestrian NavMesh stage",
                 )
                 if not probe_success:
                     raise RuntimeError(f"Could not probe custom stage: {probe_error}")
@@ -4482,7 +4604,7 @@ def main() -> int:
                 volume_prim = probe_stage.GetPrimAtPath("/World/NavMeshVolume")
                 ground_prim = probe_stage.GetPrimAtPath("/World/Environment/Ground")
                 print(
-                    "[WAREHOUSE-ROBOT] Custom NavMesh input: "
+                    "[WAREHOUSE-ROBOT] Pedestrian NavMesh input: "
                     f"volume_valid={volume_prim.IsValid()}, "
                     f"volume_type={volume_prim.GetTypeName()}, "
                     f"volume_schema={volume_prim.IsA(NavSchema.NavMeshVolume)}, "
@@ -4518,6 +4640,10 @@ def main() -> int:
         stage = omni.usd.get_context().get_stage()
         if stage is None:
             raise RuntimeError("Scene setup completed without a USD stage")
+        # Opening a stage can replace authored render settings.  Reapply the
+        # selected high-quality real-time renderer without changing resolution
+        # or material/lighting assets.
+        simulation_app.reset_render_settings()
         # Multi-tick RTX sensors are scheduled from the Fabric
         # /ExternalSimulationTime prim maintained by SimulationManager's
         # physics callback.  Merely advancing omni.timeline leaves that clock
@@ -4978,10 +5104,14 @@ def main() -> int:
             yield_trigger_m = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M
             yield_resume_m = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M
             yield_role = "emergency_fallback"
-        else:
+        elif PEDESTRIAN_SOCIAL_MODE == "legacy":
             yield_trigger_m = PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M
             yield_resume_m = PEDESTRIAN_SOCIAL_YIELD_RESUME_M
             yield_role = "legacy_primary"
+        else:
+            yield_trigger_m = None
+            yield_resume_m = None
+            yield_role = None
         pedestrian_social_yielding = (
             PedestrianSocialYielding(
                 initial_people_positions,
@@ -4989,7 +5119,7 @@ def main() -> int:
                 resume_distance_m=yield_resume_m,
                 role=yield_role,
             )
-            if PEOPLE_ENABLED
+            if PEOPLE_ENABLED and yield_trigger_m is not None
             else None
         )
         pedestrian_social_motion = (
@@ -5100,7 +5230,13 @@ def main() -> int:
                         "behavior_agent_persistent_follow_target_2d"
                         if pedestrian_social_motion is not None
                         else (
-                            "legacy_discrete_yield" if PEOPLE_ENABLED else "disabled"
+                            "legacy_discrete_yield"
+                            if pedestrian_social_yielding is not None
+                            else (
+                                "native_behavior_agent_avoidance"
+                                if PEOPLE_ENABLED
+                                else "disabled"
+                            )
                         )
                     ),
                     "pedestrian_avoidance_mode": PEDESTRIAN_AVOIDANCE_MODE,
@@ -5172,6 +5308,8 @@ def main() -> int:
                     "robot_visual_instances_removed": deinstanced_visuals,
                     "manual_timing": manual_mode,
                     "fixed_time_stepping": fixed_time,
+                    "renderer": RENDERER_NAME,
+                    "render_resolution": [ARGS.width, ARGS.height],
                     "min_simulation_frame_rate_hz": min_frame_rate,
                     "physics_execution_device": physics_execution_device,
                     "physics_gpu_dynamics": physics_gpu_dynamics,
@@ -5210,6 +5348,9 @@ def main() -> int:
                     ),
                     "lidar_samples": LIDAR_SAMPLE_COUNT,
                     "lidar_rate_hz": LIDAR_RATE_HZ,
+                    "physx_geometry_diagnostic_rate_hz": (
+                        PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ
+                    ),
                     "lidar_rate_basis": "simulation_time",
                     "lidar_timestamp_domain": LIDAR_TIMESTAMP_DOMAIN,
                     "lidar_pairing_timestamp_domain": (
@@ -5538,6 +5679,9 @@ def main() -> int:
                         ),
                         "lidar_profile_asset_sha256": RTX_LIDAR_ASSET_SHA256,
                         "lidar_rate_hz": LIDAR_RATE_HZ,
+                        "physx_geometry_diagnostic_rate_hz": (
+                            PHYSX_GEOMETRY_DIAGNOSTIC_RATE_HZ
+                        ),
                         "lidar_rate_basis": "simulation_time",
                         "lidar_timestamp_domain": LIDAR_TIMESTAMP_DOMAIN,
                         "lidar_pairing_timestamp_domain": (
@@ -5553,6 +5697,8 @@ def main() -> int:
                         ),
                         "manual_timing": manual_mode,
                         "fixed_time_stepping": fixed_time,
+                        "renderer": RENDERER_NAME,
+                        "render_resolution": [ARGS.width, ARGS.height],
                         "min_simulation_frame_rate_hz": min_frame_rate,
                         "physics_execution_device": physics_execution_device,
                         "physics_gpu_dynamics": physics_gpu_dynamics,
@@ -6138,7 +6284,13 @@ def main() -> int:
                 else {
                     "mode": PEDESTRIAN_SOCIAL_MODE,
                     "adapter": (
-                        "legacy_discrete_yield" if PEOPLE_ENABLED else "disabled"
+                        "legacy_discrete_yield"
+                        if pedestrian_social_yielding is not None
+                        else (
+                            "native_behavior_agent_avoidance"
+                            if PEOPLE_ENABLED
+                            else "disabled"
+                        )
                     ),
                     "patrol_task_replacement": False,
                 }

@@ -74,6 +74,18 @@ def transform_xy(transform, x: float, y: float) -> tuple[float, float]:
     )
 
 
+def transform_vector_xy(transform, x: float, y: float) -> tuple[float, float]:
+    """Rotate a 2D velocity into the display frame without translation."""
+
+    rotation = transform.transform.rotation
+    yaw = math.atan2(
+        2.0 * (rotation.w * rotation.z + rotation.x * rotation.y),
+        1.0 - 2.0 * (rotation.y * rotation.y + rotation.z * rotation.z),
+    )
+    cosine, sine = math.cos(yaw), math.sin(yaw)
+    return cosine * x - sine * y, sine * x + cosine * y
+
+
 class PedestrianPerceptionVisualizer(Node):
     """Publish a single RViz MarkerArray assembled from perception streams."""
 
@@ -197,6 +209,45 @@ class PedestrianPerceptionVisualizer(Node):
         marker.lifetime = Duration(seconds=self.stale_timeout).to_msg()
         return marker
 
+    def _transform_kinematics(
+        self,
+        source_frame: str,
+        stamp,
+        x: float,
+        y: float,
+        vx: float,
+        vy: float,
+    ) -> tuple[float, float, float, float, str] | None:
+        """Transform one position and velocity with a single TF lookup."""
+
+        source_frame = str(source_frame).lstrip("/") or self.display_frame
+        if source_frame == self.display_frame:
+            return x, y, vx, vy, self.display_frame
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                self.display_frame,
+                source_frame,
+                rclpy.time.Time.from_msg(stamp),
+                timeout=Duration(seconds=self.tf_timeout),
+            )
+        except TransformException as error:
+            self.tf_warning_count += 1
+            if self.tf_warning_count <= 3:
+                self.get_logger().warning(
+                    f"cannot transform display kinematics "
+                    f"{source_frame}->{self.display_frame}: {error}"
+                )
+            return None
+        transformed_x, transformed_y = transform_xy(transform, x, y)
+        transformed_vx, transformed_vy = transform_vector_xy(transform, vx, vy)
+        return (
+            transformed_x,
+            transformed_y,
+            transformed_vx,
+            transformed_vy,
+            self.display_frame,
+        )
+
     @staticmethod
     def _point(x: float, y: float, z: float) -> Point:
         point = Point()
@@ -288,15 +339,23 @@ class PedestrianPerceptionVisualizer(Node):
     ) -> None:
         source_frame = message.header.frame_id
         for index, pedestrian in enumerate(message.pedestrians):
-            transformed = self._transform_point(
+            vx = float(pedestrian.velocity.linear.x)
+            vy = float(pedestrian.velocity.linear.y)
+            if not math.isfinite(vx):
+                vx = 0.0
+            if not math.isfinite(vy):
+                vy = 0.0
+            transformed = self._transform_kinematics(
                 source_frame,
                 message.header.stamp,
                 pedestrian.pose.position.x,
                 pedestrian.pose.position.y,
+                vx,
+                vy,
             )
             if transformed is None:
                 continue
-            x, y, frame = transformed
+            x, y, vx, vy, frame = transformed
             marker = self._base_marker(
                 "ground_truth", index, Marker.SPHERE, message.header.stamp, frame
             )
@@ -306,9 +365,47 @@ class PedestrianPerceptionVisualizer(Node):
                 0.10,
                 0.35,
                 1.0,
-                0.55,
+                0.65,
             )
             markers.append(marker)
+
+            arrow = self._base_marker(
+                "ground_truth_velocity",
+                index,
+                Marker.ARROW,
+                message.header.stamp,
+                frame,
+            )
+            arrow.points = [
+                self._point(x, y, 0.12),
+                self._point(x + vx, y + vy, 0.12),
+            ]
+            arrow.scale.x, arrow.scale.y, arrow.scale.z = 0.045, 0.11, 0.14
+            arrow.color.r, arrow.color.g, arrow.color.b, arrow.color.a = (
+                0.20,
+                0.65,
+                1.0,
+                1.0,
+            )
+            markers.append(arrow)
+
+            label = self._base_marker(
+                "ground_truth_id",
+                index,
+                Marker.TEXT_VIEW_FACING,
+                message.header.stamp,
+                frame,
+            )
+            label.pose.position = self._point(x, y, 1.25)
+            label.scale.z = 0.24
+            label.color.r, label.color.g, label.color.b, label.color.a = (
+                0.35,
+                0.75,
+                1.0,
+                1.0,
+            )
+            label.text = f"GT: {pedestrian.id or index}"
+            markers.append(label)
 
     def publish_markers(self) -> None:
         now = time.monotonic()

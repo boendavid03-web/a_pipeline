@@ -8,7 +8,7 @@ an in-memory finite capsule used only while producing LaserScan ranges.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence
 
 import numpy as np
 
@@ -283,6 +283,98 @@ def is_ignored_robot_query_collider(path: object) -> bool:
     )
 
 
+def classify_query_hit_paths(
+    paths: object,
+    cache: MutableMapping[str, tuple[bool, bool, bool]] | None = None,
+) -> tuple[tuple[str, ...], np.ndarray, np.ndarray, np.ndarray]:
+    """Classify a native scan's hit paths with an optional persistent cache.
+
+    A 2000-beam scan contains many repeated prim paths.  Caching the three
+    string predicates avoids re-running Python prefix/suffix searches for the
+    same floor, wall, robot, and character collider on every 15 Hz capture.
+    The returned masks respectively identify ignored person colliders,
+    ignored robot colliders, and any character path.
+    """
+    values = np.asarray(paths, dtype=object).reshape(-1)
+    classifications = cache if cache is not None else {}
+    normalized: list[str] = []
+    person_mask = np.empty(values.size, dtype=bool)
+    robot_mask = np.empty(values.size, dtype=bool)
+    character_mask = np.empty(values.size, dtype=bool)
+    for index, value in enumerate(values):
+        path = str(value or "")
+        normalized.append(path)
+        flags = classifications.get(path)
+        if flags is None:
+            flags = (
+                is_ignored_person_query_collider(path),
+                is_ignored_robot_query_collider(path),
+                "/World/Characters/" in path,
+            )
+            classifications[path] = flags
+        person_mask[index], robot_mask[index], character_mask[index] = flags
+    return tuple(normalized), person_mask, robot_mask, character_mask
+
+
+def merge_native_and_analytic_ranges(
+    native_ranges_m: object,
+    collision_paths: Sequence[str],
+    ignored_mask: object,
+    fallback_ranges_m: object,
+    analytic_distances_stage: object,
+    *,
+    stage_meters_per_unit: float,
+    range_min_m: float,
+    range_max_m: float,
+) -> tuple[list[float | None], np.ndarray, np.ndarray, np.ndarray]:
+    """Select the nearest valid native/fallback or analytic return in bulk."""
+    native = np.asarray(native_ranges_m, dtype=float).reshape(-1)
+    ignored = np.asarray(ignored_mask, dtype=bool).reshape(-1)
+    fallback = np.asarray(fallback_ranges_m, dtype=float).reshape(-1)
+    analytic_stage = np.asarray(analytic_distances_stage, dtype=float).reshape(-1)
+    size = native.size
+    if not (
+        len(collision_paths) == size
+        and ignored.size == size
+        and fallback.size == size
+        and analytic_stage.size == size
+    ):
+        raise ValueError("native/analytic scan arrays must have matching lengths")
+    if (
+        not math.isfinite(stage_meters_per_unit)
+        or stage_meters_per_unit <= 0.0
+        or not math.isfinite(range_min_m)
+        or not math.isfinite(range_max_m)
+        or range_min_m < 0.0
+        or range_max_m <= range_min_m
+    ):
+        raise ValueError("scan range and stage scale must be finite and positive")
+
+    has_native_hit = np.fromiter(
+        (bool(path) for path in collision_paths), dtype=bool, count=size
+    )
+    valid_native = (
+        has_native_hit
+        & np.isfinite(native)
+        & (native >= range_min_m)
+        & (native <= range_max_m)
+        & ~ignored
+    )
+    physx = np.where(valid_native, native, np.inf)
+    valid_fallback = ignored & np.isfinite(fallback)
+    physx[valid_fallback] = fallback[valid_fallback]
+
+    analytic = range_min_m + analytic_stage * stage_meters_per_unit
+    analytic[~np.isfinite(analytic_stage)] = np.inf
+    analytic_selected = analytic < physx
+    selected = np.where(analytic_selected, analytic, physx)
+    finite = np.isfinite(selected)
+    selected[finite] = np.minimum(selected[finite], range_max_m)
+    ranges = [float(value) if valid else None for value, valid in zip(selected, finite)]
+    physx_selected = finite & ~analytic_selected
+    return ranges, analytic_selected, physx_selected, ~finite
+
+
 def ray_start_offsets_outside_box(
     sensor_xy: object,
     ray_directions_xy: object,
@@ -408,18 +500,26 @@ def ray_capsule_intersection_matrix(
         raise ValueError("capsule segments must be nondegenerate")
     radius = _radii(radii, starts.shape[0])
 
-    origin = origins[:, None, :]
-    direction = directions[:, None, :]
-    start = starts[None, :, :]
-    axis = axes[None, :, :]
+    # Form the pairwise dot products directly as (ray, capsule) matrices.
+    # The former implementation first materialized several (ray, capsule, 3)
+    # broadcast arrays.  At 2000 rays x 38 animated legs x two sensors that
+    # temporary allocation dominated the 15 Hz producer's serial callback.
+    # These identities preserve the same finite-capsule equations while
+    # letting NumPy use compact matrix products.
+    ray_dot_origin = np.einsum("ri,ri->r", directions, origins)[:, None]
+    origin_length_sq_self = np.einsum("ri,ri->r", origins, origins)[:, None]
+    axis_dot_direction = directions @ axes.T
+    axis_dot_origin = (
+        origins @ axes.T - np.einsum("li,li->l", starts, axes)[None, :]
+    )
+    direction_dot_origin = ray_dot_origin - directions @ starts.T
+    origin_length_sq = (
+        origin_length_sq_self
+        + np.einsum("li,li->l", starts, starts)[None, :]
+        - 2.0 * (origins @ starts.T)
+    )
     length_sq = axis_length_sq[None, :]
     radius_sq = np.square(radius)[None, :]
-    origin_from_start = origin - start
-
-    axis_dot_direction = np.sum(axis * direction, axis=2)
-    axis_dot_origin = np.sum(axis * origin_from_start, axis=2)
-    direction_dot_origin = np.sum(direction * origin_from_start, axis=2)
-    origin_length_sq = np.sum(origin_from_start * origin_from_start, axis=2)
 
     quadratic_a = length_sq - np.square(axis_dot_direction)
     quadratic_b = length_sq * direction_dot_origin - axis_dot_origin * axis_dot_direction
@@ -433,17 +533,21 @@ def ray_capsule_intersection_matrix(
     cylinder_sqrt = np.sqrt(np.maximum(cylinder_discriminant, 0.0))
     safe_cylinder_a = np.where(cylinder_valid, quadratic_a, 1.0)
 
-    candidates: list[np.ndarray] = []
+    nearest = np.full_like(quadratic_a, np.inf)
     for numerator in (-quadratic_b - cylinder_sqrt, -quadratic_b + cylinder_sqrt):
         distance = numerator / safe_cylinder_a
         axial = axis_dot_origin + distance * axis_dot_direction
         valid = cylinder_valid & (distance >= 0.0) & (axial >= 0.0) & (axial <= length_sq)
-        candidates.append(np.where(valid, distance, np.inf))
+        np.minimum(nearest, np.where(valid, distance, np.inf), out=nearest)
 
-    for center, outward_start_cap in ((start, True), (ends[None, :, :], False)):
-        origin_from_center = origin - center
-        sphere_b = np.sum(direction * origin_from_center, axis=2)
-        sphere_c = np.sum(origin_from_center * origin_from_center, axis=2) - radius_sq
+    for center, outward_start_cap in ((starts, True), (ends, False)):
+        sphere_b = ray_dot_origin - directions @ center.T
+        sphere_c = (
+            origin_length_sq_self
+            + np.einsum("li,li->l", center, center)[None, :]
+            - 2.0 * (origins @ center.T)
+            - radius_sq
+        )
         sphere_discriminant = np.square(sphere_b) - sphere_c
         sphere_valid = sphere_discriminant >= 0.0
         sphere_sqrt = np.sqrt(np.maximum(sphere_discriminant, 0.0))
@@ -451,9 +555,9 @@ def ray_capsule_intersection_matrix(
             axial = axis_dot_origin + distance * axis_dot_direction
             cap_valid = axial <= 0.0 if outward_start_cap else axial >= length_sq
             valid = sphere_valid & (distance >= 0.0) & cap_valid
-            candidates.append(np.where(valid, distance, np.inf))
+            np.minimum(nearest, np.where(valid, distance, np.inf), out=nearest)
 
-    return np.minimum.reduce(candidates)
+    return nearest
 
 
 def nearest_ray_capsule_intersections(

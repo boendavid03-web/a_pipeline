@@ -32,6 +32,7 @@
 
 import importlib.util
 import math
+import sys
 from pathlib import Path
 
 
@@ -40,6 +41,7 @@ MODULE_PATH = (
     / "scripts"
     / "scenario_pedestrian_controller.py"
 )
+sys.path.insert(0, str(MODULE_PATH.parent))
 SPEC = importlib.util.spec_from_file_location(
     "scenario_pedestrian_controller", MODULE_PATH
 )

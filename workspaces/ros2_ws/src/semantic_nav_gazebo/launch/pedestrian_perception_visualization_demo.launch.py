@@ -19,6 +19,7 @@ from launch.actions import (
     LogInfo,
     OpaqueFunction,
     SetEnvironmentVariable,
+    TimerAction,
 )
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
@@ -40,15 +41,27 @@ def validate_configuration(context):
         / "github_src/drl_vo_nav-drl_vo/GenSafeNav-ROS2-main/dr_spaam_ros2/model_weight/ckpt_jrdb_ann_ft_dr_spaam_e20.pth",
         "train_python": root / ".venvs/train/bin/python",
     }
+    start_map_server = str(LaunchConfiguration("start_map_server").perform(context)).lower()
+    if start_map_server in {"1", "true", "yes", "on"}:
+        map_yaml_value = str(LaunchConfiguration("map_yaml").perform(context)).strip()
+        paths["map_yaml"] = Path(map_yaml_value).expanduser()
+    scenario = str(LaunchConfiguration("scenario").perform(context))
+    allowed = {"front_approach", "lateral", "C", "default"}
+    if scenario not in allowed:
+        raise ValueError(f"scenario must be one of {sorted(allowed)}, got {scenario!r}")
+    scene = str(LaunchConfiguration("scene").perform(context)).strip().lower()
+    if scene not in {"custom", "empty"}:
+        raise ValueError(f"scene must be 'custom' or 'empty', got {scene!r}")
+    if scene == "empty":
+        paths["empty_scene"] = root / "isaac_sim/scenes/a_pipeline_empty_people.usda"
+        paths["empty_route_generator"] = (
+            root / "isaac_sim/scripts/generate_empty_field_people_config.py"
+        )
     missing = [f"{name}={path}" for name, path in paths.items() if not path.is_file()]
     if missing:
         raise FileNotFoundError(
             "pedestrian perception demo is missing required inputs: " + ", ".join(missing)
         )
-    scenario = str(LaunchConfiguration("scenario").perform(context))
-    allowed = {"front_approach", "lateral", "C", "default"}
-    if scenario not in allowed:
-        raise ValueError(f"scenario must be one of {sorted(allowed)}, got {scenario!r}")
     ira_config_value = str(LaunchConfiguration("ira_config").perform(context)).strip()
     ira_config = Path(ira_config_value).expanduser() if ira_config_value else None
     if ira_config is not None and not ira_config.is_file():
@@ -57,7 +70,7 @@ def validate_configuration(context):
         LogInfo(
             msg=(
                 "[perception visualization only] scenario="
-                f"{scenario}; no DRL-VO/navigation/controller is launched"
+                f"{scenario} scene={scene}; no DRL-VO/navigation/controller is launched"
             )
         )
     ]
@@ -68,6 +81,11 @@ def clean_rviz_environment() -> dict[str, str]:
     for name in tuple(environment):
         if name == "GTK_PATH" or name.startswith("GIO_") or name.startswith("SNAP"):
             environment.pop(name)
+    # The Isaac bridge and the ROS nodes in this demo use loopback-only Fast DDS.
+    # An explicit env dictionary otherwise preserves the shell's default
+    # ROS_LOCALHOST_ONLY=0 and prevents RViz from discovering /map/markers.
+    environment["ROS_LOCALHOST_ONLY"] = "1"
+    environment["RMW_IMPLEMENTATION"] = "rmw_fastrtps_cpp"
     return environment
 
 
@@ -75,6 +93,7 @@ def generate_launch_description() -> LaunchDescription:
     root = project_root()
     package_share = Path(get_package_share_directory("semantic_nav_gazebo"))
     rviz_config = package_share / "rviz" / "pedestrian_perception_visualization_demo.rviz"
+    default_map_yaml = package_share / "maps/gazebo_eng_lobby/gazebo_eng_lobby.yaml"
     train_python = root / ".venvs/train/bin/python"
     dr_spaam_root = root / "github_src/drl_vo_nav-drl_vo/2D_lidar_person_detection/dr_spaam"
     dr_spaam_ros_root = root / "github_src/drl_vo_nav-drl_vo/GenSafeNav-ROS2-main/dr_spaam_ros2"
@@ -89,31 +108,105 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription(
         [
+            DeclareLaunchArgument("scene", default_value="empty"),
             DeclareLaunchArgument("scenario", default_value="front_approach"),
             DeclareLaunchArgument("ira_config", default_value=""),
-            DeclareLaunchArgument("people_count", default_value="1"),
+            DeclareLaunchArgument("people_count", default_value="8"),
             DeclareLaunchArgument("pedestrian_speed", default_value="0.8"),
-            DeclareLaunchArgument("pedestrian_seed", default_value="7"),
+            DeclareLaunchArgument("pedestrian_seed", default_value="21"),
+            # Use Isaac's stock warehouse-style reciprocal avoidance without
+            # Social Force steering or the legacy stop/yield controller.
+            DeclareLaunchArgument(
+                "pedestrian_social_mode", default_value="native_avoidance"
+            ),
+            DeclareLaunchArgument("pedestrian_avoidance_mode", default_value="native"),
+            DeclareLaunchArgument("fixed_speed", default_value="true"),
+            DeclareLaunchArgument("ensure_all_directions", default_value="true"),
             DeclareLaunchArgument("isaac_duration", default_value="0"),
             DeclareLaunchArgument("ros_domain_id", default_value="81"),
+            DeclareLaunchArgument("start_map_server", default_value="false"),
+            DeclareLaunchArgument("map_yaml", default_value=str(default_map_yaml)),
             DeclareLaunchArgument("start_rviz", default_value="true"),
             DeclareLaunchArgument("use_sim_time", default_value="true"),
             OpaqueFunction(function=validate_configuration),
             SetEnvironmentVariable("ROS_DOMAIN_ID", LaunchConfiguration("ros_domain_id")),
             SetEnvironmentVariable("ROS_LOCALHOST_ONLY", "1"),
             SetEnvironmentVariable("RMW_IMPLEMENTATION", "rmw_fastrtps_cpp"),
+            Node(
+                condition=IfCondition(LaunchConfiguration("start_map_server")),
+                package="nav2_map_server",
+                executable="map_server",
+                name="map_server",
+                output="screen",
+                parameters=[
+                    {
+                        "use_sim_time": ParameterValue(
+                            LaunchConfiguration("use_sim_time"), value_type=bool
+                        ),
+                        "yaml_filename": LaunchConfiguration("map_yaml"),
+                    }
+                ],
+            ),
+            TimerAction(
+                period=2.0,
+                actions=[
+                    ExecuteProcess(
+                        condition=IfCondition(LaunchConfiguration("start_map_server")),
+                        cmd=["ros2", "lifecycle", "set", "/map_server", "configure"],
+                        output="screen",
+                    )
+                ],
+            ),
+            TimerAction(
+                period=3.0,
+                actions=[
+                    ExecuteProcess(
+                        condition=IfCondition(LaunchConfiguration("start_map_server")),
+                        cmd=["ros2", "lifecycle", "set", "/map_server", "activate"],
+                        output="screen",
+                    )
+                ],
+            ),
+            Node(
+                condition=IfCondition(LaunchConfiguration("start_map_server")),
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name="map_to_odom_static_tf_publisher",
+                output="screen",
+                arguments=[
+                    "--x", "0",
+                    "--y", "0",
+                    "--z", "0",
+                    "--roll", "0",
+                    "--pitch", "0",
+                    "--yaw", "0",
+                    "--frame-id", "map",
+                    "--child-frame-id", "odom",
+                ],
+            ),
             ExecuteProcess(
                 cmd=["bash", str(isaac_runner), "--duration", LaunchConfiguration("isaac_duration")],
                 name="isaac_perception_scene",
                 output="screen",
                 additional_env={
                     "ISAAC_ROS_DOMAIN_ID": LaunchConfiguration("ros_domain_id"),
-                    "ISAAC_SCENE": "custom",
+                    "ISAAC_SCENE": LaunchConfiguration("scene"),
                     "ISAAC_ENABLE_PEOPLE": "1",
                     "ISAAC_PEDESTRIAN_COUNT": LaunchConfiguration("people_count"),
                     "ISAAC_PEDESTRIAN_SEED": LaunchConfiguration("pedestrian_seed"),
                     "ISAAC_PEDESTRIAN_SPEED": LaunchConfiguration("pedestrian_speed"),
-                    "ISAAC_PEDESTRIAN_AVOIDANCE_MODE": "off",
+                    "ISAAC_PEDESTRIAN_SOCIAL_MODE": LaunchConfiguration(
+                        "pedestrian_social_mode"
+                    ),
+                    "ISAAC_PEDESTRIAN_AVOIDANCE_MODE": LaunchConfiguration(
+                        "pedestrian_avoidance_mode"
+                    ),
+                    "ISAAC_PEDESTRIAN_FIXED_SPEED": LaunchConfiguration(
+                        "fixed_speed"
+                    ),
+                    "ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS": LaunchConfiguration(
+                        "ensure_all_directions"
+                    ),
                     "ISAAC_ROBOT_PHYSICS": "0",
                     "ISAAC_LIDAR_MODE": "physx",
                     "ISAAC_LIDAR_RATE_HZ": "15",
