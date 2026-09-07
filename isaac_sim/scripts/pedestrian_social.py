@@ -606,7 +606,9 @@ class SocialYieldPlanner:
 
     This class only makes decisions; the Isaac adapter owns animation tasks.
     A yielder remains paused until it is beyond ``resume_distance_m`` from
-    every other pedestrian, preventing rapid stop/start oscillation.
+    every other pedestrian, preventing rapid stop/start oscillation.  Active
+    yielders also form an independent set inside that same radius: otherwise
+    two paused neighbours can satisfy neither resume condition and deadlock.
     """
 
     def __init__(
@@ -645,6 +647,29 @@ class SocialYieldPlanner:
                 self._active.remove(name)
                 end.append(name)
 
+        # Animation deceleration can move two previously separated yielders
+        # closer after they were selected.  Re-establish the independent-set
+        # invariant deterministically by keeping the lexically first yielder
+        # paused and resuming the other one.  Do not let a forced resume be
+        # selected again in the same update.
+        forced_resumes: set[str] = set()
+        active_names = sorted(self._active)
+        for left_index, left_name in enumerate(active_names):
+            if left_name not in self._active:
+                continue
+            left_x, left_y = points[left_name]
+            for right_name in active_names[left_index + 1 :]:
+                if right_name not in self._active:
+                    continue
+                distance = math.hypot(
+                    points[right_name][0] - left_x,
+                    points[right_name][1] - left_y,
+                )
+                if distance < self.resume_distance_m:
+                    self._active.remove(right_name)
+                    end.append(right_name)
+                    forced_resumes.add(right_name)
+
         begin: list[str] = []
         for left_index, left_name in enumerate(names):
             left_x, left_y = points[left_name]
@@ -661,6 +686,18 @@ class SocialYieldPlanner:
                 # person keeps moving and native avoidance routes around the
                 # now-stationary, still-visible BehaviorAgent obstacle.
                 yielder = right_name
+                if yielder in forced_resumes:
+                    continue
+                yielder_x, yielder_y = points[yielder]
+                if any(
+                    math.hypot(
+                        points[active][0] - yielder_x,
+                        points[active][1] - yielder_y,
+                    )
+                    < self.resume_distance_m
+                    for active in self._active
+                ):
+                    continue
                 self._active.add(yielder)
                 begin.append(yielder)
 

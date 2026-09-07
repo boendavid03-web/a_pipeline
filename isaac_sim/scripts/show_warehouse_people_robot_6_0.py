@@ -1702,14 +1702,21 @@ class BehaviorAgentSocialMotion:
             target_prim = UsdGeom.Xform.Define(stage, target_path).GetPrim()
             self.target_xforms[path] = UsdGeom.XformCommonAPI(target_prim)
             self.target_paths[path] = target_path
-            base_direction = self.patrol_cursors[path].desired_direction(initial_m)
+            base_direction = self.patrol_cursors[path].desired_direction(
+                initial_m,
+                segment_is_safe=(
+                    self._route_segment_is_safe
+                    if self.free_space_guard is not None
+                    else None
+                ),
+            )
             initial_target_m = (
                 initial_m[0]
                 + base_direction[0] * PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
                 initial_m[1]
                 + base_direction[1] * PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
             )
-            initial_target_m, _ = self._free_space_safe_target(
+            initial_target_m, _, _ = self._free_space_safe_target(
                 initial_m, initial_target_m, base_direction
             )
             self._write_target(path, initial_target_m, force=True)
@@ -1770,12 +1777,22 @@ class BehaviorAgentSocialMotion:
         if not initial:
             self.follow_restart_count += 1
 
+    def _route_segment_is_safe(
+        self,
+        start_m: tuple[float, float],
+        end_m: tuple[float, float],
+    ) -> bool:
+        guard = self.free_space_guard
+        if guard is None:
+            return True
+        return bool(guard.segment_world_free(*start_m, *end_m))
+
     def _free_space_safe_target(
         self,
         position_m: tuple[float, float],
         requested_target_m: tuple[float, float],
         base_direction: tuple[float, float],
-    ) -> tuple[tuple[float, float], bool]:
+    ) -> tuple[tuple[float, float], bool, str]:
         guard = self.free_space_guard
         # A navigation/motion-matching step can carry the root slightly beyond
         # the runtime intrusion guard.  Every segment beginning at that current
@@ -1817,16 +1834,18 @@ class BehaviorAgentSocialMotion:
                         candidate[1],
                     ):
                         self.free_space_constrained_target_count += 1
-                        return candidate, True
+                        return candidate, True, "outside_recovery_extended"
             self.free_space_constrained_target_count += 1
-            return recovery_position, True
-        if guard is None or guard.segment_world_free(
+            return recovery_position, True, "outside_recovery_nearest"
+        if guard is None:
+            return requested_target_m, False, "guard_disabled"
+        if guard.segment_world_free(
             position_m[0],
             position_m[1],
             requested_target_m[0],
             requested_target_m[1],
         ):
-            return requested_target_m, False
+            return requested_target_m, False, "requested_safe"
         offset = (
             requested_target_m[0] - position_m[0],
             requested_target_m[1] - position_m[1],
@@ -1840,7 +1859,7 @@ class BehaviorAgentSocialMotion:
                 position_m[0], position_m[1], candidate[0], candidate[1]
             ):
                 self.free_space_constrained_target_count += 1
-                return candidate, True
+                return candidate, True, f"requested_shortened_{fraction:.1f}"
         for fraction in (1.0, 0.8, 0.6, 0.4, 0.2):
             candidate = (
                 position_m[0]
@@ -1856,9 +1875,9 @@ class BehaviorAgentSocialMotion:
                 position_m[0], position_m[1], candidate[0], candidate[1]
             ):
                 self.free_space_constrained_target_count += 1
-                return candidate, True
+                return candidate, True, f"route_direction_{fraction:.1f}"
         self.free_space_constrained_target_count += 1
-        return position_m, True
+        return position_m, True, "current_position_fallback"
 
     def _ensure_follow(self, path: str) -> None:
         task_id = self.follow_task_ids.get(path)
@@ -1917,7 +1936,14 @@ class BehaviorAgentSocialMotion:
                 if previous_position_m is not None
                 else navigation_reported_velocity_mps
             )
-            base_direction = self.patrol_cursors[path].desired_direction(position_m)
+            base_direction = self.patrol_cursors[path].desired_direction(
+                position_m,
+                segment_is_safe=(
+                    self._route_segment_is_safe
+                    if self.free_space_guard is not None
+                    else None
+                ),
+            )
             facing = agent.get_facing_direction()
             facing_stage = np.asarray(
                 [float(facing.x), float(facing.y), float(facing.z)], dtype=float
@@ -1981,7 +2007,7 @@ class BehaviorAgentSocialMotion:
                     output.isaac_adapter_output_velocity_mps,
                     PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
                 )
-                applied_target_m, free_space_constrained = (
+                applied_target_m, free_space_constrained, free_space_decision = (
                     self._free_space_safe_target(
                         positions_m[path],
                         steering_command.target_position_m,
@@ -1998,6 +2024,8 @@ class BehaviorAgentSocialMotion:
             if is_inhibited:
                 steering_command = None
                 free_space_constrained = False
+                free_space_decision = "emergency_inhibited"
+                applied_target_m = self.last_target_positions_m[path]
             base_direction = base_directions[path]
             left_direction = -base_direction[1], base_direction[0]
             desired_forward = sum(
@@ -2135,6 +2163,15 @@ class BehaviorAgentSocialMotion:
                 "actual_navigation_lateral_mps": actual_lateral,
                 "route_desired_direction": list(base_direction),
                 "base_patrol_direction": list(base_direction),
+                "route_cursor_target_index": (
+                    self.patrol_cursors[path].target_index
+                ),
+                "route_cursor_lookahead_index": (
+                    self.patrol_cursors[path].lookahead_index
+                ),
+                "route_visibility_limited": (
+                    self.patrol_cursors[path].last_visibility_limited
+                ),
                 "preferred_speed_mps": self.preferred_speeds_mps[path],
                 "gazebo_robot_center_position_m": list(robot_state.position_m),
                 "isaac_robot_footprint_center_position_m": list(
@@ -2247,6 +2284,8 @@ class BehaviorAgentSocialMotion:
                     self.last_target_positions_m[path]
                 ),
                 "applied_target_m": list(self.last_target_positions_m[path]),
+                "free_space_selected_target_m": list(applied_target_m),
+                "free_space_decision": free_space_decision,
                 "locomotion_target_free_space_constrained": (
                     free_space_constrained
                 ),

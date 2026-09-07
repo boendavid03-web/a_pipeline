@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Sequence
+from typing import Callable, Sequence
 
 
 Vector2 = tuple[float, float]
@@ -95,8 +95,11 @@ class PatrolPolylineCursor:
             key=lambda index: math.dist(initial, self.points[index]),
         )
         self.target_index = (closest + 1) % len(self.points)
+        self.lookahead_index = self.target_index
         self.advance_count = 0
         self.lap_count = 0
+        self.visibility_limited_count = 0
+        self.last_visibility_limited = False
 
     def _advance(self) -> None:
         previous = self.target_index
@@ -123,7 +126,12 @@ class PatrolPolylineCursor:
             3.0 * self.waypoint_reach_m,
         )
 
-    def desired_direction(self, position_m: Sequence[float]) -> Vector2:
+    def desired_direction(
+        self,
+        position_m: Sequence[float],
+        *,
+        segment_is_safe: Callable[[Vector2, Vector2], bool] | None = None,
+    ) -> Vector2:
         position = _vector2("position_m", position_m)
         # A bounded loop also safely consumes duplicate or very dense points.
         for _ in range(len(self.points)):
@@ -132,16 +140,59 @@ class PatrolPolylineCursor:
             self._advance()
 
         target = self.points[self.target_index]
+        if segment_is_safe is not None and not segment_is_safe(position, target):
+            # BehaviorAgent can carry the animated root laterally beyond the
+            # current polyline corner.  Keep the semantic target monotonic,
+            # but temporarily steer to the nearest visible predecessor so the
+            # agent can rejoin the authored local corridor.  Without this
+            # bounded reattachment, an unreachable current target makes the
+            # free-space guard return the current position forever.
+            reconnect_limit_m = max(
+                2.0 * self.route_lookahead_m,
+                3.0 * self.waypoint_reach_m,
+            )
+            reconnect_distance_m = 0.0
+            reconnect_index = self.target_index
+            for _ in range(len(self.points) - 1):
+                previous_index = (reconnect_index - 1) % len(self.points)
+                reconnect_distance_m += math.dist(
+                    self.points[reconnect_index], self.points[previous_index]
+                )
+                if reconnect_distance_m > reconnect_limit_m:
+                    break
+                reconnect_index = previous_index
+                if segment_is_safe(position, self.points[reconnect_index]):
+                    self.lookahead_index = reconnect_index
+                    self.last_visibility_limited = True
+                    self.visibility_limited_count += 1
+                    return _unit(
+                        (
+                            self.points[reconnect_index][0] - position[0],
+                            self.points[reconnect_index][1] - position[1],
+                        )
+                    )
+
         accumulated = math.dist(position, target)
         lookahead_index = self.target_index
+        visibility_limited = False
         while accumulated < self.route_lookahead_m:
             next_index = (lookahead_index + 1) % len(self.points)
-            accumulated += math.dist(
+            next_accumulated = accumulated + math.dist(
                 self.points[lookahead_index], self.points[next_index]
             )
-            lookahead_index = next_index
-            if lookahead_index == self.target_index:
+            if next_index == self.target_index:
                 break
+            if segment_is_safe is not None and not segment_is_safe(
+                position, self.points[next_index]
+            ):
+                visibility_limited = True
+                break
+            accumulated = next_accumulated
+            lookahead_index = next_index
+        self.lookahead_index = lookahead_index
+        self.last_visibility_limited = visibility_limited
+        if visibility_limited:
+            self.visibility_limited_count += 1
         direction = _unit(
             (
                 self.points[lookahead_index][0] - position[0],
@@ -158,8 +209,11 @@ class PatrolPolylineCursor:
         return {
             "point_count": len(self.points),
             "target_index": self.target_index,
+            "lookahead_index": self.lookahead_index,
             "advance_count": self.advance_count,
             "lap_count": self.lap_count,
+            "visibility_limited_count": self.visibility_limited_count,
+            "last_visibility_limited": self.last_visibility_limited,
             "waypoint_reach_m": self.waypoint_reach_m,
             "route_lookahead_m": self.route_lookahead_m,
         }

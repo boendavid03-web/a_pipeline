@@ -60,6 +60,60 @@ class ContinuousSteeringAdapterGeometryTest(unittest.TestCase):
         self.assertGreater(second[0], 0.0)
         self.assertGreater(cursor.summary()["advance_count"], 0)
 
+    def test_route_lookahead_stops_before_an_invisible_corner_cut(self) -> None:
+        cursor = PatrolPolylineCursor(
+            [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (2.0, 1.0)],
+            (0.9, -0.1),
+            waypoint_reach_m=0.05,
+            route_lookahead_m=2.0,
+        )
+
+        direction = cursor.desired_direction(
+            (0.9, -0.1),
+            segment_is_safe=lambda _start, end: end != (2.0, 1.0),
+        )
+
+        expected_length = math.hypot(0.1, 1.1)
+        self.assertAlmostEqual(direction[0], 0.1 / expected_length)
+        self.assertAlmostEqual(direction[1], 1.1 / expected_length)
+        self.assertEqual(cursor.summary()["lookahead_index"], 2)
+        self.assertTrue(cursor.summary()["last_visibility_limited"])
+        self.assertEqual(cursor.summary()["visibility_limited_count"], 1)
+
+    def test_route_lookahead_is_unchanged_without_a_visibility_guard(self) -> None:
+        cursor = PatrolPolylineCursor(
+            [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (2.0, 1.0)],
+            (0.9, -0.1),
+            waypoint_reach_m=0.05,
+            route_lookahead_m=2.0,
+        )
+
+        direction = cursor.desired_direction((0.9, -0.1))
+
+        expected_length = math.hypot(1.1, 1.1)
+        self.assertAlmostEqual(direction[0], 1.1 / expected_length)
+        self.assertAlmostEqual(direction[1], 1.1 / expected_length)
+        self.assertEqual(cursor.summary()["lookahead_index"], 3)
+        self.assertFalse(cursor.summary()["last_visibility_limited"])
+
+    def test_invisible_current_target_uses_visible_local_predecessor(self) -> None:
+        cursor = PatrolPolylineCursor(
+            [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (2.0, 1.0)],
+            (1.0, 0.0),
+            waypoint_reach_m=0.2,
+            route_lookahead_m=1.0,
+        )
+
+        direction = cursor.desired_direction(
+            (0.0, 0.0),
+            segment_is_safe=lambda _start, end: end != (1.0, 1.0),
+        )
+
+        self.assertEqual(cursor.target_index, 2)
+        self.assertEqual(cursor.lookahead_index, 1)
+        self.assertEqual(direction, (1.0, 0.0))
+        self.assertTrue(cursor.last_visibility_limited)
+
     def test_rejects_zero_lookahead_and_nonfinite_velocity(self) -> None:
         with self.assertRaisesRegex(ValueError, "lookahead_m"):
             steering_target_from_velocity((0.0, 0.0), (0.6, 0.4), 0.0)

@@ -69,6 +69,21 @@ def vector_norm(value: Any) -> float:
     return math.hypot(float(value[0]), float(value[1]))
 
 
+def free_space_selected_target(person: dict[str, Any]) -> tuple[Any, bool]:
+    """Return the exact guard output when available, else the legacy proxy.
+
+    Older v2 traces exposed only ``applied_target_m``, which is the last target
+    actually written after the minimum-shift gate.  It can therefore hide a
+    current-position fallback.  New traces retain that field for compatibility
+    and add ``free_space_selected_target_m`` before the write gate.
+    """
+
+    exact = person.get("free_space_selected_target_m")
+    if exact is not None:
+        return exact, True
+    return person.get("applied_target_m"), False
+
+
 def short_person_id(runtime_path: str) -> str:
     parts = runtime_path.split("/")
     try:
@@ -224,6 +239,8 @@ def trace_metrics(trace_path: Path, expected_ids: set[str]) -> dict[str, Any]:
         }
     )
     target_current_fallback_count: dict[str, int] = defaultdict(int)
+    free_space_decision_count: dict[str, int] = defaultdict(int)
+    exact_selected_target_samples = 0
     lateral_weighted_sum: dict[str, float] = defaultdict(float)
     lateral_weight_sec = 0.0
     hotspots = {name: new_spatial_bucket() for name in HOTSPOTS}
@@ -284,8 +301,9 @@ def trace_metrics(trace_path: Path, expected_ids: set[str]) -> dict[str, Any]:
             personal_pair_observations += sum(
                 distance < PERSONAL_SPACE_M for distance in frame_pairs
             )
-            frame_minima.append(min(frame_pairs))
-            nearest_values.extend(nearest_by_path.values())
+            if frame_pairs:
+                frame_minima.append(min(frame_pairs))
+                nearest_values.extend(nearest_by_path.values())
 
             for path, person in people.items():
                 person_id = short_person_id(path)
@@ -316,12 +334,21 @@ def trace_metrics(trace_path: Path, expected_ids: set[str]) -> dict[str, Any]:
                 for name, condition in states.items():
                     trackers[person_id][name].update(condition, dt, gap)
 
-                requested = person.get("applied_target_m")
+                selected_target, selected_target_is_exact = (
+                    free_space_selected_target(person)
+                )
+                if selected_target_is_exact:
+                    exact_selected_target_samples += 1
+                decision = person.get("free_space_decision")
+                if isinstance(decision, str) and decision:
+                    free_space_decision_count[decision] += 1
                 if (
                     constrained
-                    and isinstance(requested, list)
-                    and len(requested) >= 2
-                    and math.dist(positions[path], tuple(map(float, requested[:2])))
+                    and isinstance(selected_target, list)
+                    and len(selected_target) >= 2
+                    and math.dist(
+                        positions[path], tuple(map(float, selected_target[:2]))
+                    )
                     <= TARGET_CURRENT_TOLERANCE_M
                 ):
                     target_current_fallback_count[person_id] += 1
@@ -395,6 +422,15 @@ def trace_metrics(trace_path: Path, expected_ids: set[str]) -> dict[str, Any]:
     constraint["target_current_fallback_count_by_person"] = dict(
         sorted(target_current_fallback_count.items())
     )
+    constraint["target_current_fallback_count_is_exact"] = (
+        exact_selected_target_samples == person_sample_count
+    )
+    constraint["exact_selected_target_sample_count"] = (
+        exact_selected_target_samples
+    )
+    constraint["free_space_decision_count"] = dict(
+        sorted(free_space_decision_count.items())
+    )
     congestion["duration_ratio"] = safe_ratio(
         congestion["total_person_seconds"], total_valid_person_sec
     )
@@ -458,12 +494,14 @@ def trace_metrics(trace_path: Path, expected_ids: set[str]) -> dict[str, Any]:
         "missing_interval_total_sec": missing_interval_sec,
         "maximum_interframe_gap_sec": maximum_gap_sec,
         "geometry": {
-            "global_minimum_human_distance_m": min(frame_minima),
+            "global_minimum_human_distance_m": (
+                min(frame_minima) if frame_minima else None
+            ),
             "per_frame_minimum_p01_m": percentile(frame_minima, 0.01),
             "per_frame_minimum_p05_m": percentile(frame_minima, 0.05),
             "per_frame_minimum_p50_m": percentile(frame_minima, 0.50),
             "average_nearest_neighbor_distance_m": (
-                sum(nearest_values) / len(nearest_values)
+                safe_ratio(sum(nearest_values), len(nearest_values))
             ),
             "pair_observations": pair_observations,
             "visual_overlap_pair_observations": visual_pair_observations,

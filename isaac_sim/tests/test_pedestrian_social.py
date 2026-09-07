@@ -387,6 +387,45 @@ class SocialYieldPlannerTest(unittest.TestCase):
         self.assertEqual(decision.begin_yielding, ())
         self.assertEqual(decision.active_yielders, ("b",))
 
+    def test_nearby_pairs_do_not_create_adjacent_active_yielders(self) -> None:
+        planner = SocialYieldPlanner(
+            trigger_distance_m=0.5,
+            resume_distance_m=0.8,
+        )
+        decision = planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0), "c": (-0.3, 0.0)}
+        )
+
+        self.assertEqual(decision.begin_yielding, ("b",))
+        self.assertEqual(decision.active_yielders, ("b",))
+
+    def test_drifted_adjacent_active_yielders_force_one_resume(self) -> None:
+        planner = SocialYieldPlanner(
+            trigger_distance_m=0.5,
+            resume_distance_m=0.8,
+        )
+        started = planner.update(
+            {
+                "a": (0.0, 0.0),
+                "b": (0.4, 0.0),
+                "c": (5.0, 0.0),
+                "d": (5.4, 0.0),
+            }
+        )
+        drifted = planner.update(
+            {
+                "a": (-5.0, 0.0),
+                "b": (0.0, 0.0),
+                "c": (5.0, 0.0),
+                "d": (0.3, 0.0),
+            }
+        )
+
+        self.assertEqual(started.active_yielders, ("b", "d"))
+        self.assertEqual(drifted.end_yielding, ("d",))
+        self.assertEqual(drifted.begin_yielding, ())
+        self.assertEqual(drifted.active_yielders, ("b",))
+
     def test_rejects_inverted_hysteresis(self) -> None:
         with self.assertRaisesRegex(ValueError, "greater than"):
             SocialYieldPlanner(

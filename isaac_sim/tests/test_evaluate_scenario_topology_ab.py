@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -33,6 +34,61 @@ def test_percentile_and_person_id_helpers():
     assert MODULE.short_person_id(
         "/World/Characters/gazebo_a_001/gazebo_a_001_0/ManRoot/model"
     ) == "gazebo_a_001"
+
+
+def test_exact_free_space_target_precedes_legacy_written_target():
+    legacy = {"applied_target_m": [1.0, 2.0]}
+    target, exact = MODULE.free_space_selected_target(legacy)
+    assert target == [1.0, 2.0]
+    assert exact is False
+
+    current = {
+        "applied_target_m": [1.0, 2.0],
+        "free_space_selected_target_m": [0.0, 0.0],
+    }
+    target, exact = MODULE.free_space_selected_target(current)
+    assert target == [0.0, 0.0]
+    assert exact is True
+
+
+def test_trace_metrics_supports_single_pedestrian(tmp_path):
+    trace = tmp_path / "single.jsonl"
+    person = {
+        "position_m": [1.0, 2.0],
+        "preferred_speed_mps": 1.0,
+        "actual_navigation_velocity_mps": [0.5, 0.0],
+        "isaac_adapter_output_velocity_mps": [0.5, 0.0],
+        "emergency_inhibited": False,
+        "free_space_constrained": False,
+        "free_space_selected_target_m": [2.0, 2.0],
+        "free_space_decision": "requested_safe",
+        "gazebo_raw_lateral_component_mps": 0.0,
+        "adapter_lateral_component_mps": 0.0,
+        "actual_navigation_lateral_mps": 0.0,
+    }
+    records = [
+        {"schema": MODULE.TRACE_SCHEMA, "type": "header"},
+        {
+            "schema": MODULE.TRACE_SCHEMA,
+            "type": "sample",
+            "sim_time": 1.0,
+            "people": {"/World/Characters/solo/model": person},
+        },
+        {
+            "schema": MODULE.TRACE_SCHEMA,
+            "type": "sample",
+            "sim_time": 1.1,
+            "people": {"/World/Characters/solo/model": person},
+        },
+    ]
+    trace.write_text("".join(json.dumps(record) + "\n" for record in records))
+
+    metrics = MODULE.trace_metrics(trace, {"solo"})
+
+    assert metrics["sample_frames"] == 2
+    assert metrics["geometry"]["pair_observations"] == 0
+    assert metrics["geometry"]["global_minimum_human_distance_m"] is None
+    assert metrics["geometry"]["average_nearest_neighbor_distance_m"] is None
 
 
 def test_compare_seed7_gate_requires_all_primary_improvements():
