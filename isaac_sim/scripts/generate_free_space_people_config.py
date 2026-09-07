@@ -40,7 +40,12 @@ MAX_PEDESTRIAN_COUNT = 50
 DEFAULT_SPAWN_CLEARANCE_M = 1.0
 DEFAULT_MIN_PATROL_SEGMENT_M = 0.5
 DEFAULT_MAX_PATROL_SEGMENT_M = 1.0
-SCENARIO_AB_MODES = ("baseline", "spread_radius")
+SCENARIO_AB_MODES = (
+    "baseline",
+    "spawn_only",
+    "radius_only",
+    "spread_radius",
+)
 SPREAD_RADIUS_FRACTION = 0.75
 
 
@@ -96,8 +101,9 @@ def parse_args() -> argparse.Namespace:
         default="baseline",
         help=(
             "Scenario-topology experiment selector. baseline preserves the frozen "
-            "e314f56 output; spread_radius distributes starts across each spawn "
-            "extent and arrivals within the XML waypoint radii."
+            "e314f56 output; spawn_only distributes starts across each spawn "
+            "extent; radius_only distributes arrivals within the XML waypoint "
+            "radii; spread_radius applies both changes."
         ),
     )
     parser.add_argument(
@@ -811,6 +817,46 @@ def spread_waypoint_route(
     ]
 
 
+def select_scenario_ab_geometry(
+    scenario_ab_mode: str,
+    center: tuple[float, float],
+    extent: tuple[float, float],
+    requested_start: tuple[float, float],
+    route: list[tuple[float, float]],
+    route_radii: list[float],
+    cluster_index: int,
+    person_index: int,
+) -> tuple[tuple[float, float], list[tuple[float, float]]]:
+    """Select the independently controlled spawn and radius treatments."""
+    if scenario_ab_mode not in SCENARIO_AB_MODES:
+        raise ValueError(f"unsupported scenario_ab_mode: {scenario_ab_mode}")
+    if scenario_ab_mode == "baseline":
+        return requested_start, route
+    extent_x, extent_y = extent
+    sampled_offset = (
+        (requested_start[0] - center[0]) / extent_x if extent_x else 0.0,
+        (requested_start[1] - center[1]) / extent_y if extent_y else 0.0,
+    )
+    selected_start = requested_start
+    selected_route = route
+    if scenario_ab_mode in ("spawn_only", "spread_radius"):
+        selected_start = spread_spawn_point(
+            center,
+            extent,
+            sampled_offset,
+            cluster_index,
+            person_index,
+        )
+    if scenario_ab_mode in ("radius_only", "spread_radius"):
+        selected_route = spread_waypoint_route(
+            route,
+            route_radii,
+            sampled_offset,
+            person_index,
+        )
+    return selected_start, selected_route
+
+
 def routed_loop(
     grid: FreeSpaceMap,
     start: tuple[float, float],
@@ -935,29 +981,16 @@ def gazebo_compatible_groups(
                 center_x + rng.uniform(-extent_x / 2.0, extent_x / 2.0),
                 center_y + rng.uniform(-extent_y / 2.0, extent_y / 2.0),
             )
-            person_route = route
-            if scenario_ab_mode == "spread_radius":
-                sampled_offset = (
-                    (requested_start[0] - center_x) / extent_x
-                    if extent_x
-                    else 0.0,
-                    (requested_start[1] - center_y) / extent_y
-                    if extent_y
-                    else 0.0,
-                )
-                requested_start = spread_spawn_point(
-                    (center_x, center_y),
-                    (extent_x, extent_y),
-                    sampled_offset,
-                    cluster_index,
-                    person_index,
-                )
-                person_route = spread_waypoint_route(
-                    route,
-                    cluster.get("route_radii", []),
-                    sampled_offset,
-                    person_index,
-                )
+            requested_start, person_route = select_scenario_ab_geometry(
+                scenario_ab_mode,
+                (center_x, center_y),
+                (extent_x, extent_y),
+                requested_start,
+                route,
+                cluster.get("route_radii", []),
+                cluster_index,
+                person_index,
+            )
             start_cell = grid.nearest_separated(
                 *requested_start,
                 occupied_start_cells,
