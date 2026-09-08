@@ -119,6 +119,46 @@ def template_groups(count: int = 6) -> dict[str, dict[str, object]]:
 
 
 class GazeboPeopleConfigTest(unittest.TestCase):
+    def test_vectorized_unrestricted_nearest_matches_original_ordering(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pixels = bytearray([255] * 143)
+            for index in (0, 1, 13, 42, 71, 129):
+                pixels[index] = 0
+            (root / "map.pgm").write_bytes(b"P5\n13 11\n255\n" + pixels)
+            (root / "map.yaml").write_text(
+                "image: map.pgm\nresolution: 0.2\n"
+                "origin: [-1.3, -1.1, 0.0]\nfree_thresh: 0.25\n",
+                encoding="utf-8",
+            )
+            grid = FreeSpaceMap(
+                root / "map.yaml",
+                0.0,
+                bounds=(-10.0, -10.0, 10.0, 10.0),
+            )
+            generator = random.Random(7)
+            queries = [
+                (generator.uniform(-3.0, 3.0), generator.uniform(-3.0, 3.0))
+                for _ in range(500)
+            ]
+            # Include exact centre ties and locations beyond the raster bounds.
+            queries.extend(((0.0, 0.0), (-10.0, 0.0), (10.0, 10.0)))
+
+            for x, y in queries:
+                requested = grid.cell_for_world(x, y)
+                if requested in grid.free:
+                    expected = requested
+                else:
+                    expected = min(
+                        grid.free,
+                        key=lambda cell: (
+                            (grid.world(cell)[0] - x) ** 2
+                            + (grid.world(cell)[1] - y) ** 2,
+                            cell,
+                        ),
+                    )
+                self.assertEqual(grid.nearest(x, y), expected)
+
     def test_static_box_clearance_is_inflated_exactly_once(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

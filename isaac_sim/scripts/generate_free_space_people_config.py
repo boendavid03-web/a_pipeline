@@ -27,6 +27,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Collection
 
+import numpy as np
 import yaml
 
 from people_route_geometry import (
@@ -265,6 +266,20 @@ class FreeSpaceMap:
             raise ValueError(
                 f"{image_path} has no free cells after {clearance:.2f} m inflation"
             )
+        # Runtime recovery queries have no component restriction and may occur
+        # every steering tick.  Preserve the original distance/cell-id ordering
+        # while moving the 85k-cell arithmetic out of the Python interpreter.
+        self._ordered_free_cells = np.asarray(sorted(self.free), dtype=np.int64)
+        free_columns = self._ordered_free_cells % self.width
+        free_rows = self._ordered_free_cells // self.width
+        self._ordered_free_world_x = np.round(
+            self.origin_x + (free_columns + 0.5) * self.resolution,
+            decimals=4,
+        )
+        self._ordered_free_world_y = np.round(
+            self.origin_y + (self.height - free_rows - 0.5) * self.resolution,
+            decimals=4,
+        )
 
     def xy(self, cell: int) -> tuple[int, int]:
         return cell % self.width, cell // self.width
@@ -302,6 +317,14 @@ class FreeSpaceMap:
         requested = self.cell_for_world(x, y)
         if requested in cells:
             return requested
+        if candidates is None:
+            distances_squared = (
+                (self._ordered_free_world_x - x) ** 2
+                + (self._ordered_free_world_y - y) ** 2
+            )
+            # Cells are ordered, so np.argmin retains the original cell-id
+            # tie-break when two centres have exactly the same distance.
+            return int(self._ordered_free_cells[int(np.argmin(distances_squared))])
         return min(
             cells,
             key=lambda cell: (

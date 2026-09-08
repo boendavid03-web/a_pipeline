@@ -37,6 +37,7 @@ from pedestrian_social import (
     gazebo_social_kernel_source_path,
 )
 from pedestrian_steering import PatrolPolylineCursor, steering_target_from_velocity
+from performance_profiler import PerformanceProfiler
 from rtx_lidar_scan import project_rtx_returns
 from udp_telemetry import COMPRESSED_MAGIC, TelemetryEncoder
 from isaac_actuation_contract import (
@@ -343,6 +344,16 @@ MIN_SIMULATION_FRAME_RATE_HZ = environment_integer(
     1,
     int(round(1.0 / PHYSICS_DT)),
     unit="Hz",
+)
+PERFORMANCE_PROFILE_ENABLED = environment_flag(
+    "ISAAC_PERFORMANCE_PROFILE", False
+)
+PERFORMANCE_PROFILE_INTERVAL_SEC = environment_float(
+    "ISAAC_PERFORMANCE_PROFILE_INTERVAL_SEC", 15.0, 10.0, 30.0, unit="s"
+)
+PERFORMANCE_PROFILER = PerformanceProfiler(
+    PERFORMANCE_PROFILE_ENABLED,
+    PERFORMANCE_PROFILE_INTERVAL_SEC,
 )
 PHYSX_GPU_DYNAMICS_ENABLED = environment_flag(
     "ISAAC_PHYSX_GPU_DYNAMICS", False
@@ -1093,6 +1104,7 @@ class PhysxAnalyticPeopleLidar:
         return point
 
     def snapshot(self, sim_time: float) -> AnalyticLegSnapshot:
+        profile_started = time.perf_counter()
         starts: list[np.ndarray] = []
         ends: list[np.ndarray] = []
         labels: list[str] = []
@@ -1125,7 +1137,7 @@ class PhysxAnalyticPeopleLidar:
                     for tag, point in points.items()
                 }
 
-        return AnalyticLegSnapshot(
+        snapshot = AnalyticLegSnapshot(
             sim_time=float(sim_time),
             segment_starts=np.asarray(starts, dtype=float),
             segment_ends=np.asarray(ends, dtype=float),
@@ -1133,6 +1145,11 @@ class PhysxAnalyticPeopleLidar:
             labels=tuple(labels),
             joint_debug=joint_debug,
         )
+        PERFORMANCE_PROFILER.record(
+            "dynamic_analytic_leg_updates",
+            time.perf_counter() - profile_started,
+        )
+        return snapshot
 
     def record_pair(
         self,
@@ -1747,6 +1764,7 @@ class BehaviorAgentSocialMotion:
         *,
         force: bool = False,
     ) -> bool:
+        profile_started = time.perf_counter()
         previous = self.last_target_positions_m.get(path)
         if (
             not force
@@ -1754,6 +1772,10 @@ class BehaviorAgentSocialMotion:
             and math.dist(previous, target_position_m)
             < PEDESTRIAN_SOCIAL_TARGET_MIN_SHIFT_M
         ):
+            PERFORMANCE_PROFILER.record(
+                "pedestrian_target_transform_updates",
+                time.perf_counter() - profile_started,
+            )
             return False
         target_stage = stage_from_ros_offset(
             target_position_m[0], target_position_m[1], 0.0
@@ -1763,6 +1785,10 @@ class BehaviorAgentSocialMotion:
         )
         self.last_target_positions_m[path] = target_position_m
         self.target_write_count += 1
+        PERFORMANCE_PROFILER.record(
+            "pedestrian_target_transform_updates",
+            time.perf_counter() - profile_started,
+        )
         return True
 
     def _launch_follow(self, path: str, *, initial: bool = False) -> None:
@@ -1788,6 +1814,24 @@ class BehaviorAgentSocialMotion:
         return bool(guard.segment_world_free(*start_m, *end_m))
 
     def _free_space_safe_target(
+        self,
+        position_m: tuple[float, float],
+        requested_target_m: tuple[float, float],
+        base_direction: tuple[float, float],
+    ) -> tuple[tuple[float, float], bool, str]:
+        profile_started = time.perf_counter()
+        result = self._free_space_safe_target_unprofiled(
+            position_m,
+            requested_target_m,
+            base_direction,
+        )
+        PERFORMANCE_PROFILER.record(
+            "free_space_target_validation",
+            time.perf_counter() - profile_started,
+        )
+        return result
+
+    def _free_space_safe_target_unprofiled(
         self,
         position_m: tuple[float, float],
         requested_target_m: tuple[float, float],
@@ -1880,10 +1924,19 @@ class BehaviorAgentSocialMotion:
         return position_m, True, "current_position_fallback"
 
     def _ensure_follow(self, path: str) -> None:
+        profile_started = time.perf_counter()
         task_id = self.follow_task_ids.get(path)
         if task_id is not None and self.agents[path].is_task_running(task_id):
+            PERFORMANCE_PROFILER.record(
+                "behavior_agent_follow_validation",
+                time.perf_counter() - profile_started,
+            )
             return
         self._launch_follow(path)
+        PERFORMANCE_PROFILER.record(
+            "behavior_agent_follow_validation",
+            time.perf_counter() - profile_started,
+        )
 
     def update(
         self,
@@ -1898,6 +1951,8 @@ class BehaviorAgentSocialMotion:
         emergency_dodge_paths=(),
         emergency_resume_paths=(),
     ) -> None:
+        profile_total_started = time.perf_counter()
+        profile_state_started = profile_total_started
         dt = (
             PEDESTRIAN_PUBLISH_PERIOD_SEC
             if self.last_sim_time is None
@@ -1972,6 +2027,10 @@ class BehaviorAgentSocialMotion:
                 preferred_speed_mps=self.preferred_speeds_mps[path],
                 yaw_rad=heading_yaw,
             )
+        PERFORMANCE_PROFILER.record(
+            "behavior_agent_state_reads",
+            time.perf_counter() - profile_state_started,
+        )
         planar_dimension_index = 1 if STAGE_UP_AXIS == "Z" else 2
         robot_state = RobotMotionState(
             position_m=tuple(
@@ -1990,7 +2049,12 @@ class BehaviorAgentSocialMotion:
                 for value in stage_to_ros_vector(robot_collision_center_stage)[:2]
             ),
         )
+        profile_controller_started = time.perf_counter()
         outputs = self.controller.update(states, robot_state, dt)
+        PERFORMANCE_PROFILER.record(
+            "pedestrian_social_force_calculation",
+            time.perf_counter() - profile_controller_started,
+        )
         inhibited = set(inhibited_paths)
         emergency_dodge = set(emergency_dodge_paths)
         emergency_resume = set(emergency_resume_paths)
@@ -2310,6 +2374,7 @@ class BehaviorAgentSocialMotion:
                 "emergency_dodge_active": path in emergency_dodge,
                 "emergency_dodge_resume_pending": path in emergency_resume,
             }
+        profile_debug_started = time.perf_counter()
         self.latest_debug = debug
         if self.trace_file is not None:
             self.trace_file.write(
@@ -2338,6 +2403,14 @@ class BehaviorAgentSocialMotion:
                 flush=True,
             )
             self.next_debug_sim_time = sim_time + PEDESTRIAN_SOCIAL_DEBUG_PERIOD_SEC
+        PERFORMANCE_PROFILER.record(
+            "pedestrian_debug_trace_logging",
+            time.perf_counter() - profile_debug_started,
+        )
+        PERFORMANCE_PROFILER.record(
+            "pedestrian_behavior_follow_update_total",
+            time.perf_counter() - profile_total_started,
+        )
 
     def summary(self) -> dict[str, object]:
         return {
@@ -3565,6 +3638,8 @@ class PhysxDualLidarScheduler:
         self._qualification_app_update_sequence: int | None = None
         self._qualification_samples: list[dict[str, float | int]] = []
         self._qualification_written = False
+        self._profile_physics_span_started: float | None = None
+        self._profile_accounted_app_sec = 0.0
 
         dimensions = np.asarray(robot_collision_dimensions_m, dtype=float)
         if dimensions.shape != (3,) or np.any(~np.isfinite(dimensions)) or np.any(dimensions <= 0.0):
@@ -3669,6 +3744,16 @@ class PhysxDualLidarScheduler:
     def begin_app_update(self, sequence: int) -> None:
         """Identify the application update containing subsequent callbacks."""
         self._qualification_app_update_sequence = int(sequence)
+        self._profile_physics_span_started = None
+        self._profile_accounted_app_sec = 0.0
+
+    def end_app_update(self, elapsed_sec: float) -> None:
+        """Record inclusive update time and the non-physics/render residual."""
+        PERFORMANCE_PROFILER.record("application_update_inclusive", elapsed_sec)
+        PERFORMANCE_PROFILER.record(
+            "render_app_update_residual",
+            max(0.0, elapsed_sec - self._profile_accounted_app_sec),
+        )
 
     def _record_physics_time_qualification(self, step_dt: float) -> None:
         if (
@@ -3933,11 +4018,16 @@ class PhysxDualLidarScheduler:
                 "scheduler_sim_time": sim_time,
                 "readings": reading_trace,
             }
+        PERFORMANCE_PROFILER.record(
+            "dual_lidar_capture_raycast_postprocess",
+            time.perf_counter() - pair_started,
+        )
         return scans
 
     def _on_physics_pre_step(self, step_dt: float, _context: object) -> None:
         if self.failure is not None or not math.isfinite(step_dt) or step_dt <= 0.0:
             return
+        profile_started = time.perf_counter()
         try:
             self._record_physics_time_qualification(step_dt)
             self.physics_steps += 1
@@ -3946,19 +4036,25 @@ class PhysxDualLidarScheduler:
                 self._physics_first_wall_time = physics_wall_time
             self._physics_last_wall_time = physics_wall_time
             self.physics_sim_time += float(step_dt)
-            if self.physics_steps % self._capture_period_steps != 0:
-                return
-            position, yaw = self.pose_provider()
-            self._set_sensor_poses(np.asarray(position, dtype=float), float(yaw))
-            self._capture_pose = (np.asarray(position, dtype=float).copy(), float(yaw))
-            self._capture_sim_time = float(
-                SimulationManager.get_simulation_time()
-            )
-            self._capture_armed = True
+            if self.physics_steps % self._capture_period_steps == 0:
+                position, yaw = self.pose_provider()
+                self._set_sensor_poses(np.asarray(position, dtype=float), float(yaw))
+                self._capture_pose = (
+                    np.asarray(position, dtype=float).copy(),
+                    float(yaw),
+                )
+                self._capture_sim_time = float(
+                    SimulationManager.get_simulation_time()
+                )
+                self._capture_armed = True
         except Exception as exc:
             self.failure = exc
             for prim in self._prims.values():
                 prim.GetAttribute("enabled").Set(False)
+        profile_elapsed = time.perf_counter() - profile_started
+        self._profile_accounted_app_sec += profile_elapsed
+        PERFORMANCE_PROFILER.record("physics_pre_callback", profile_elapsed)
+        self._profile_physics_span_started = time.perf_counter()
 
     def _rate(self, values: deque[float]) -> float | None:
         if len(values) < 2:
@@ -4053,12 +4149,27 @@ class PhysxDualLidarScheduler:
     def _on_physics_post_step(self, step_dt: float, _context: object) -> None:
         if self.failure is not None or not math.isfinite(step_dt) or step_dt <= 0.0:
             return
+        profile_started = time.perf_counter()
+        if self._profile_physics_span_started is not None:
+            physics_span = profile_started - self._profile_physics_span_started
+            self._profile_accounted_app_sec += physics_span
+            PERFORMANCE_PROFILER.record(
+                "physics_stepping_and_internal_behavior",
+                physics_span,
+            )
+            self._profile_physics_span_started = None
+        capture_due = bool(
+            self._capture_armed
+            and self._capture_pose is not None
+            and self._capture_sim_time is not None
+        )
         try:
-            if (
-                not self._capture_armed
-                or self._capture_pose is None
-                or self._capture_sim_time is None
-            ):
+            if not capture_due:
+                profile_elapsed = time.perf_counter() - profile_started
+                self._profile_accounted_app_sec += profile_elapsed
+                PERFORMANCE_PROFILER.record(
+                    "physics_post_callback", profile_elapsed
+                )
                 return
             sim_time = self._capture_sim_time
             position, yaw = self._capture_pose
@@ -4087,6 +4198,10 @@ class PhysxDualLidarScheduler:
                 self._timing_samples["udp_serialize_send"].append(
                     (time.perf_counter() - started) * 1000.0
                 )
+                PERFORMANCE_PROFILER.record(
+                    "lidar_ros_udp_publication",
+                    time.perf_counter() - started,
+                )
             self.capture_sim_times.append(sim_time)
             self.capture_wall_times.append(time.monotonic())
             self.capture_count += 1
@@ -4097,6 +4212,13 @@ class PhysxDualLidarScheduler:
             self.failure = exc
             for prim in self._prims.values():
                 prim.GetAttribute("enabled").Set(False)
+        profile_elapsed = time.perf_counter() - profile_started
+        self._profile_accounted_app_sec += profile_elapsed
+        PERFORMANCE_PROFILER.record("physics_post_callback", profile_elapsed)
+        if capture_due:
+            PERFORMANCE_PROFILER.record(
+                "dual_lidar_capture_callback_total", profile_elapsed
+            )
 
     def close(self) -> None:
         for callback_id in (self._pre_callback_id, self._post_callback_id):
@@ -5399,6 +5521,7 @@ def main() -> int:
         )
         last_people_publish_sim_time = -math.inf
         last_robot_pose_apply_sim_time = -math.inf
+        PERFORMANCE_PROFILER.restart()
         started = time.monotonic()
         started_sim_time = float(timeline.get_current_time())
         started_physics_steps = (
@@ -5642,6 +5765,8 @@ def main() -> int:
 
         while simulation_app.is_running():
             loop_started = time.monotonic()
+            profile_loop_started = time.perf_counter()
+            profile_robot_control_started = profile_loop_started
             if ARGS.test_command is not None:
                 command = clamp_twist(*ARGS.test_command)
                 command_watchdog_active = False
@@ -5715,11 +5840,23 @@ def main() -> int:
                 last_command = command_array.copy()
             if ROBOT_PHYSICS_ENABLED:
                 collision_proxy.set_dynamic_command(command)
+            PERFORMANCE_PROFILER.record(
+                "robot_control_input_update",
+                time.perf_counter() - profile_robot_control_started,
+            )
             # This also advances IRA behavior trees and Skel animation when
             # the optional people pipeline is enabled.
             if physx_lidar is not None:
                 physx_lidar.begin_app_update(frame)
+            profile_app_started = time.perf_counter()
             simulation_app.update()
+            profile_app_elapsed = time.perf_counter() - profile_app_started
+            if physx_lidar is not None:
+                physx_lidar.end_app_update(profile_app_elapsed)
+            else:
+                PERFORMANCE_PROFILER.record(
+                    "application_update_inclusive", profile_app_elapsed
+                )
             if physx_lidar is not None:
                 physx_lidar.raise_if_failed()
                 if physx_lidar.physics_time_qualification_complete:
@@ -5737,6 +5874,7 @@ def main() -> int:
                 + PEDESTRIAN_FREE_SPACE_GUARD_PERIOD_SEC
                 - 1.0e-9
             ):
+                profile_free_space_started = time.perf_counter()
                 (
                     intrusion_snapshot,
                     intrusion_sample_positions,
@@ -5767,6 +5905,10 @@ def main() -> int:
                     sim_time,
                     PEDESTRIAN_FREE_SPACE_GUARD_PERIOD_SEC,
                 )
+                PERFORMANCE_PROFILER.record(
+                    "free_space_guard_observation",
+                    time.perf_counter() - profile_free_space_started,
+                )
             if rtx_lidar is not None:
                 while True:
                     acquired_scans = rtx_lidar.poll_payload()
@@ -5778,6 +5920,7 @@ def main() -> int:
                             "silently drop or repeat a native lidar frame"
                         )
                     pending_rtx_scans.append(acquired_scans)
+            profile_robot_pose_started = time.perf_counter()
             step_dt = max(0.0, min(0.25, sim_time - previous_sim_time))
             executed_command = command
             if ROBOT_PHYSICS_ENABLED:
@@ -5907,11 +6050,16 @@ def main() -> int:
                         sim_time,
                         ROBOT_POSE_APPLY_PERIOD_SEC,
                     )
+            PERFORMANCE_PROFILER.record(
+                "robot_pose_transform_updates",
+                time.perf_counter() - profile_robot_pose_started,
+            )
             if (
                 ros is not None
                 and sim_time
                 >= last_telemetry_sim_time + TELEMETRY_PUBLISH_PERIOD_SEC - 1.0e-9
             ):
+                profile_telemetry_started = time.perf_counter()
                 telemetry: dict[str, object] = {
                     "schema": TELEMETRY_SCHEMA,
                     "sim_time": authoritative_ros_sim_time,
@@ -6085,7 +6233,12 @@ def main() -> int:
                     sim_time,
                     TELEMETRY_PUBLISH_PERIOD_SEC,
                 )
+                PERFORMANCE_PROFILER.record(
+                    "ros_state_telemetry_publication",
+                    time.perf_counter() - profile_telemetry_started,
+                )
             if PEOPLE_ENABLED and frame % 120 == 0:
+                profile_statistics_started = time.perf_counter()
                 current_people_positions = character_positions(stage)
                 for path, current in current_people_positions.items():
                     initial = initial_people_positions.get(path)
@@ -6097,6 +6250,10 @@ def main() -> int:
                     max_people_displacements_m[path] = max(
                         max_people_displacements_m.get(path, 0.0), distance_m
                     )
+                PERFORMANCE_PROFILER.record(
+                    "debug_statistics_logging",
+                    time.perf_counter() - profile_statistics_started,
+                )
             if (
                 PEOPLE_ENABLED
                 and sim_time
@@ -6104,6 +6261,7 @@ def main() -> int:
                 + PEDESTRIAN_PUBLISH_PERIOD_SEC
                 - 1.0e-9
             ):
+                profile_pedestrian_tick_started = time.perf_counter()
                 sampled_people_positions = character_positions(stage)
                 if pedestrian_robot_avoidance is not None:
                     pedestrian_robot_avoidance.update(
@@ -6220,6 +6378,11 @@ def main() -> int:
                     sim_time,
                     PEDESTRIAN_PUBLISH_PERIOD_SEC,
                 )
+                PERFORMANCE_PROFILER.record(
+                    "pedestrian_control_tick_total",
+                    time.perf_counter() - profile_pedestrian_tick_started,
+                )
+            profile_report_started = time.perf_counter()
             if time.monotonic() - last_report >= 30.0:
                 now = time.monotonic()
                 positions, orientations = robot.get_world_poses()
@@ -6309,6 +6472,23 @@ def main() -> int:
                 last_report_sim_time = sim_time
                 last_report_frame = frame
                 last_report_physics_steps = current_physics_steps
+            PERFORMANCE_PROFILER.record(
+                "debug_statistics_logging",
+                time.perf_counter() - profile_report_started,
+            )
+            PERFORMANCE_PROFILER.record(
+                "main_loop_total_excluding_sleep",
+                time.perf_counter() - profile_loop_started,
+            )
+            if PERFORMANCE_PROFILER.due():
+                print(
+                    "ISAAC_PERFORMANCE_PROFILE="
+                    + json.dumps(
+                        PERFORMANCE_PROFILER.summary(reset_window=True),
+                        sort_keys=True,
+                    ),
+                    flush=True,
+                )
             frame += 1
             if (
                 ARGS.duration > 0.0
@@ -6449,6 +6629,17 @@ def main() -> int:
                 },
             }
         active_lidar = rtx_lidar if rtx_lidar is not None else physx_lidar
+        performance_profile = (
+            PERFORMANCE_PROFILER.summary(total=True)
+            if PERFORMANCE_PROFILE_ENABLED
+            else None
+        )
+        if performance_profile is not None:
+            print(
+                "ISAAC_PERFORMANCE_PROFILE_FINAL="
+                + json.dumps(performance_profile, sort_keys=True),
+                flush=True,
+            )
         result = {
             "status": "PASS",
             "exit_reason": exit_reason,
@@ -6467,6 +6658,7 @@ def main() -> int:
             "manual_timing": manual_mode,
             "fixed_time_stepping": fixed_time,
             "app_update_rate_limit_hz": ARGS.app_update_rate_limit_hz or None,
+            "performance_profile": performance_profile,
             "robot_final_position": final_position.tolist(),
             "robot_final_yaw_ros_rad": final_yaw,
             "robot_final_yaw_unwrapped_ros_rad": navigation_yaw_unwrapped,
