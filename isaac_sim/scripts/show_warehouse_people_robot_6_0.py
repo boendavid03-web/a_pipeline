@@ -36,7 +36,15 @@ from pedestrian_social import (
     SocialYieldPlanner,
     gazebo_social_kernel_source_path,
 )
-from pedestrian_steering import PatrolPolylineCursor, steering_target_from_velocity
+from pedestrian_steering import (
+    PatrolPolylineCursor,
+    PedestrianRobotEmergencyStopLatch,
+    PredictiveBoundaryLatch,
+    circular_body_net_clearance_m,
+    pedestrian_robot_emergency_stop_ownership,
+    predictive_boundary_velocity,
+    steering_target_from_velocity,
+)
 from performance_profiler import PerformanceProfiler
 from rtx_lidar_scan import project_rtx_returns
 from udp_telemetry import COMPRESSED_MAGIC, TelemetryEncoder
@@ -308,6 +316,18 @@ def environment_float(
     return value
 
 
+# Keep the production default at 0.5 m, while allowing an explicit short-range
+# empty-scene calibration to observe robot self returns that would otherwise be
+# clipped before the LaserScan grid is formed.
+LIDAR_RANGE_MIN_M = environment_float(
+    "ISAAC_LIDAR_RANGE_MIN_M",
+    LIDAR_RANGE_MIN_M,
+    0.01,
+    5.0,
+    unit="m",
+)
+
+
 # The supported RTX profiles author scanRateBaseHz as a USD uint, so accept
 # explicit integral rates only. Keeping this as the single source of truth prevents
 # the sensor tick, telemetry period, LaserScan metadata, and bag validator
@@ -467,6 +487,20 @@ PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M = environment_float(
     2.0,
     unit="m",
 )
+PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_MAX_HOLD_SEC = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_MAX_HOLD_SEC",
+    8.0,
+    1.0,
+    60.0,
+    unit="s",
+)
+PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_COOLDOWN_SEC = environment_float(
+    "ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_COOLDOWN_SEC",
+    2.0,
+    0.0,
+    30.0,
+    unit="s",
+)
 PEDESTRIAN_SOCIAL_EMERGENCY_DODGE_CLEARANCE_M = environment_float(
     "ISAAC_PEDESTRIAN_SOCIAL_EMERGENCY_DODGE_CLEARANCE_M",
     0.20,
@@ -492,6 +526,30 @@ PEDESTRIAN_SOCIAL_TARGET_MIN_SHIFT_M = environment_float(
 PEDESTRIAN_SOCIAL_TRACE_PATH = os.environ.get(
     "ISAAC_PEDESTRIAN_SOCIAL_TRACE_PATH", ""
 ).strip()
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED = environment_flag(
+    "ISAAC_PEDESTRIAN_ROBOT_EMERGENCY_STOP", False
+)
+# The final trigger is the requested body-edge-to-robot-outline net clearance.
+# An earlier approach-only trigger retains 0.145066 m of measured idle-on-stop
+# root travel from the isolated stop contract.  It is evidence-based margin,
+# not a guaranteed stopping-distance bound across assets or motions.
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_FINAL_CLEARANCE_M = 0.05
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_OBSERVED_DRIFT_M = 0.145066
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_EARLY_CLEARANCE_M = (
+    PEDESTRIAN_ROBOT_EMERGENCY_STOP_FINAL_CLEARANCE_M
+    + PEDESTRIAN_ROBOT_EMERGENCY_STOP_OBSERVED_DRIFT_M
+)
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_RESUME_CLEARANCE_M = 0.30
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_RELEASE_SAFE_SAMPLES = 3
+PEDESTRIAN_ROBOT_EMERGENCY_STOP_MIN_CLOSING_SPEED_MPS = 0.01
+if (
+    PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED
+    and PEDESTRIAN_SOCIAL_MODE != "gazebo_social"
+):
+    raise SystemExit(
+        "ERROR: ISAAC_PEDESTRIAN_ROBOT_EMERGENCY_STOP requires "
+        "ISAAC_PEDESTRIAN_SOCIAL_MODE=gazebo_social"
+    )
 if PEDESTRIAN_VISUAL_OVERLAP_M >= PEDESTRIAN_PERSONAL_SPACE_M:
     raise SystemExit(
         "ERROR: ISAAC_PEDESTRIAN_VISUAL_OVERLAP_M must be smaller than "
@@ -618,6 +676,16 @@ if not PEOPLE_ENABLED and PEDESTRIAN_AVOIDANCE_MODE != "off":
         "ISAAC_ENABLE_PEOPLE=0"
     )
 LIDAR_MODE = environment_choice("ISAAC_LIDAR_MODE", "rtx", {"physx", "rtx"})
+LIDAR_SELF_OCCLUSION_MODE = environment_choice(
+    "ISAAC_LIDAR_SELF_OCCLUSION_MODE",
+    "none",
+    {"none", "fixed_mask"},
+)
+if LIDAR_SELF_OCCLUSION_MODE != "none" and LIDAR_MODE != "physx":
+    raise SystemExit(
+        "ERROR: ISAAC_LIDAR_SELF_OCCLUSION_MODE=fixed_mask is only supported "
+        "with ISAAC_LIDAR_MODE=physx"
+    )
 LIDAR_BACKEND = (
     "physx_raycast_sensor" if LIDAR_MODE == "physx" else "isaac_rtx_lidar"
 )
@@ -848,6 +916,7 @@ from physx_lidar_people import (  # noqa: E402
     classify_query_hit_paths,
     endpoint_hit_world_diagnostic,
     endpoint_ranges_from_world_geometry,
+    fixed_dual_self_occlusion_mask,
     is_ignored_person_query_collider,
     is_ignored_robot_query_collider,
     merge_native_and_analytic_ranges,
@@ -857,6 +926,7 @@ from physx_lidar_people import (  # noqa: E402
     ray_start_offsets_outside_box,
     scene_query_hit_value,
     summarize_physics_time_qualification,
+    true_mask_runs,
 )
 
 
@@ -1421,6 +1491,8 @@ class PedestrianSocialYielding:
         trigger_distance_m: float,
         resume_distance_m: float,
         role: str,
+        maximum_hold_sec: float | None = None,
+        cooldown_sec: float = 0.0,
     ) -> None:
         import omni.anim.behavior.core as behavior_core
         from isaacsim.replicator.agent.core.character import IRA_Character
@@ -1466,10 +1538,14 @@ class PedestrianSocialYielding:
         self.planner = SocialYieldPlanner(
             trigger_distance_m=trigger_distance_m,
             resume_distance_m=resume_distance_m,
+            maximum_hold_sec=maximum_hold_sec,
+            cooldown_sec=cooldown_sec,
         )
         self.trigger_distance_m = float(trigger_distance_m)
         self.resume_distance_m = float(resume_distance_m)
         self.role = str(role)
+        self.maximum_hold_sec = maximum_hold_sec
+        self.cooldown_sec = float(cooldown_sec)
         self.yielded_restore_speeds: dict[str, float] = {}
         self.yield_count = 0
         self.yield_count_by_person = {path: 0 for path in initial_positions}
@@ -1479,6 +1555,7 @@ class PedestrianSocialYielding:
         self,
         positions: dict[str, np.ndarray],
         inhibited_paths=(),
+        current_time_sec: float | None = None,
     ) -> None:
         inhibited = set(inhibited_paths)
         for path in sorted(inhibited & set(self.yielded_restore_speeds)):
@@ -1496,8 +1573,11 @@ class PedestrianSocialYielding:
                 path: stage_to_ros_vector(position)[:2]
                 for path, position in positions.items()
                 if path not in inhibited
-            }
+            },
+            current_time_sec=current_time_sec,
         )
+        end_reasons = dict(decision.end_reasons)
+        begin_trigger_peers = dict(decision.begin_trigger_peers)
         for path in decision.end_yielding:
             agent = self.agents[path]
             restore_speed = self.yielded_restore_speeds.pop(path)
@@ -1505,6 +1585,7 @@ class PedestrianSocialYielding:
             print(
                 "[WAREHOUSE-ROBOT] Pedestrian social yield ended: "
                 f"person={path.rsplit('/', 1)[-1]} "
+                f"reason={end_reasons.get(path, 'unspecified')} "
                 f"restored_speed_stage_units={restore_speed:.3f}",
                 flush=True,
             )
@@ -1521,6 +1602,7 @@ class PedestrianSocialYielding:
             print(
                 "[WAREHOUSE-ROBOT] Pedestrian social yield started: "
                 f"person={path.rsplit('/', 1)[-1]} "
+                f"trigger_peer={begin_trigger_peers.get(path, '').rsplit('/', 1)[-1]} "
                 f"role={self.role} trigger_m={self.trigger_distance_m:.2f}",
                 flush=True,
             )
@@ -1533,6 +1615,8 @@ class PedestrianSocialYielding:
             "role": self.role,
             "trigger_distance_m": self.trigger_distance_m,
             "resume_distance_m": self.resume_distance_m,
+            "maximum_hold_sec": self.maximum_hold_sec,
+            "cooldown_sec": self.cooldown_sec,
             "yield_count": self.yield_count,
             "yield_count_by_person": self.yield_count_by_person,
             "max_active_yielders": self.max_active_yielders,
@@ -1642,6 +1726,50 @@ class BehaviorAgentSocialMotion:
         self.maximum_adapter_to_actual_velocity_error_mps = 0.0
         self.maximum_solver_to_actual_velocity_error_mps = 0.0
         self.free_space_constrained_target_count = 0
+        self.predictive_boundary_constraint_count = 0
+        self.predictive_boundary_latch = PredictiveBoundaryLatch(
+            release_safe_samples=(
+                PEDESTRIAN_FREE_SPACE_SUSTAINED_INTRUSION_SAMPLES
+            )
+        )
+        self.emergency_stop_latch = PedestrianRobotEmergencyStopLatch(
+            final_trigger_clearance_m=(
+                PEDESTRIAN_ROBOT_EMERGENCY_STOP_FINAL_CLEARANCE_M
+            ),
+            early_trigger_clearance_m=(
+                PEDESTRIAN_ROBOT_EMERGENCY_STOP_EARLY_CLEARANCE_M
+            ),
+            resume_clearance_m=(
+                PEDESTRIAN_ROBOT_EMERGENCY_STOP_RESUME_CLEARANCE_M
+            ),
+            release_safe_samples=(
+                PEDESTRIAN_ROBOT_EMERGENCY_STOP_RELEASE_SAFE_SAMPLES
+            ),
+            minimum_closing_speed_mps=(
+                PEDESTRIAN_ROBOT_EMERGENCY_STOP_MIN_CLOSING_SPEED_MPS
+            ),
+        )
+        self.emergency_stop_task_ids: dict[str, int] = {}
+        self.emergency_stop_count = 0
+        self.emergency_stop_release_count = 0
+        self.emergency_stop_count_by_person = {
+            path: 0 for path in initial_positions
+        }
+        self.emergency_stop_path_length_m = {
+            path: 0.0 for path in initial_positions
+        }
+        self.emergency_stop_last_completed_path_length_m = {
+            path: None for path in initial_positions
+        }
+        self.emergency_stop_max_completed_path_length_m = {
+            path: 0.0 for path in initial_positions
+        }
+        self.emergency_stop_entry_positions_m: dict[
+            str, tuple[float, float]
+        ] = {}
+        self.emergency_stop_resume_state = {
+            path: "never_triggered" for path in initial_positions
+        }
         self.current_freeze_sec = {path: 0.0 for path in initial_positions}
         self.maximum_freeze_sec = {path: 0.0 for path in initial_positions}
         self.trace_file = None
@@ -1711,6 +1839,9 @@ class BehaviorAgentSocialMotion:
                 initial_m,
                 waypoint_reach_m=PEDESTRIAN_SOCIAL_WAYPOINT_REACH_M,
                 route_lookahead_m=PEDESTRIAN_SOCIAL_ROUTE_LOOKAHEAD_M,
+                initial_route_window_m=(
+                    2.0 * PEDESTRIAN_SOCIAL_ROUTE_LOOKAHEAD_M
+                ),
             )
             target_path = (
                 "/World/PedestrianSocialSteeringTargets/Target_"
@@ -1802,6 +1933,15 @@ class BehaviorAgentSocialMotion:
         self.follow_task_ids[path] = task_id
         if not initial:
             self.follow_restart_count += 1
+
+    def _launch_emergency_idle(self, path: str) -> int:
+        task_id = self.agents[path].idle()
+        if task_id == self.behavior_core.BEHAVIOR_TASK_ID_INVALID:
+            raise RuntimeError(
+                f"BehaviorAgent refused pedestrian emergency idle task: {path}"
+            )
+        self.emergency_stop_task_ids[path] = task_id
+        return task_id
 
     def _route_segment_is_safe(
         self,
@@ -2060,8 +2200,108 @@ class BehaviorAgentSocialMotion:
         emergency_resume = set(emergency_resume_paths)
         debug: dict[str, dict[str, object]] = {}
         for path, output in outputs.items():
-            is_inhibited = path in inhibited
+            externally_inhibited = path in inhibited
+            center_to_robot_outline_clearance_m = (
+                output.robot_footprint_clearance_m
+            )
+            if center_to_robot_outline_clearance_m is None:
+                raise RuntimeError(
+                    "Pedestrian emergency-stop geometry requires the robot OBB"
+                )
+            robot_body_net_clearance_m = circular_body_net_clearance_m(
+                center_to_robot_outline_clearance_m,
+                PEDESTRIAN_AGENT_RADIUS_M,
+            )
+            emergency_stop_decision = None
+            emergency_stop_action = "disabled"
+            emergency_stop_movement_m = 0.0
+            if PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED:
+                emergency_stop_decision = self.emergency_stop_latch.update(
+                    path,
+                    robot_body_net_clearance_m,
+                    dt,
+                )
+                emergency_ownership = pedestrian_robot_emergency_stop_ownership(
+                    emergency_stop_decision,
+                    externally_inhibited=externally_inhibited,
+                )
+                emergency_stop_action = emergency_ownership.action
+                is_inhibited = emergency_ownership.motion_inhibited
+                if emergency_stop_decision.entering:
+                    self.emergency_stop_path_length_m[path] = 0.0
+                    self.emergency_stop_entry_positions_m[path] = positions_m[path]
+                    self.emergency_stop_count += 1
+                    self.emergency_stop_count_by_person[path] += 1
+                    self.emergency_stop_resume_state[path] = "stopping"
+                    self._launch_emergency_idle(path)
+                    print(
+                        "[WAREHOUSE-ROBOT] Pedestrian robot emergency stop "
+                        "started: "
+                        f"person={path.rsplit('/', 1)[-1]} "
+                        f"reason={emergency_stop_decision.reason} "
+                        f"net_clearance_m={robot_body_net_clearance_m:.3f} "
+                        f"actual_speed_mps={math.hypot(*actual_velocities_mps[path]):.3f} "
+                        "action=idle_and_set_speed_zero",
+                        flush=True,
+                    )
+                if (
+                    (emergency_stop_decision.active and not emergency_stop_decision.entering)
+                    or emergency_stop_decision.leaving
+                ):
+                    previous_position = self.previous_positions_m.get(path)
+                    if previous_position is not None:
+                        self.emergency_stop_path_length_m[path] += math.dist(
+                            previous_position, positions_m[path]
+                        )
+                emergency_stop_movement_m = self.emergency_stop_path_length_m[path]
+                if emergency_stop_decision.active:
+                    self.agents[path].set_speed(0.0)
+                    self.speed_update_count += 1
+                elif emergency_stop_decision.leaving:
+                    completed_movement = self.emergency_stop_path_length_m[path]
+                    self.emergency_stop_last_completed_path_length_m[path] = (
+                        completed_movement
+                    )
+                    self.emergency_stop_max_completed_path_length_m[path] = max(
+                        self.emergency_stop_max_completed_path_length_m[path],
+                        completed_movement,
+                    )
+                    self.emergency_stop_release_count += 1
+                    if emergency_stop_action == "resume_follow":
+                        self._launch_follow(path)
+                        self.emergency_stop_resume_state[path] = "follow_resumed"
+                    else:
+                        self.emergency_stop_resume_state[path] = (
+                            "deferred_to_yield_or_dodge"
+                        )
+                    print(
+                        "[WAREHOUSE-ROBOT] Pedestrian robot emergency stop "
+                        "released: "
+                        f"person={path.rsplit('/', 1)[-1]} "
+                        f"reason={emergency_stop_decision.reason} "
+                        f"net_clearance_m={robot_body_net_clearance_m:.3f} "
+                        f"actual_speed_mps={math.hypot(*actual_velocities_mps[path]):.3f} "
+                        f"movement_after_trigger_m={completed_movement:.3f} "
+                        f"recovery={self.emergency_stop_resume_state[path]}",
+                        flush=True,
+                    )
+            else:
+                is_inhibited = externally_inhibited
+            if (
+                PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED
+                and not is_inhibited
+                and self.emergency_stop_resume_state[path]
+                == "deferred_to_yield_or_dodge"
+            ):
+                emergency_stop_action = "resume_follow_after_external_release"
+                self.emergency_stop_resume_state[path] = (
+                    "follow_resumed_after_external_release"
+                )
             target_written = False
+            predictive_command = None
+            predictive_latch_reason = "inhibited"
+            predictive_latch_constrained = False
+            pre_predictive_target_m = None
             if is_inhibited:
                 self.inhibited_update_count += 1
             else:
@@ -2078,6 +2318,79 @@ class BehaviorAgentSocialMotion:
                         base_directions[path],
                     )
                 )
+                pre_predictive_target_m = applied_target_m
+                applied_offset = (
+                    applied_target_m[0] - positions_m[path][0],
+                    applied_target_m[1] - positions_m[path][1],
+                )
+                applied_offset_length = math.hypot(*applied_offset)
+                locomotion_speed_command_mps = steering_command.speed_mps
+                nominal_locomotion_velocity_mps = (
+                    (
+                        applied_offset[0]
+                        / applied_offset_length
+                        * locomotion_speed_command_mps,
+                        applied_offset[1]
+                        / applied_offset_length
+                        * locomotion_speed_command_mps,
+                    )
+                    if applied_offset_length > 1.0e-12
+                    else (0.0, 0.0)
+                )
+                if self.free_space_guard is not None:
+                    predictive_command = predictive_boundary_velocity(
+                        positions_m[path],
+                        nominal_locomotion_velocity_mps,
+                        actual_velocities_mps[path],
+                        response_time_sec=(
+                            2.0 * PEDESTRIAN_SOCIAL_SMOOTHING_TIME_SEC
+                        ),
+                        maximum_deceleration_mps2=(
+                            PEDESTRIAN_SOCIAL_MAX_ACCEL_MPS2
+                        ),
+                        boundary_probe_m=self.free_space_guard.resolution,
+                        segment_is_safe=self._route_segment_is_safe,
+                        nearest_safe_point=lambda point: tuple(
+                            self.free_space_guard.world(
+                                self.free_space_guard.nearest(*point)
+                            )[:2]
+                        ),
+                    )
+                    (
+                        predictive_velocity_mps,
+                        predictive_latch_constrained,
+                        predictive_latch_reason,
+                    ) = self.predictive_boundary_latch.update(
+                        path,
+                        predictive_command,
+                        current_position_safe=bool(
+                            self.free_space_guard.contains_world(
+                                *positions_m[path]
+                            )
+                        ),
+                    )
+                else:
+                    predictive_velocity_mps = nominal_locomotion_velocity_mps
+                    predictive_latch_reason = "guard_disabled"
+                if predictive_latch_constrained:
+                    predictive_steering = steering_target_from_velocity(
+                        positions_m[path],
+                        predictive_velocity_mps,
+                        PEDESTRIAN_SOCIAL_STEERING_LOOKAHEAD_M,
+                    )
+                    applied_target_m, _, projected_target_decision = (
+                        self._free_space_safe_target(
+                            positions_m[path],
+                            predictive_steering.target_position_m,
+                            predictive_steering.direction,
+                        )
+                    )
+                    free_space_constrained = True
+                    free_space_decision = (
+                        "predictive_actual_stopping_" + projected_target_decision
+                    )
+                    self.predictive_boundary_constraint_count += 1
+                    self.free_space_constrained_target_count += 1
                 target_written = self._write_target(
                     path, applied_target_m
                 )
@@ -2087,6 +2400,10 @@ class BehaviorAgentSocialMotion:
                 self.speed_update_count += 1
             if is_inhibited:
                 steering_command = None
+                predictive_command = None
+                predictive_latch_reason = "inhibited"
+                predictive_latch_constrained = False
+                pre_predictive_target_m = None
                 free_space_constrained = False
                 free_space_decision = "emergency_inhibited"
                 applied_target_m = self.last_target_positions_m[path]
@@ -2328,6 +2645,39 @@ class BehaviorAgentSocialMotion:
                 "locomotion_steering_velocity_mps": list(
                     output.isaac_adapter_output_velocity_mps
                 ),
+                "pre_predictive_free_space_target_m": (
+                    list(pre_predictive_target_m)
+                    if pre_predictive_target_m is not None
+                    else None
+                ),
+                "predictive_boundary_constrained": bool(
+                    predictive_latch_constrained
+                ),
+                "predictive_boundary_raw_prediction_constrained": bool(
+                    predictive_command is not None
+                    and predictive_command.constrained
+                ),
+                "predictive_boundary_latch_reason": predictive_latch_reason,
+                "predictive_stopping_distance_m": (
+                    predictive_command.stopping_distance_m
+                    if predictive_command is not None
+                    else None
+                ),
+                "predictive_stop_position_m": (
+                    list(predictive_command.predicted_stop_position_m)
+                    if predictive_command is not None
+                    else None
+                ),
+                "predictive_inward_direction": (
+                    list(predictive_command.inward_direction)
+                    if predictive_command is not None
+                    else None
+                ),
+                "predictive_guarded_velocity_mps": (
+                    list(predictive_command.velocity_mps)
+                    if predictive_command is not None
+                    else None
+                ),
                 "solver_to_adapter_velocity_error_mps": solver_to_adapter_error,
                 "adapter_to_actual_velocity_error_mps": adapter_to_actual_error,
                 "solver_to_actual_velocity_error_mps": solver_to_actual_error,
@@ -2365,6 +2715,52 @@ class BehaviorAgentSocialMotion:
                 "target_written_this_update": target_written,
                 "robot_footprint_clearance_m": (
                     output.robot_footprint_clearance_m
+                ),
+                "pedestrian_body_geometry": "root_centered_planar_circle",
+                "pedestrian_body_radius_m": PEDESTRIAN_AGENT_RADIUS_M,
+                "robot_outline_geometry": "collision_proxy_oriented_box",
+                "robot_body_net_clearance_m": robot_body_net_clearance_m,
+                "robot_emergency_stop_enabled": (
+                    PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED
+                ),
+                "robot_emergency_stop_active": bool(
+                    emergency_stop_decision is not None
+                    and emergency_stop_decision.active
+                ),
+                "robot_emergency_stop_entering": bool(
+                    emergency_stop_decision is not None
+                    and emergency_stop_decision.entering
+                ),
+                "robot_emergency_stop_leaving": bool(
+                    emergency_stop_decision is not None
+                    and emergency_stop_decision.leaving
+                ),
+                "robot_emergency_stop_reason": (
+                    emergency_stop_decision.reason
+                    if emergency_stop_decision is not None
+                    else "disabled"
+                ),
+                "robot_emergency_stop_closing_speed_mps": (
+                    emergency_stop_decision.closing_speed_mps
+                    if emergency_stop_decision is not None
+                    else None
+                ),
+                "robot_emergency_stop_safe_samples": (
+                    emergency_stop_decision.consecutive_safe_samples
+                    if emergency_stop_decision is not None
+                    else 0
+                ),
+                "robot_emergency_stop_action": emergency_stop_action,
+                "robot_emergency_stop_actual_speed_mps": math.hypot(
+                    *actual_velocity
+                ),
+                "robot_emergency_stop_movement_after_trigger_m": (
+                    emergency_stop_movement_m
+                    if emergency_stop_decision is not None
+                    else None
+                ),
+                "robot_emergency_stop_recovery_state": (
+                    self.emergency_stop_resume_state[path]
                 ),
                 "robot_personal_space_violation": (
                     output.robot_personal_space_violation
@@ -2454,6 +2850,55 @@ class BehaviorAgentSocialMotion:
             "free_space_constrained_target_count": (
                 self.free_space_constrained_target_count
             ),
+            "predictive_boundary_constraint_count": (
+                self.predictive_boundary_constraint_count
+            ),
+            "predictive_boundary_latched_update_count": (
+                self.predictive_boundary_latch.latched_update_count
+            ),
+            "predictive_boundary_active_latches": list(
+                self.predictive_boundary_latch.active_people
+            ),
+            "robot_emergency_stop": {
+                "enabled": PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED,
+                "control_owner_priority": (
+                    "emergency_stop_then_yield_or_dodge_then_boundary_then_follow"
+                ),
+                "body_geometry": "root_centered_planar_circle",
+                "body_radius_m": PEDESTRIAN_AGENT_RADIUS_M,
+                "body_geometry_error_m": (
+                    "actual_animated_horizontal_extent_minus_configured_radius; "
+                    "not calibrated"
+                ),
+                "robot_geometry": "collision_proxy_oriented_box",
+                "final_trigger_clearance_m": (
+                    PEDESTRIAN_ROBOT_EMERGENCY_STOP_FINAL_CLEARANCE_M
+                ),
+                "observed_idle_stop_drift_m": (
+                    PEDESTRIAN_ROBOT_EMERGENCY_STOP_OBSERVED_DRIFT_M
+                ),
+                "early_approach_trigger_clearance_m": (
+                    PEDESTRIAN_ROBOT_EMERGENCY_STOP_EARLY_CLEARANCE_M
+                ),
+                "resume_clearance_m": (
+                    PEDESTRIAN_ROBOT_EMERGENCY_STOP_RESUME_CLEARANCE_M
+                ),
+                "release_safe_samples": (
+                    PEDESTRIAN_ROBOT_EMERGENCY_STOP_RELEASE_SAFE_SAMPLES
+                ),
+                "trigger_count": self.emergency_stop_count,
+                "release_count": self.emergency_stop_release_count,
+                "trigger_count_by_person": self.emergency_stop_count_by_person,
+                "active_people": list(self.emergency_stop_latch.active_people),
+                "movement_after_trigger_m": self.emergency_stop_path_length_m,
+                "last_completed_movement_after_trigger_m": (
+                    self.emergency_stop_last_completed_path_length_m
+                ),
+                "maximum_completed_movement_after_trigger_m": (
+                    self.emergency_stop_max_completed_path_length_m
+                ),
+                "recovery_state_by_person": self.emergency_stop_resume_state,
+            },
             "velocity_error_sample_count": self.velocity_error_sample_count,
             "mean_solver_to_adapter_velocity_error_mps": (
                 self.solver_to_adapter_velocity_error_sum_mps
@@ -3640,6 +4085,8 @@ class PhysxDualLidarScheduler:
         self._qualification_written = False
         self._profile_physics_span_started: float | None = None
         self._profile_accounted_app_sec = 0.0
+        self._self_occlusion_masks: dict[str, np.ndarray] = {}
+        self._self_occlusion_runs: dict[str, list[list[int]]] = {}
 
         dimensions = np.asarray(robot_collision_dimensions_m, dtype=float)
         if dimensions.shape != (3,) or np.any(~np.isfinite(dimensions)) or np.any(dimensions <= 0.0):
@@ -3652,7 +4099,9 @@ class PhysxDualLidarScheduler:
         )
         self._scan_directions_robot: dict[str, np.ndarray] = {}
         UsdGeom.Xform.Define(stage, PHYSX_SENSOR_ROOT)
-        for topic, prim_name, mount, mount_yaw in self._specs:
+        for sensor_index, (topic, prim_name, mount, mount_yaw) in enumerate(
+            self._specs, start=1
+        ):
             mount_xy = np.asarray(mount[:2], dtype=float)
             c, s = math.cos(mount_yaw), math.sin(mount_yaw)
             robot_directions_xy = np.column_stack(
@@ -3703,6 +4152,14 @@ class PhysxDualLidarScheduler:
             self._prims[topic] = prim
             self._paths[topic] = path
             self._ray_start_offsets_m[topic] = offsets_m
+            self._self_occlusion_masks[topic] = (
+                fixed_dual_self_occlusion_mask(sensor_index, LIDAR_SAMPLE_COUNT)
+                if LIDAR_SELF_OCCLUSION_MODE == "fixed_mask"
+                else np.zeros(LIDAR_SAMPLE_COUNT, dtype=np.bool_)
+            )
+            self._self_occlusion_runs[topic] = true_mask_runs(
+                self._self_occlusion_masks[topic]
+            )
 
         position, yaw = self.pose_provider()
         self._set_sensor_poses(np.asarray(position, dtype=float), float(yaw))
@@ -3982,7 +4439,15 @@ class PhysxDualLidarScheduler:
                     self.people_lidar and self.people_lidar.debug
                 ),
             )
-            scans[topic] = {**metadata, "ranges": ranges}
+            stats["self_occlusion_mode"] = LIDAR_SELF_OCCLUSION_MODE
+            stats["self_occlusion_masked_beams"] = int(
+                self._self_occlusion_masks[topic].sum()
+            )
+            scans[topic] = {
+                **metadata,
+                "ranges": ranges,
+                "invalid_beam_runs": self._self_occlusion_runs[topic],
+            }
             scan_stats[topic] = stats
             timing = stats.get("timing_ms", {})
             if isinstance(timing, dict):
@@ -5477,20 +5942,30 @@ def main() -> int:
             yield_trigger_m = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_TRIGGER_M
             yield_resume_m = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_RESUME_M
             yield_role = "emergency_fallback"
+            yield_maximum_hold_sec = (
+                PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_MAX_HOLD_SEC
+            )
+            yield_cooldown_sec = PEDESTRIAN_SOCIAL_EMERGENCY_YIELD_COOLDOWN_SEC
         elif PEDESTRIAN_SOCIAL_MODE == "legacy":
             yield_trigger_m = PEDESTRIAN_SOCIAL_YIELD_TRIGGER_M
             yield_resume_m = PEDESTRIAN_SOCIAL_YIELD_RESUME_M
             yield_role = "legacy_primary"
+            yield_maximum_hold_sec = None
+            yield_cooldown_sec = 0.0
         else:
             yield_trigger_m = None
             yield_resume_m = None
             yield_role = None
+            yield_maximum_hold_sec = None
+            yield_cooldown_sec = 0.0
         pedestrian_social_yielding = (
             PedestrianSocialYielding(
                 initial_people_positions,
                 trigger_distance_m=yield_trigger_m,
                 resume_distance_m=yield_resume_m,
                 role=yield_role,
+                maximum_hold_sec=yield_maximum_hold_sec,
+                cooldown_sec=yield_cooldown_sec,
             )
             if PEOPLE_ENABLED and yield_trigger_m is not None
             else None
@@ -5554,6 +6029,8 @@ def main() -> int:
         pedestrian_min_robot_clearance_by_person_m = {
             path: math.inf for path in initial_people_positions
         }
+        pedestrian_min_robot_body_net_clearance_m = math.inf
+        pedestrian_robot_body_overlap_frames = 0
         pedestrian_near_robot_frames = 0
         pedestrian_inside_robot_frames = 0
         last_pedestrian_avoidance_sample_sim_time = -math.inf
@@ -5628,6 +6105,24 @@ def main() -> int:
                         if PEDESTRIAN_DODGE_PROFILE is not None
                         else None
                     ),
+                    "pedestrian_robot_emergency_stop_enabled": (
+                        PEDESTRIAN_ROBOT_EMERGENCY_STOP_ENABLED
+                    ),
+                    "pedestrian_robot_emergency_stop_final_clearance_m": (
+                        PEDESTRIAN_ROBOT_EMERGENCY_STOP_FINAL_CLEARANCE_M
+                    ),
+                    "pedestrian_robot_emergency_stop_early_clearance_m": (
+                        PEDESTRIAN_ROBOT_EMERGENCY_STOP_EARLY_CLEARANCE_M
+                    ),
+                    "pedestrian_robot_emergency_stop_resume_clearance_m": (
+                        PEDESTRIAN_ROBOT_EMERGENCY_STOP_RESUME_CLEARANCE_M
+                    ),
+                    "pedestrian_robot_emergency_stop_release_safe_samples": (
+                        PEDESTRIAN_ROBOT_EMERGENCY_STOP_RELEASE_SAFE_SAMPLES
+                    ),
+                    "pedestrian_body_geometry": "root_centered_planar_circle",
+                    "pedestrian_body_radius_m": PEDESTRIAN_AGENT_RADIUS_M,
+                    "robot_outline_geometry": "collision_proxy_oriented_box",
                     "pedestrian_person_person_avoidance": PEOPLE_ENABLED,
                     "pedestrian_social_mass_kg": (
                         PEDESTRIAN_SOCIAL_MASS_KG if PEOPLE_ENABLED else None
@@ -5647,6 +6142,12 @@ def main() -> int:
                         yield_resume_m
                         if PEOPLE_ENABLED
                         else None
+                    ),
+                    "pedestrian_social_yield_maximum_hold_sec": (
+                        yield_maximum_hold_sec if PEOPLE_ENABLED else None
+                    ),
+                    "pedestrian_social_yield_cooldown_sec": (
+                        yield_cooldown_sec if PEOPLE_ENABLED else None
                     ),
                     "pedestrian_route_clearance_m": (
                         CUSTOM_FREE_SPACE_CLEARANCE_M
@@ -5693,6 +6194,7 @@ def main() -> int:
                         ARGS.app_update_rate_limit_hz or None
                     ),
                     "lidar_mode": LIDAR_MODE,
+                    "lidar_self_occlusion_mode": LIDAR_SELF_OCCLUSION_MODE,
                     "lidar_backend": LIDAR_BACKEND,
                     "physx_capture_backend": PHYSX_CAPTURE_BACKEND,
                     "lidar_profile": (
@@ -6281,6 +6783,7 @@ def main() -> int:
                     pedestrian_social_yielding.update(
                         sampled_people_positions,
                         inhibited_social_yield_paths,
+                        current_time_sec=sim_time,
                     )
                 if pedestrian_social_motion is not None:
                     inhibited_social_motion_paths = set(
@@ -6373,6 +6876,31 @@ def main() -> int:
                         pedestrian_near_robot_frames += 1
                     if frame_minimum < 0.0:
                         pedestrian_inside_robot_frames += 1
+                robot_collision_center_stage = collision_proxy.center(
+                    navigation_position, navigation_yaw
+                )
+                frame_body_net_clearances = {
+                    path: circular_body_net_clearance_m(
+                        signed_planar_box_clearance_m(
+                            current,
+                            robot_collision_center_stage,
+                            navigation_yaw,
+                            collision_proxy.dimensions_m,
+                        ),
+                        PEDESTRIAN_AGENT_RADIUS_M,
+                    )
+                    for path, current in sampled_people_positions.items()
+                }
+                if frame_body_net_clearances:
+                    frame_body_net_minimum = min(
+                        frame_body_net_clearances.values()
+                    )
+                    pedestrian_min_robot_body_net_clearance_m = min(
+                        pedestrian_min_robot_body_net_clearance_m,
+                        frame_body_net_minimum,
+                    )
+                    if frame_body_net_minimum < 0.0:
+                        pedestrian_robot_body_overlap_frames += 1
                 last_pedestrian_avoidance_sample_sim_time = advance_periodic_origin(
                     last_pedestrian_avoidance_sample_sim_time,
                     sim_time,
@@ -6765,6 +7293,24 @@ def main() -> int:
                 if math.isfinite(pedestrian_min_robot_clearance_m)
                 else None
             ),
+            "pedestrian_min_robot_body_net_clearance_m": (
+                pedestrian_min_robot_body_net_clearance_m
+                if math.isfinite(pedestrian_min_robot_body_net_clearance_m)
+                else None
+            ),
+            "pedestrian_robot_body_overlap_frames": (
+                pedestrian_robot_body_overlap_frames
+            ),
+            "pedestrian_robot_body_clearance_geometry": {
+                "pedestrian": "root_centered_planar_circle",
+                "pedestrian_radius_m": PEDESTRIAN_AGENT_RADIUS_M,
+                "robot": "collision_proxy_oriented_box",
+                "geometry_error_m": (
+                    "actual_animated_horizontal_extent_minus_configured_radius; "
+                    "not calibrated"
+                ),
+                "physical_contact_truth": False,
+            },
             "pedestrian_min_robot_clearance_by_person_m": {
                 path: clearance if math.isfinite(clearance) else None
                 for path, clearance in (
@@ -6800,6 +7346,7 @@ def main() -> int:
             "people_max_displacement_m": max_people_displacements_m,
             "ros_cmd_vel_messages_received": ros.received_count if ros is not None else 0,
             "lidar_mode": LIDAR_MODE,
+            "lidar_self_occlusion_mode": LIDAR_SELF_OCCLUSION_MODE,
             "lidar_backend": LIDAR_BACKEND,
             "physx_capture_backend": PHYSX_CAPTURE_BACKEND,
             "lidar_profile": (

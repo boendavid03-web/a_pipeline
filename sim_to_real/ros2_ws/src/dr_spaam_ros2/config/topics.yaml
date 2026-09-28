@@ -1,0 +1,21 @@
+dr_spaam_ros2:
+  ros__parameters:
+    publisher:
+      detections:
+        topic: /dr_spaam_detections
+        queue_size: 10
+        latch: false
+
+      rviz:
+        topic: /dr_spaam_rviz
+        queue_size: 10
+        latch: false
+
+      scored:
+        topic: /dr_spaam_detections_scored
+        queue_size: 10
+
+    subscriber:
+      scan:
+        topic: /scan_merged
+        queue_size: 10

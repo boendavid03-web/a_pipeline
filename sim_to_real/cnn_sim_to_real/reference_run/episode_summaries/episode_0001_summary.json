@@ -1,0 +1,830 @@
+{
+  "schema": {
+    "name": "navigation_episode_evaluation",
+    "version": 5
+  },
+  "episode_sequence": {
+    "index": 1,
+    "multi_episode": true
+  },
+  "experiment": {
+    "scene_id": "fixed_four_semantic_cnn_online_s3net_gazebo_r045",
+    "scene_file": "scenarios/lobby/eng_hall_15.xml",
+    "requested_start": [
+      2.0,
+      2.0,
+      0.0
+    ],
+    "actual_start": [
+      2.0,
+      2.0,
+      9.528610040936018e-27
+    ],
+    "requested_goal": [
+      16.0,
+      16.0
+    ],
+    "accepted_goal": [
+      23.290199279785156,
+      10.725000381469727
+    ],
+    "pedestrian_seed": 7,
+    "pedestrian_count": 19,
+    "simulation_time_start": 10.915,
+    "simulation_time_end": 68.36
+  },
+  "map_provenance": {
+    "map_yaml_path": "/home/user/navigation_project/a_pipeline/runs/20260808_gazebo_play/bags/raw/20260827_110642_drlvo_teacher_auto_p20_seed17_a1/supervision_assets/map.yaml",
+    "map_yaml_sha256": "0996974378cf991d6f1ee3c66b9e126d82c2098fa814449428466a44c23c7c3a",
+    "occupancy_map_path": "/home/user/navigation_project/a_pipeline/runs/20260808_gazebo_play/bags/raw/20260827_110642_drlvo_teacher_auto_p20_seed17_a1/supervision_assets/occupancy.pgm",
+    "occupancy_map_sha256": "fc3f3422a761f1ed560313d8856c751766c5e165f29412271311bc33b416e5f7",
+    "semantic_label_path": "/home/user/navigation_project/a_pipeline/runs/20260808_gazebo_play/bags/raw/20260827_110642_drlvo_teacher_auto_p20_seed17_a1/supervision_assets/label.png",
+    "semantic_label_sha256": "c21db19c74a61393424b744a21bf292691fecdaa4642b5f10d583c30a57c1a96"
+  },
+  "method": {
+    "name": "SemanticCNN",
+    "producer_id": "semantic_cnn_policy",
+    "policy_mode": "best_dev",
+    "checkpoint": "/home/user/navigation_project/a_pipeline/runs/20260808_gazebo_play/training/semantic_cnn_formal_auto_teacher/20260828_000241_semantic_cnn_native_cmd_51epoch/semantic_cnn_native_cmd_best_dev.pth",
+    "checkpoint_sha256": "175ee162e1f7ccd23651efdcfc657c512685c439bf98e026a6bfc9c811b9ac26",
+    "device": "cuda",
+    "pedestrian_source": "online_s3net",
+    "oracle_pedestrian_velocity": false,
+    "model_parameters": 2403078,
+    "cuda_peak_memory_bytes": 38620160
+  },
+  "episode": {
+    "goal_reached": true,
+    "success": null,
+    "timeout": false,
+    "strict_success_proxy": null,
+    "termination_reason": "goal_tolerance_reached",
+    "navigation_time_sec": 57.445,
+    "samples": {
+      "odom": 1642,
+      "pose_derived_velocity": 1641,
+      "cmd_vel": 871,
+      "inference": 858,
+      "actuation_decisions": 871,
+      "simulator_actuation": 0
+    }
+  },
+  "time_metrics": {
+    "goal_to_reach_sec": 57.445,
+    "first_odom_to_reach_sec": 57.435,
+    "first_policy_action_to_reach_sec": 56.595,
+    "first_nonzero_cmd_to_reach_sec": 56.445
+  },
+  "navigation": {
+    "path_length_m": 26.073724363062688,
+    "euclidean_start_goal_distance_m": 23.008655263391887,
+    "planner_reference_path_length_m": 26.932337649086307,
+    "planner_reference": {
+      "algorithm": "astar_8_connected",
+      "resolution": 0.05,
+      "inflation_radius": 0.45,
+      "endpoint_convention": "world_xy_floor_to_grid; snap_to_nearest_free_cell; sum_cell_center_steps",
+      "snap_radius": 0.8
+    },
+    "goal_spl": {
+      "value": null,
+      "status": "provisional",
+      "reason": "A* reference is not asserted to be a strict shortest path; strict success may be unknown"
+    },
+    "planner_reference_path_efficiency": 1.0329302125798328,
+    "minimum_goal_distance_m": 0.3424510375471538,
+    "path_irregularity": {
+      "turn_count": 1612,
+      "total_turn_rad": 6.879656693503083,
+      "necessary_turn_rad": 0.3759060831236365,
+      "unnecessary_turn_rad": 6.503750610379447,
+      "path_length_m": 26.073724363062688,
+      "ignored_micro_segment_count": 28,
+      "valid": true,
+      "reason": null,
+      "turning_rad_per_m": 0.24943696266088392
+    },
+    "pose_integration_consistency": {
+      "trajectory_path_length_m": 26.073724363062688,
+      "pose_velocity_integrated_path_length_m": 26.073724363062688,
+      "absolute_difference_m": 0.0,
+      "consistent": true
+    }
+  },
+  "speed": {
+    "mean_mps": 0.45396925851941655,
+    "max_mps": 0.5798891334332672,
+    "statistics": {
+      "count": 1641,
+      "minimum": 0.0,
+      "mean": 0.4539692585194161,
+      "maximum": 0.5798891334332672,
+      "p05": 0.3877777060298984,
+      "p50": 0.46203735730062095,
+      "p95": 0.5211175833200926,
+      "std": 0.07290610532590051
+    },
+    "stopped_time_ratio": 0.01706276660572819,
+    "source": "pose_derived_velocity"
+  },
+  "angular_velocity": {
+    "statistics_radps": {
+      "count": 1641,
+      "minimum": -0.7188183367251642,
+      "mean": 0.006664854160875753,
+      "maximum": 0.6739158779382666,
+      "p05": -0.2697117562805132,
+      "p50": 0.0,
+      "p95": 0.29365090280772504,
+      "std": 0.17855016888663133
+    },
+    "mean_absolute_radps": 0.11997001374932682,
+    "maximum_absolute_radps": 0.7188183367251642,
+    "source": "pose_derived_velocity"
+  },
+  "motion_quality": {
+    "acceleration": {
+      "odom_linear_rms_mps2": 0.3170122126260822,
+      "odom_linear_max_mps2": 9.165522269717185,
+      "odom_linear_minimum_mps2": -0.9348593419173167,
+      "odom_linear_mean_mps2": 0.00576031995509191,
+      "odom_linear_maximum_signed_mps2": 9.165522269717185,
+      "odom_linear_mean_abs_mps2": 0.14497680231116733,
+      "odom_linear_p95_abs_mps2": 0.437458330201128,
+      "odom_linear_max_abs_mps2": 9.165522269717185,
+      "odom_linear_integrated_squared_mps2": 5.768513045564462,
+      "cmd_linear_rms_mps2": 0.20110936195732373,
+      "cmd_linear_max_mps2": 2.064543823863186,
+      "cmd_linear_minimum_mps2": -0.7347497073086863,
+      "cmd_linear_mean_mps2": 0.00037991624970710997,
+      "cmd_linear_maximum_signed_mps2": 2.064543823863186,
+      "cmd_linear_mean_abs_mps2": 0.1445731165543303,
+      "cmd_linear_p95_abs_mps2": 0.362227536164801,
+      "cmd_linear_max_abs_mps2": 2.064543823863186,
+      "cmd_linear_integrated_squared_mps2": 2.8135216868992265,
+      "cmd_angular_rms_radps2": 0.31730414118813094,
+      "cmd_angular_max_radps2": 1.9375859304916039,
+      "cmd_angular_minimum_radps2": -1.8300777673722353,
+      "cmd_angular_mean_radps2": -0.006084362564691264,
+      "cmd_angular_maximum_signed_radps2": 1.9375859304916039,
+      "cmd_angular_mean_abs_radps2": 0.23176000877541564,
+      "cmd_angular_p95_abs_radps2": 0.6168901962893231,
+      "cmd_angular_max_abs_radps2": 1.9375859304916039,
+      "cmd_angular_integrated_squared_radps2": 6.054821254527107,
+      "derivative_sample_count": {
+        "odom_linear": 1640,
+        "cmd_linear": 870,
+        "cmd_angular": 870
+      },
+      "discarded_interval_count": {
+        "odom_linear": {
+          "duplicate_timestamp": 0,
+          "nonpositive_dt": 0,
+          "abnormal_dt": 0,
+          "nonfinite_value": 0,
+          "nonfinite_timestamp": 0
+        },
+        "cmd_linear": {
+          "duplicate_timestamp": 0,
+          "nonpositive_dt": 0,
+          "abnormal_dt": 0,
+          "nonfinite_value": 0,
+          "nonfinite_timestamp": 0
+        },
+        "cmd_angular": {
+          "duplicate_timestamp": 0,
+          "nonpositive_dt": 0,
+          "abnormal_dt": 0,
+          "nonfinite_value": 0,
+          "nonfinite_timestamp": 0
+        }
+      }
+    },
+    "jerk": {
+      "odom_linear_rms_mps3": 10.492200185326842,
+      "odom_linear_max_mps3": 261.87206484906136,
+      "odom_linear_minimum_mps3": -150.6255799208909,
+      "odom_linear_mean_mps3": 0.0005257560838074335,
+      "odom_linear_maximum_signed_mps3": 261.87206484906136,
+      "odom_linear_mean_abs_mps3": 5.249810824141769,
+      "odom_linear_p95_abs_mps3": 14.417703555683758,
+      "odom_linear_max_abs_mps3": 261.87206484906136,
+      "odom_linear_integrated_squared_mps3": 6315.098576177535,
+      "cmd_linear_rms_mps3": 6.269201203809162,
+      "cmd_linear_max_mps3": 141.19891926299871,
+      "cmd_linear_minimum_mps3": -141.19891926299871,
+      "cmd_linear_mean_mps3": -0.19547166008005365,
+      "cmd_linear_maximum_signed_mps3": 20.71762673648655,
+      "cmd_linear_mean_abs_mps3": 3.2124566562957777,
+      "cmd_linear_p95_abs_mps3": 7.990875819913465,
+      "cmd_linear_max_abs_mps3": 141.19891926299871,
+      "cmd_linear_integrated_squared_mps3": 1092.496668249242,
+      "cmd_angular_rms_radps3": 9.820786864167873,
+      "cmd_angular_max_radps3": 166.26565262329052,
+      "cmd_angular_minimum_radps3": -166.26565262329052,
+      "cmd_angular_mean_radps3": -0.33978679370402887,
+      "cmd_angular_maximum_signed_radps3": 31.063448878591224,
+      "cmd_angular_mean_abs_radps3": 5.805271943750263,
+      "cmd_angular_p95_abs_radps3": 13.938686674988823,
+      "cmd_angular_max_abs_radps3": 166.26565262329052,
+      "cmd_angular_integrated_squared_radps3": 3183.6324473617897,
+      "derivative_sample_count": {
+        "odom_linear": 1639,
+        "cmd_linear": 869,
+        "cmd_angular": 869
+      },
+      "discarded_interval_count": {
+        "odom_linear": {
+          "duplicate_timestamp": 0,
+          "nonpositive_dt": 0,
+          "abnormal_dt": 0,
+          "nonfinite_value": 0,
+          "nonfinite_timestamp": 0
+        },
+        "cmd_linear": {
+          "duplicate_timestamp": 0,
+          "nonpositive_dt": 0,
+          "abnormal_dt": 0,
+          "nonfinite_value": 0,
+          "nonfinite_timestamp": 0
+        },
+        "cmd_angular": {
+          "duplicate_timestamp": 0,
+          "nonpositive_dt": 0,
+          "abnormal_dt": 0,
+          "nonfinite_value": 0,
+          "nonfinite_timestamp": 0
+        }
+      }
+    }
+  },
+  "static_clearance": {
+    "minimum_m": -0.07074175964327484,
+    "mean_m": 1.0347457502345878,
+    "statistics": {
+      "count": 1642,
+      "minimum": -0.07074175964327484,
+      "mean": 1.0347457502345878,
+      "maximum": 2.189822128134704,
+      "p05": 0.11013846284534357,
+      "p50": 1.1108618128546908,
+      "p95": 1.8192533394850872,
+      "std": 0.5392675642854682
+    },
+    "threshold_exposure": {
+      "threshold_m": 0.0,
+      "meaning": "static occupancy geometry overlap proxy",
+      "threshold": 0.0,
+      "direction": "below",
+      "sample_count": 1642,
+      "exposed_sample_count": 26,
+      "exposure_time_sec": 0.9100000000000037,
+      "exposure_ratio": 0.01584399756246198,
+      "entry_count": 1,
+      "max_penetration": 0.07074175964327484
+    }
+  },
+  "human_clearance": {
+    "minimum_center_distance_m": 0.9877284614410041,
+    "minimum_body_clearance_m": 0.5227284614410042,
+    "mean_nearest_center_distance_m": 2.5854448242273462,
+    "center_statistics": {
+      "count": 1641,
+      "minimum": 0.9877284614410041,
+      "mean": 2.5854448242273462,
+      "maximum": 6.652954318877684,
+      "p05": 1.149867992080616,
+      "p50": 1.897910332971977,
+      "p95": 6.192089861415422,
+      "std": 1.635756852265217
+    },
+    "body_statistics": {
+      "count": 1641,
+      "minimum": 0.5227284614410042,
+      "mean": 2.120444824227346,
+      "maximum": 6.187954318877684,
+      "p05": 0.684867992080616,
+      "p50": 1.432910332971977,
+      "p95": 5.727089861415422,
+      "std": 1.635756852265217
+    },
+    "threshold_exposure": {
+      "threshold_m": 0.0,
+      "meaning": "human body-geometry overlap proxy",
+      "threshold": 0.0,
+      "direction": "below",
+      "sample_count": 1642,
+      "exposed_sample_count": 0,
+      "exposure_time_sec": 0.0,
+      "exposure_ratio": 0.0,
+      "entry_count": 0,
+      "max_penetration": 0.0
+    }
+  },
+  "ttc": {
+    "minimum_finite_ttc_sec": 2.3237964927004655,
+    "p05_finite_ttc_sec": 2.7550952607334174,
+    "finite_ttc_sample_fraction": 0.19366626065773446,
+    "finite_ttc_time_fraction": 0.19375054399860717,
+    "time_below_threshold_sec": 0.0,
+    "episode_time_fraction_below_threshold_sec": 0.0,
+    "time_below_1_sec": 0.0,
+    "time_below_2_sec": 0.0,
+    "episode_time_fraction_below_1_sec": 0.0,
+    "episode_time_fraction_below_2_sec": 0.0,
+    "threshold_sec": 2.0
+  },
+  "personal_space": {
+    "threshold_m": 0.8,
+    "violation_time_sec": 0.0,
+    "violation_time_ratio": 0.0,
+    "thresholds": {
+      "0.5m": {
+        "threshold_m": 0.5,
+        "violation_time_sec": 0.0,
+        "violation_time_ratio": 0.0
+      },
+      "0.8m": {
+        "threshold_m": 0.8,
+        "violation_time_sec": 0.0,
+        "violation_time_ratio": 0.0
+      },
+      "1.2m": {
+        "threshold_m": 1.2,
+        "violation_time_sec": 5.215000000000007,
+        "violation_time_ratio": 0.09085365853658549
+      }
+    }
+  },
+  "failure_to_progress": {
+    "window_sec": 5.0,
+    "progress_threshold_m": 0.2,
+    "window_count": 1499,
+    "event_count": 0,
+    "evaluated_duration_sec": 52.43,
+    "stalled_duration_sec": 0.0,
+    "stalled_duration_ratio": 0.0,
+    "failed": false
+  },
+  "crowd_density": {
+    "radius_m": 2.0,
+    "samples": 1641,
+    "statistics": {
+      "count": 1641,
+      "minimum": 0.0,
+      "mean": 0.06498099443727597,
+      "maximum": 0.238732414637843,
+      "p05": 0.0,
+      "p50": 0.07957747154594767,
+      "p95": 0.238732414637843,
+      "std": 0.07515798148463712
+    },
+    "source": "pedestrian_ground_truth"
+  },
+  "virtual_collision_proxy": {
+    "threshold_m": 0.8,
+    "meaning": "nearest human center inside personal-space radius; not a physical contact event",
+    "threshold": 0.8,
+    "direction": "below",
+    "sample_count": 1642,
+    "exposed_sample_count": 0,
+    "exposure_time_sec": 0.0,
+    "exposure_ratio": 0.0,
+    "entry_count": 0,
+    "max_penetration": 0.0
+  },
+  "frequency": {
+    "cmd_vel_hz": 15.150195907705704,
+    "policy_inference_hz": 15.150711570759304
+  },
+  "inference_latency_ms": {
+    "samples": 858,
+    "mean": 12.17049088289132,
+    "p50": 9.75176477432251,
+    "p95": 23.14922285079956,
+    "max": 232.71669006347656
+  },
+  "velocity_tracking": {
+    "source": "pose_derived_velocity from consecutive /odom.pose samples and simulation time",
+    "actual_velocity_sources": [
+      "pose_derived_velocity"
+    ],
+    "commanded_velocity_source": "ActuationDecision.final_command",
+    "applied_velocity_source": "SimulatorActuationState.applied_command",
+    "watchdog_sample_count": 0,
+    "collision_protection_sample_count": 0,
+    "stale_command_sample_count": 0,
+    "resample_rate_hz": 15.0,
+    "freshness_sec": 0.2,
+    "maximum_causal_delay_sec": 0.5,
+    "raw_model_to_final_command": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "final_command_to_actual_velocity": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "angular_raw_model_to_final_command": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "angular_final_command_to_actual_velocity": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "safety_gated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "safety_ungated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "raw_model_to_final_safety_gated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "raw_model_to_final_safety_ungated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "angular_safety_gated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "angular_safety_ungated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "stable_straight_ungated": {
+      "valid": false,
+      "reason": "missing_source",
+      "sample_count": 0
+    },
+    "stable_straight_ungated_advisory": {
+      "statistics": {
+        "valid": false,
+        "reason": "missing_source",
+        "sample_count": 0
+      },
+      "criteria": {
+        "absolute_bias_max_mps": 0.05,
+        "mae_max_mps": 0.08,
+        "p95_absolute_error_max_mps": 0.15,
+        "correlation_minimum": 0.9
+      },
+      "checks": null,
+      "passed": null,
+      "status": "unavailable",
+      "reason": "missing_source"
+    },
+    "best_causal_delay_sec": null,
+    "delay_reason": "missing_source",
+    "coverage": 0.0,
+    "physx_reported_velocity_diagnostic": {
+      "source": "SimulatorActuationState.actual_velocity",
+      "actual_velocity_sources": [],
+      "final_command_to_physx_reported_velocity": {
+        "valid": false,
+        "reason": "missing_source",
+        "sample_count": 0
+      },
+      "angular_final_command_to_physx_reported_velocity": {
+        "valid": false,
+        "reason": "missing_source",
+        "sample_count": 0
+      },
+      "stable_straight_ungated": {
+        "valid": false,
+        "reason": "missing_source",
+        "sample_count": 0
+      },
+      "coverage": 0.0,
+      "best_causal_delay_sec": null,
+      "delay_reason": "missing_source"
+    }
+  },
+  "metric_validity": {
+    "velocity_tracking": {
+      "status": "unavailable",
+      "reason": "missing_source"
+    }
+  },
+  "collision": {
+    "occurred": null,
+    "human": null,
+    "static": null,
+    "human_proxy": null,
+    "static_proxy": true,
+    "virtual_proxy": false,
+    "status": "proxy",
+    "reason": "Physical contact truth is unavailable; human/static values are geometry proxies, not contact events.",
+    "sensor_configured": false,
+    "publisher_discovered": false,
+    "messages_received": false
+  },
+  "metric_catalog": {
+    "Success": {
+      "status": "available",
+      "output_paths": [
+        "episode.success"
+      ],
+      "output_path": "episode.success",
+      "reason": "Strict success requires evaluable static and human proxies."
+    },
+    "Timeout": {
+      "status": "available",
+      "output_paths": [
+        "episode.timeout"
+      ],
+      "output_path": "episode.timeout",
+      "reason": "Evaluator timeout termination."
+    },
+    "Path Length": {
+      "status": "available",
+      "output_paths": [
+        "navigation.path_length_m"
+      ],
+      "output_path": "navigation.path_length_m",
+      "reason": "Integrated accepted odometry trajectory."
+    },
+    "Run Time": {
+      "status": "available",
+      "output_paths": [
+        "episode.navigation_time_sec"
+      ],
+      "output_path": "episode.navigation_time_sec",
+      "reason": "ROS simulation-time duration."
+    },
+    "SPL": {
+      "status": "provisional",
+      "output_paths": [
+        "navigation.goal_spl.value"
+      ],
+      "output_path": "navigation.goal_spl.value",
+      "reason": "Uses the configured A* reference, not an asserted strict shortest path."
+    },
+    "Static Obstacle Collision": {
+      "status": "proxy",
+      "output_paths": [
+        "collision.static_proxy"
+      ],
+      "output_path": "collision.static_proxy",
+      "reason": "Nullable static geometry-overlap proxy, not a physical contact event."
+    },
+    "Velocity Metrics": {
+      "status": "available",
+      "output_paths": [
+        "speed.mean_mps",
+        "speed.max_mps",
+        "speed.stopped_time_ratio",
+        "angular_velocity.mean_absolute_radps",
+        "angular_velocity.maximum_absolute_radps"
+      ],
+      "output_path": [
+        "speed.mean_mps",
+        "speed.max_mps",
+        "speed.stopped_time_ratio",
+        "angular_velocity.mean_absolute_radps",
+        "angular_velocity.maximum_absolute_radps"
+      ],
+      "reason": "Odometry velocity summaries."
+    },
+    "Speed Efficiency": {
+      "status": "unavailable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "Nominal speed limit/efficiency source is not recorded."
+    },
+    "Acceleration Metrics": {
+      "status": "available",
+      "output_paths": [
+        "motion_quality.acceleration.odom_linear_rms_mps2",
+        "motion_quality.acceleration.odom_linear_max_mps2"
+      ],
+      "output_path": [
+        "motion_quality.acceleration.odom_linear_rms_mps2",
+        "motion_quality.acceleration.odom_linear_max_mps2"
+      ],
+      "reason": "Finite differences of accepted odometry velocity."
+    },
+    "Jerk Metrics": {
+      "status": "available",
+      "output_paths": [
+        "motion_quality.jerk.odom_linear_rms_mps3",
+        "motion_quality.jerk.odom_linear_max_mps3"
+      ],
+      "output_path": [
+        "motion_quality.jerk.odom_linear_rms_mps3",
+        "motion_quality.jerk.odom_linear_max_mps3"
+      ],
+      "reason": "Second finite differences of accepted odometry velocity."
+    },
+    "Obstacle Distance": {
+      "status": "available",
+      "output_paths": [
+        "static_clearance.minimum_m",
+        "static_clearance.mean_m"
+      ],
+      "output_path": [
+        "static_clearance.minimum_m",
+        "static_clearance.mean_m"
+      ],
+      "reason": "Occupancy-map clearance when map distance is evaluable."
+    },
+    "Path Irregularity": {
+      "status": "proxy",
+      "output_paths": [
+        "navigation.path_irregularity.turning_rad_per_m"
+      ],
+      "output_path": "navigation.path_irregularity.turning_rad_per_m",
+      "reason": "Geometric necessary/unnecessary course-change proxy."
+    },
+    "Topological Complexity": {
+      "status": "unavailable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "No fixed braid/topological convention is recorded."
+    },
+    "Path Efficiency": {
+      "status": "provisional",
+      "output_paths": [
+        "navigation.planner_reference_path_efficiency"
+      ],
+      "output_path": "navigation.planner_reference_path_efficiency",
+      "reason": "A* reference efficiency is provisional."
+    },
+    "Failure To Progress": {
+      "status": "available",
+      "output_paths": [
+        "failure_to_progress.failed",
+        "failure_to_progress.event_count",
+        "failure_to_progress.evaluated_duration_sec",
+        "failure_to_progress.stalled_duration_sec",
+        "failure_to_progress.stalled_duration_ratio"
+      ],
+      "output_path": [
+        "failure_to_progress.failed",
+        "failure_to_progress.event_count",
+        "failure_to_progress.evaluated_duration_sec",
+        "failure_to_progress.stalled_duration_sec",
+        "failure_to_progress.stalled_duration_ratio"
+      ],
+      "reason": "Five-second goal-distance progress events and left-held stalled-state duration."
+    },
+    "Human Collision": {
+      "status": "proxy",
+      "output_paths": [
+        "collision.human_proxy"
+      ],
+      "output_path": "collision.human_proxy",
+      "reason": "Nullable synchronized human geometry-overlap proxy, not a physical contact event."
+    },
+    "Social Distance": {
+      "status": "available",
+      "output_paths": [
+        "human_clearance.minimum_center_distance_m",
+        "human_clearance.minimum_body_clearance_m"
+      ],
+      "output_path": [
+        "human_clearance.minimum_center_distance_m",
+        "human_clearance.minimum_body_clearance_m"
+      ],
+      "reason": "Synchronized ground-truth human clearance."
+    },
+    "Min Time To Collide": {
+      "status": "available",
+      "output_paths": [
+        "ttc.minimum_finite_ttc_sec"
+      ],
+      "output_path": "ttc.minimum_finite_ttc_sec",
+      "reason": "Synchronized constant-velocity TTC proxy."
+    },
+    "Crowd Density": {
+      "status": "available",
+      "output_paths": [
+        "crowd_density.statistics.mean"
+      ],
+      "output_path": "crowd_density.statistics.mean",
+      "reason": "Synchronized people per square metre within 2 m."
+    },
+    "Virtual Collision": {
+      "status": "proxy",
+      "output_paths": [
+        "virtual_collision_proxy.entry_count",
+        "virtual_collision_proxy.exposure_time_sec",
+        "virtual_collision_proxy.exposure_ratio",
+        "virtual_collision_proxy.max_penetration"
+      ],
+      "output_path": [
+        "virtual_collision_proxy.entry_count",
+        "virtual_collision_proxy.exposure_time_sec",
+        "virtual_collision_proxy.exposure_ratio",
+        "virtual_collision_proxy.max_penetration"
+      ],
+      "reason": "Synchronized social-space intrusion proxy, not physical contact."
+    },
+    "Personal Space": {
+      "status": "available",
+      "output_paths": [
+        "personal_space.violation_time_sec",
+        "personal_space.violation_time_ratio"
+      ],
+      "output_path": [
+        "personal_space.violation_time_sec",
+        "personal_space.violation_time_ratio"
+      ],
+      "reason": "Synchronized time below configured personal-space threshold."
+    },
+    "Legibility": {
+      "status": "unavailable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "No observer-intent model is recorded."
+    },
+    "Predictability": {
+      "status": "unavailable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "No observer-prediction model is recorded."
+    },
+    "Projected Path": {
+      "status": "unavailable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "No projected-path geometry trace is recorded."
+    },
+    "Following Rate": {
+      "status": "not_applicable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "Point-goal episodes do not define a followed person."
+    },
+    "SPS": {
+      "status": "not_applicable",
+      "output_paths": [],
+      "output_path": null,
+      "reason": "Point-goal episodes do not define this task-specific score."
+    }
+  },
+  "data_quality": {
+    "odom_received": true,
+    "goal_received": true,
+    "map_loaded": true,
+    "pedestrian_ground_truth_received": true,
+    "inference_metrics_received": true,
+    "missing_sources": [
+      "simulator_actuation"
+    ],
+    "accepted_odom": 1642,
+    "synchronized_pedestrian_snapshots": 1641,
+    "stale_pedestrian_snapshots": 0,
+    "future_pedestrian_snapshots": 0,
+    "frame_mismatch_pedestrian_snapshots": 0,
+    "missing_pedestrian_snapshots": 1,
+    "rejected_pedestrian_snapshots": 0,
+    "rejected_nonfinite_odom": 0,
+    "rejected_nonfinite_odom_twist": 0,
+    "rejected_nonfinite_cmd": 0,
+    "rejected_nonfinite_pedestrian_snapshots": 0,
+    "accepted_pose_derived_velocity": 1641,
+    "rejected_pose_derived_velocity": 1,
+    "pose_derived_invalid_first_sample": 1,
+    "pose_derived_invalid_nonfinite": 0,
+    "pose_derived_invalid_nonpositive_dt": 0,
+    "pose_derived_invalid_abnormal_dt": 0,
+    "pose_derived_invalid_reset_or_teleport": 0,
+    "pedestrian_sync_coverage": 0.9993909866017052,
+    "actuation_alignment_coverage": 0.0,
+    "actuation_alignment_diagnostics": {
+      "decision_duplicate_or_nonpositive": 0,
+      "state_duplicate_or_nonpositive": 0,
+      "decision_stale": 0,
+      "state_stale": 0,
+      "decision_sequence_gaps": 0,
+      "telemetry_sequence_gaps": 0,
+      "command_sequence_gaps": 0
+    },
+    "physx_actuation_alignment_coverage": 0.0,
+    "physx_actuation_alignment_diagnostics": {
+      "decision_duplicate_or_nonpositive": 0,
+      "state_duplicate_or_nonpositive": 0,
+      "decision_stale": 0,
+      "state_stale": 0,
+      "decision_sequence_gaps": 0,
+      "telemetry_sequence_gaps": 0,
+      "command_sequence_gaps": 0
+    }
+  }
+}

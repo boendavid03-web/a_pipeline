@@ -1,0 +1,52 @@
+{
+  "purpose": "non-semantic hardware dual-LiDAR conversion test",
+  "source_mcap": "/home/user/navigation_project/a_pipeline/temp/20260701_161918/20260701_161918_0.mcap",
+  "sample_count": 2804,
+  "layout": "[sample, sensor_01_or_02, beam, feature]",
+  "features": [
+    "range_normalized_by_sensor_range_max",
+    "intensity_normalized_by_255",
+    "valid_mask"
+  ],
+  "actions_cmd_vel": [
+    "linear_x_mps",
+    "linear_y_mps",
+    "angular_z_radps"
+  ],
+  "pose": "map -> base_footprint: x_m, y_m, yaw_rad",
+  "command_time_source": "MCAP storage timestamp; original /cmd_vel has no header stamp",
+  "sync_tolerance_ms": 50.0,
+  "scan_pairs_before_command_filter": 2885,
+  "skipped_scan_01": 19,
+  "skipped_scan_02": 0,
+  "extrinsics": [
+    {
+      "parent": "base_footprint",
+      "child": "base_scan_01",
+      "xyz_m": [
+        0.2,
+        0.13,
+        0.208
+      ],
+      "rpy_rad": [
+        3.14,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "parent": "base_footprint",
+      "child": "base_scan_02",
+      "xyz_m": [
+        -0.2,
+        -0.13,
+        0.208
+      ],
+      "rpy_rad": [
+        3.14,
+        0.0,
+        3.14
+      ]
+    }
+  ]
+}

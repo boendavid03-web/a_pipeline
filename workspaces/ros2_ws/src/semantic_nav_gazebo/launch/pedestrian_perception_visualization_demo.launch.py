@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isaac Sim DR-SPAAM pedestrian perception visualization demo.
+"""Isaac5 DR-SPAAM pedestrian perception visualization demo.
 
 The launch starts the existing Isaac scene/dual-LiDAR runner, the existing
 DR-SPAAM detector and tracker, and the new display-only visualizer.  It does
@@ -34,7 +34,7 @@ def project_root() -> Path:
 def validate_configuration(context):
     root = project_root()
     paths = {
-        "isaac_runner": root / "isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh",
+        "isaac_runner": root / "isaac_sim/backends/isaac5/launch/validate_crowd.sh",
         "dr_spaam": root
         / "github_src/drl_vo_nav-drl_vo/GenSafeNav-ROS2-main/dr_spaam_ros2/dr_spaam_ros2/dr_spaam_w_score_ros.py",
         "checkpoint": root
@@ -50,13 +50,8 @@ def validate_configuration(context):
     if scenario not in allowed:
         raise ValueError(f"scenario must be one of {sorted(allowed)}, got {scenario!r}")
     scene = str(LaunchConfiguration("scene").perform(context)).strip().lower()
-    if scene not in {"custom", "empty"}:
-        raise ValueError(f"scene must be 'custom' or 'empty', got {scene!r}")
-    if scene == "empty":
-        paths["empty_scene"] = root / "isaac_sim/scenes/a_pipeline_empty_people.usda"
-        paths["empty_route_generator"] = (
-            root / "isaac_sim/scripts/generate_empty_field_people_config.py"
-        )
+    if scene != "custom":
+        raise ValueError("Isaac5 visualization default supports only the validated 'custom' lobby scene")
     missing = [f"{name}={path}" for name, path in paths.items() if not path.is_file()]
     if missing:
         raise FileNotFoundError(
@@ -99,7 +94,7 @@ def generate_launch_description() -> LaunchDescription:
     dr_spaam_ros_root = root / "github_src/drl_vo_nav-drl_vo/GenSafeNav-ROS2-main/dr_spaam_ros2"
     dr_spaam_node = dr_spaam_ros_root / "dr_spaam_ros2/dr_spaam_w_score_ros.py"
     checkpoint = dr_spaam_ros_root / "model_weight/ckpt_jrdb_ann_ft_dr_spaam_e20.pth"
-    isaac_runner = root / "isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh"
+    isaac_runner = root / "isaac_sim/backends/isaac5/launch/validate_crowd.sh"
     python_path = ":".join(
         part
         for part in (str(dr_spaam_root), str(dr_spaam_ros_root), os.environ.get("PYTHONPATH", ""))
@@ -108,14 +103,14 @@ def generate_launch_description() -> LaunchDescription:
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument("scene", default_value="empty"),
+            DeclareLaunchArgument("scene", default_value="custom"),
             DeclareLaunchArgument("scenario", default_value="front_approach"),
             DeclareLaunchArgument("ira_config", default_value=""),
             DeclareLaunchArgument("people_count", default_value="8"),
             DeclareLaunchArgument("pedestrian_speed", default_value="0.8"),
             DeclareLaunchArgument("pedestrian_seed", default_value="21"),
-            # Use Isaac's stock warehouse-style reciprocal avoidance without
-            # Social Force steering or the legacy stop/yield controller.
+            # The Isaac5 crowd adapter uses its validated map-wide patrols;
+            # no Social Force steering or legacy stop/yield controller is run.
             DeclareLaunchArgument(
                 "pedestrian_social_mode", default_value="native_avoidance"
             ),
@@ -189,29 +184,7 @@ def generate_launch_description() -> LaunchDescription:
                 name="isaac_perception_scene",
                 output="screen",
                 additional_env={
-                    "ISAAC_ROS_DOMAIN_ID": LaunchConfiguration("ros_domain_id"),
-                    "ISAAC_SCENE": LaunchConfiguration("scene"),
-                    "ISAAC_ENABLE_PEOPLE": "1",
-                    "ISAAC_PEDESTRIAN_COUNT": LaunchConfiguration("people_count"),
-                    "ISAAC_PEDESTRIAN_SEED": LaunchConfiguration("pedestrian_seed"),
-                    "ISAAC_PEDESTRIAN_SPEED": LaunchConfiguration("pedestrian_speed"),
-                    "ISAAC_PEDESTRIAN_SOCIAL_MODE": LaunchConfiguration(
-                        "pedestrian_social_mode"
-                    ),
-                    "ISAAC_PEDESTRIAN_AVOIDANCE_MODE": LaunchConfiguration(
-                        "pedestrian_avoidance_mode"
-                    ),
-                    "ISAAC_PEDESTRIAN_FIXED_SPEED": LaunchConfiguration(
-                        "fixed_speed"
-                    ),
-                    "ISAAC_PEDESTRIAN_ENSURE_ALL_DIRECTIONS": LaunchConfiguration(
-                        "ensure_all_directions"
-                    ),
-                    "ISAAC_ROBOT_PHYSICS": "0",
-                    "ISAAC_LIDAR_MODE": "physx",
-                    "ISAAC_LIDAR_RATE_HZ": "15",
-                    "ISAAC_LIDAR_SAMPLE_COUNT": "2000",
-                    "ISAAC_EXPLICIT_CUSTOM_IRA_CONFIG": LaunchConfiguration("ira_config"),
+                    "ISAAC5_GATE6B_ROS_DOMAIN_ID": LaunchConfiguration("ros_domain_id"),
                     "PYTHONPATH": python_path,
                 },
             ),

@@ -1,0 +1,2761 @@
+{
+  "schema": {
+    "name": "navigation_evaluation_session",
+    "version": 2
+  },
+  "episode_count": 4,
+  "episodes": [
+    {
+      "index": 1,
+      "directory": "episode_0001",
+      "accepted_goal": [
+        23.290199279785156,
+        10.725000381469727
+      ],
+      "simulation_time_start": 10.915,
+      "simulation_time_end": 68.36,
+      "termination_reason": "goal_tolerance_reached",
+      "goal_reached": true
+    },
+    {
+      "index": 2,
+      "directory": "episode_0002",
+      "accepted_goal": [
+        17.140199661254883,
+        19.625
+      ],
+      "simulation_time_start": 70.07,
+      "simulation_time_end": 95.59,
+      "termination_reason": "goal_tolerance_reached",
+      "goal_reached": true
+    },
+    {
+      "index": 3,
+      "directory": "episode_0003",
+      "accepted_goal": [
+        13.440199851989746,
+        7.324999809265137
+      ],
+      "simulation_time_start": 97.27,
+      "simulation_time_end": 129.505,
+      "termination_reason": "goal_tolerance_reached",
+      "goal_reached": true
+    },
+    {
+      "index": 4,
+      "directory": "episode_0004",
+      "accepted_goal": [
+        7.390200138092041,
+        17.075000762939453
+      ],
+      "simulation_time_start": 131.285,
+      "simulation_time_end": 158.31,
+      "termination_reason": "goal_tolerance_reached",
+      "goal_reached": true
+    }
+  ],
+  "aggregate_metrics": {
+    "episode_count": 4,
+    "success_count": 0,
+    "success_rate": null,
+    "success_coverage": 0.0,
+    "goal_reached_count": 4,
+    "goal_reached_rate": 1.0,
+    "timeout_count": 0,
+    "timeout_rate": 0.0,
+    "human_proxy_collision_rate": null,
+    "human_proxy_collision_coverage": 0.0,
+    "static_proxy_collision_rate": 0.5,
+    "static_proxy_collision_coverage": 1.0,
+    "mean_provisional_spl": null,
+    "successful_path_length_mean_m": null,
+    "successful_navigation_time_mean_sec": null,
+    "failure_to_progress_episode_rate": 0.0,
+    "aggregate_inference_p95_ms": 22.589389419555662,
+    "goal_reached": {
+      "available": 4,
+      "missing": 0,
+      "coverage": 1.0,
+      "binary": {
+        "true_count": 4,
+        "false_count": 0,
+        "true_rate": 1.0
+      }
+    },
+    "metrics": {
+      "Success": {
+        "status": "available",
+        "outputs": {
+          "episode.success": {
+            "available": 0,
+            "missing": 4,
+            "coverage": 0.0,
+            "binary": null,
+            "numeric": null,
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 0,
+                "missing": 4,
+                "coverage": 0.0,
+                "binary": null,
+                "numeric": null
+              }
+            }
+          }
+        }
+      },
+      "Timeout": {
+        "status": "available",
+        "outputs": {
+          "episode.timeout": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "binary": {
+              "true_count": 0,
+              "false_count": 4,
+              "true_rate": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "binary": {
+                  "true_count": 0,
+                  "false_count": 4,
+                  "true_rate": 0.0
+                }
+              }
+            }
+          }
+        }
+      },
+      "Path Length": {
+        "status": "available",
+        "outputs": {
+          "navigation.path_length_m": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 15.42934271974337,
+              "std": 6.2226102280483815,
+              "min": 10.836918968644632,
+              "p05": 10.915381747663014,
+              "p50": 12.403363773633082,
+              "p95": 24.179674216378128,
+              "max": 26.073724363062688
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 15.42934271974337,
+                  "std": 6.2226102280483815,
+                  "min": 10.836918968644632,
+                  "p05": 10.915381747663014,
+                  "p50": 12.403363773633082,
+                  "p95": 24.179674216378128,
+                  "max": 26.073724363062688
+                }
+              }
+            }
+          }
+        }
+      },
+      "Run Time": {
+        "status": "available",
+        "outputs": {
+          "episode.navigation_time_sec": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 35.556250000000006,
+              "std": 12.880766851686275,
+              "min": 25.52000000000001,
+              "p05": 25.745750000000008,
+              "p50": 29.630000000000003,
+              "p95": 53.66349999999999,
+              "max": 57.445
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 35.556250000000006,
+                  "std": 12.880766851686275,
+                  "min": 25.52000000000001,
+                  "p05": 25.745750000000008,
+                  "p50": 29.630000000000003,
+                  "p95": 53.66349999999999,
+                  "max": 57.445
+                }
+              }
+            }
+          }
+        }
+      },
+      "SPL": {
+        "status": "provisional",
+        "outputs": {
+          "navigation.goal_spl.value": {
+            "available": 0,
+            "missing": 4,
+            "coverage": 0.0,
+            "binary": null,
+            "numeric": null,
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 0,
+                "missing": 4,
+                "coverage": 0.0,
+                "binary": null,
+                "numeric": null
+              }
+            }
+          }
+        }
+      },
+      "Static Obstacle Collision": {
+        "status": "proxy",
+        "outputs": {
+          "collision.static_proxy": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "binary": {
+              "true_count": 2,
+              "false_count": 2,
+              "true_rate": 0.5
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "binary": {
+                  "true_count": 2,
+                  "false_count": 2,
+                  "true_rate": 0.5
+                }
+              }
+            }
+          }
+        }
+      },
+      "Velocity Metrics": {
+        "status": "available",
+        "outputs": {
+          "speed.mean_mps": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.42906819595559764,
+              "std": 0.014625796848399625,
+              "min": 0.4171466848197814,
+              "p05": 0.4176391019456327,
+              "p50": 0.4225784202415963,
+              "p95": 0.44958297596516444,
+              "max": 0.45396925851941655
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.42906819595559764,
+                  "std": 0.014625796848399625,
+                  "min": 0.4171466848197814,
+                  "p05": 0.4176391019456327,
+                  "p50": 0.4225784202415963,
+                  "p95": 0.44958297596516444,
+                  "max": 0.45396925851941655
+                }
+              }
+            }
+          },
+          "speed.max_mps": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.5706640577958487,
+              "std": 0.007752707203033242,
+              "min": 0.5595859280644596,
+              "p05": 0.5607972774373056,
+              "p50": 0.571590584842834,
+              "p95": 0.5792337002886124,
+              "max": 0.5798891334332672
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.5706640577958487,
+                  "std": 0.007752707203033242,
+                  "min": 0.5595859280644596,
+                  "p05": 0.5607972774373056,
+                  "p50": 0.571590584842834,
+                  "p95": 0.5792337002886124,
+                  "max": 0.5798891334332672
+                }
+              }
+            }
+          },
+          "speed.stopped_time_ratio": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0295974644547667,
+              "std": 0.007769383372782493,
+              "min": 0.01706276660572819,
+              "p05": 0.018900745751676815,
+              "p50": 0.03214502708815092,
+              "p95": 0.03672759547111868,
+              "max": 0.03703703703703677
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0295974644547667,
+                  "std": 0.007769383372782493,
+                  "min": 0.01706276660572819,
+                  "p05": 0.018900745751676815,
+                  "p50": 0.03214502708815092,
+                  "p95": 0.03672759547111868,
+                  "max": 0.03703703703703677
+                }
+              }
+            }
+          },
+          "angular_velocity.mean_absolute_radps": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.16128587513935494,
+              "std": 0.03296482589202022,
+              "min": 0.11997001374932682,
+              "p05": 0.12280111998461604,
+              "p50": 0.16240642867489813,
+              "p95": 0.19820185534433338,
+              "max": 0.2003606294582967
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.16128587513935494,
+                  "std": 0.03296482589202022,
+                  "min": 0.11997001374932682,
+                  "p05": 0.12280111998461604,
+                  "p50": 0.16240642867489813,
+                  "p95": 0.19820185534433338,
+                  "max": 0.2003606294582967
+                }
+              }
+            }
+          },
+          "angular_velocity.maximum_absolute_radps": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.9818902047617781,
+              "std": 0.15337540662348054,
+              "min": 0.7188183367251642,
+              "p05": 0.7669962037886475,
+              "p50": 1.0542168234077018,
+              "p95": 1.0955269396306158,
+              "max": 1.100308835506545
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.9818902047617781,
+                  "std": 0.15337540662348054,
+                  "min": 0.7188183367251642,
+                  "p05": 0.7669962037886475,
+                  "p50": 1.0542168234077018,
+                  "p95": 1.0955269396306158,
+                  "max": 1.100308835506545
+                }
+              }
+            }
+          }
+        }
+      },
+      "Acceleration Metrics": {
+        "status": "available",
+        "outputs": {
+          "motion_quality.acceleration.odom_linear_rms_mps2": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.28414894941747737,
+              "std": 0.05805610797645353,
+              "min": 0.21904727758425954,
+              "p05": 0.22195695852327474,
+              "p50": 0.27772868156855485,
+              "p95": 0.3553293153001716,
+              "max": 0.3620911569485403
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.28414894941747737,
+                  "std": 0.05805610797645353,
+                  "min": 0.21904727758425954,
+                  "p05": 0.22195695852327474,
+                  "p50": 0.27772868156855485,
+                  "p95": 0.3553293153001716,
+                  "max": 0.3620911569485403
+                }
+              }
+            }
+          },
+          "motion_quality.acceleration.odom_linear_max_mps2": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 5.043132111443026,
+              "std": 3.3397176153957213,
+              "min": 1.3453586324478382,
+              "p05": 1.4733466604045458,
+              "p50": 4.8308237718035425,
+              "p95": 8.910149237976785,
+              "max": 9.165522269717185
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 5.043132111443026,
+                  "std": 3.3397176153957213,
+                  "min": 1.3453586324478382,
+                  "p05": 1.4733466604045458,
+                  "p50": 4.8308237718035425,
+                  "p95": 8.910149237976785,
+                  "max": 9.165522269717185
+                }
+              }
+            }
+          }
+        }
+      },
+      "Jerk Metrics": {
+        "status": "available",
+        "outputs": {
+          "motion_quality.jerk.odom_linear_rms_mps3": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 9.898231768828625,
+              "std": 2.102289358834827,
+              "min": 7.642940453190001,
+              "p05": 7.756308456188281,
+              "p50": 9.445463662586018,
+              "p95": 12.674030430208619,
+              "max": 13.059059296952464
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 9.898231768828625,
+                  "std": 2.102289358834827,
+                  "min": 7.642940453190001,
+                  "p05": 7.756308456188281,
+                  "p50": 9.445463662586018,
+                  "p95": 12.674030430208619,
+                  "max": 13.059059296952464
+                }
+              }
+            }
+          },
+          "motion_quality.jerk.odom_linear_max_mps3": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 144.956787366533,
+              "std": 94.73810309824127,
+              "min": 41.31190756613492,
+              "p05": 44.537744940478255,
+              "p50": 138.3215885254679,
+              "p95": 254.66510817007892,
+              "max": 261.87206484906136
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 144.956787366533,
+                  "std": 94.73810309824127,
+                  "min": 41.31190756613492,
+                  "p05": 44.537744940478255,
+                  "p50": 138.3215885254679,
+                  "p95": 254.66510817007892,
+                  "max": 261.87206484906136
+                }
+              }
+            }
+          }
+        }
+      },
+      "Obstacle Distance": {
+        "status": "available",
+        "outputs": {
+          "static_clearance.minimum_m": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.06508846548273294,
+              "std": 0.11304129835084481,
+              "min": -0.07074175964327484,
+              "p05": -0.06081896620303834,
+              "p50": 0.05270509831248424,
+              "p95": 0.20833261120685234,
+              "max": 0.2256854249492381
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.06508846548273294,
+                  "std": 0.11304129835084481,
+                  "min": -0.07074175964327484,
+                  "p05": -0.06081896620303834,
+                  "p50": 0.05270509831248424,
+                  "p95": 0.20833261120685234,
+                  "max": 0.2256854249492381
+                }
+              }
+            }
+          },
+          "static_clearance.mean_m": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 1.24933642554146,
+              "std": 0.23178470236073923,
+              "min": 1.0333014438431682,
+              "p05": 1.0335180898018812,
+              "p50": 1.189016890004733,
+              "p95": 1.5496021110324567,
+              "max": 1.5860104783132059
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 1.24933642554146,
+                  "std": 0.23178470236073923,
+                  "min": 1.0333014438431682,
+                  "p05": 1.0335180898018812,
+                  "p50": 1.189016890004733,
+                  "p95": 1.5496021110324567,
+                  "max": 1.5860104783132059
+                }
+              }
+            }
+          }
+        }
+      },
+      "Path Irregularity": {
+        "status": "proxy",
+        "outputs": {
+          "navigation.path_irregularity.turning_rad_per_m": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.2497243564083943,
+              "std": 0.05313349489510785,
+              "min": 0.17229818011614523,
+              "p05": 0.18386899749785604,
+              "p50": 0.25213422513988537,
+              "p95": 0.31220589909484503,
+              "max": 0.3223307952376612
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.2497243564083943,
+                  "std": 0.05313349489510785,
+                  "min": 0.17229818011614523,
+                  "p05": 0.18386899749785604,
+                  "p50": 0.25213422513988537,
+                  "p95": 0.31220589909484503,
+                  "max": 0.3223307952376612
+                }
+              }
+            }
+          }
+        }
+      },
+      "Path Efficiency": {
+        "status": "provisional",
+        "outputs": {
+          "navigation.planner_reference_path_efficiency": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 1.0366119695127654,
+              "std": 0.01858930825005997,
+              "min": 1.0079259066079278,
+              "p05": 1.0116765525037135,
+              "p50": 1.0412060115596478,
+              "p95": 1.0551157276561816,
+              "max": 1.0561099483238379
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 1.0366119695127654,
+                  "std": 0.01858930825005997,
+                  "min": 1.0079259066079278,
+                  "p05": 1.0116765525037135,
+                  "p50": 1.0412060115596478,
+                  "p95": 1.0551157276561816,
+                  "max": 1.0561099483238379
+                }
+              }
+            }
+          }
+        }
+      },
+      "Failure To Progress": {
+        "status": "available",
+        "outputs": {
+          "failure_to_progress.failed": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "binary": {
+              "true_count": 0,
+              "false_count": 4,
+              "true_rate": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "binary": {
+                  "true_count": 0,
+                  "false_count": 4,
+                  "true_rate": 0.0
+                }
+              }
+            }
+          },
+          "failure_to_progress.event_count": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          },
+          "failure_to_progress.evaluated_duration_sec": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 30.54625,
+              "std": 12.878320627609018,
+              "min": 20.510000000000005,
+              "p05": 20.735750000000007,
+              "p50": 24.622500000000002,
+              "p95": 48.64999999999999,
+              "max": 52.43
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 30.54625,
+                  "std": 12.878320627609018,
+                  "min": 20.510000000000005,
+                  "p05": 20.735750000000007,
+                  "p50": 24.622500000000002,
+                  "p95": 48.64999999999999,
+                  "max": 52.43
+                }
+              }
+            }
+          },
+          "failure_to_progress.stalled_duration_sec": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          },
+          "failure_to_progress.stalled_duration_ratio": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          }
+        }
+      },
+      "Human Collision": {
+        "status": "proxy",
+        "outputs": {
+          "collision.human_proxy": {
+            "available": 0,
+            "missing": 4,
+            "coverage": 0.0,
+            "binary": null,
+            "numeric": null,
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 0,
+                "missing": 4,
+                "coverage": 0.0,
+                "binary": null,
+                "numeric": null
+              }
+            }
+          }
+        }
+      },
+      "Social Distance": {
+        "status": "available",
+        "outputs": {
+          "human_clearance.minimum_center_distance_m": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 1.1679484967019254,
+              "std": 0.11762513596685671,
+              "min": 0.9877284614410041,
+              "p05": 1.0104550801504317,
+              "p50": 1.2006603595002516,
+              "p95": 1.279645305335762,
+              "max": 1.2827448063661937
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 1.1679484967019254,
+                  "std": 0.11762513596685671,
+                  "min": 0.9877284614410041,
+                  "p05": 1.0104550801504317,
+                  "p50": 1.2006603595002516,
+                  "p95": 1.279645305335762,
+                  "max": 1.2827448063661937
+                }
+              }
+            }
+          },
+          "human_clearance.minimum_body_clearance_m": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.7029484967019253,
+              "std": 0.11762513596685666,
+              "min": 0.5227284614410042,
+              "p05": 0.5454550801504318,
+              "p50": 0.7356603595002515,
+              "p95": 0.8146453053357617,
+              "max": 0.8177448063661936
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.7029484967019253,
+                  "std": 0.11762513596685666,
+                  "min": 0.5227284614410042,
+                  "p05": 0.5454550801504318,
+                  "p50": 0.7356603595002515,
+                  "p95": 0.8146453053357617,
+                  "max": 0.8177448063661936
+                }
+              }
+            }
+          }
+        }
+      },
+      "Min Time To Collide": {
+        "status": "available",
+        "outputs": {
+          "ttc.minimum_finite_ttc_sec": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 2.5852151910811267,
+              "std": 0.7284084247998868,
+              "min": 1.5377795833602974,
+              "p05": 1.6556821197613227,
+              "p50": 2.6697459573902074,
+              "p95": 3.3964051895682177,
+              "max": 3.463589266183795
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 2.5852151910811267,
+                  "std": 0.7284084247998868,
+                  "min": 1.5377795833602974,
+                  "p05": 1.6556821197613227,
+                  "p50": 2.6697459573902074,
+                  "p95": 3.3964051895682177,
+                  "max": 3.463589266183795
+                }
+              }
+            }
+          }
+        }
+      },
+      "Crowd Density": {
+        "status": "available",
+        "outputs": {
+          "crowd_density.statistics.mean": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.06555459262041932,
+              "std": 0.01962730152103233,
+              "min": 0.03373036859766507,
+              "p05": 0.0384179624736067,
+              "p50": 0.07275445133417718,
+              "p95": 0.08261142056797094,
+              "max": 0.08297909921565785
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.06555459262041932,
+                  "std": 0.01962730152103233,
+                  "min": 0.03373036859766507,
+                  "p05": 0.0384179624736067,
+                  "p50": 0.07275445133417718,
+                  "p95": 0.08261142056797094,
+                  "max": 0.08297909921565785
+                }
+              }
+            }
+          }
+        }
+      },
+      "Virtual Collision": {
+        "status": "proxy",
+        "outputs": {
+          "virtual_collision_proxy.entry_count": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          },
+          "virtual_collision_proxy.exposure_time_sec": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          },
+          "virtual_collision_proxy.exposure_ratio": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          },
+          "virtual_collision_proxy.max_penetration": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          }
+        }
+      },
+      "Personal Space": {
+        "status": "available",
+        "outputs": {
+          "personal_space.violation_time_sec": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          },
+          "personal_space.violation_time_ratio": {
+            "available": 4,
+            "missing": 0,
+            "coverage": 1.0,
+            "numeric": {
+              "mean": 0.0,
+              "std": 0.0,
+              "min": 0.0,
+              "p05": 0.0,
+              "p50": 0.0,
+              "p95": 0.0,
+              "max": 0.0
+            },
+            "by_success": {
+              "success": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "failure": {
+                "available": 0,
+                "missing": 0,
+                "coverage": null,
+                "binary": null,
+                "numeric": null
+              },
+              "unknown": {
+                "available": 4,
+                "missing": 0,
+                "coverage": 1.0,
+                "numeric": {
+                  "mean": 0.0,
+                  "std": 0.0,
+                  "min": 0.0,
+                  "p05": 0.0,
+                  "p50": 0.0,
+                  "p95": 0.0,
+                  "max": 0.0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "inference_latency_ms": {
+      "count": 2099,
+      "minimum": 7.31838321685791,
+      "mean": 11.803354260125236,
+      "maximum": 232.71669006347656,
+      "p05": 8.161016273498536,
+      "p50": 9.725399017333984,
+      "p95": 22.589389419555662,
+      "std": 6.579796626282735
+    },
+    "velocity_tracking": {
+      "episode_coverage": 0.0,
+      "valid_episode_count": 0,
+      "mean_mae": null,
+      "mean_rmse": null,
+      "blocks": {
+        "raw_model_to_final_command": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "final_command_to_actual_velocity": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "angular_raw_model_to_final_command": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "angular_final_command_to_actual_velocity": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "safety_gated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "safety_ungated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "raw_model_to_final_safety_gated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "raw_model_to_final_safety_ungated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "angular_safety_gated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "angular_safety_ungated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        },
+        "stable_straight_ungated": {
+          "episode_coverage": 0.0,
+          "valid_episode_count": 0,
+          "metrics": {
+            "bias": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "mae": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "rmse": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p50_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "p95_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "maximum_absolute_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "correlation": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "actual_to_command_ratio": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            },
+            "zero_command_hold_error": {
+              "count": 0,
+              "minimum": null,
+              "mean": null,
+              "maximum": null,
+              "p05": null,
+              "p50": null,
+              "p95": null,
+              "std": null
+            }
+          },
+          "sample_count_total": 0
+        }
+      },
+      "best_causal_delay_sec": {
+        "count": 0,
+        "minimum": null,
+        "mean": null,
+        "maximum": null,
+        "p05": null,
+        "p50": null,
+        "p95": null,
+        "std": null
+      },
+      "alignment_diagnostic_totals": {
+        "decision_duplicate_or_nonpositive": 0,
+        "state_duplicate_or_nonpositive": 0,
+        "decision_stale": 0,
+        "state_stale": 0,
+        "decision_sequence_gaps": 0,
+        "telemetry_sequence_gaps": 0,
+        "command_sequence_gaps": 0
+      }
+    }
+  }
+}

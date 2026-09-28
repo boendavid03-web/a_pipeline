@@ -3,6 +3,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ISAAC_BACKEND="${ISAAC_BACKEND:-isaac5}"
+case "$ISAAC_BACKEND" in
+    isaac5) exec "$PROJECT_ROOT/isaac_sim/backends/isaac5/launch/run_production_demo.sh" --workflow drspaam "$@" ;;
+    isaac6) ;;
+    *) echo "ERROR: ISAAC_BACKEND must be isaac5 (default) or isaac6 (legacy/regression)." >&2; exit 2 ;;
+esac
 ROS_WS="$PROJECT_ROOT/workspaces/ros2_ws"
 TRAIN_PYTHON="$PROJECT_ROOT/.venvs/train/bin/python"
 DR_SPAAM_ROOT="$PROJECT_ROOT/github_src/drl_vo_nav-drl_vo/2D_lidar_person_detection/dr_spaam"

@@ -1,0 +1,6 @@
+merged_scan_topic: /scan_merged
+detections_topic: /dr_spaam_detections
+scored_detections_topic: /dr_spaam_detections_scored
+tracks_topic: /pedestrian_tracks
+detector_model: DR-SPAAM
+device: auto

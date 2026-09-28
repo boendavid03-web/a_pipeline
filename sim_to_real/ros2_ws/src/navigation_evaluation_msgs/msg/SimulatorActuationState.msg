@@ -1,0 +1,13 @@
+std_msgs/Header header
+uint64 telemetry_sequence_id
+bool command_received
+uint64 command_sequence_id
+builtin_interfaces/Time bridge_receive_stamp
+geometry_msgs/Twist received_command
+geometry_msgs/Twist applied_command
+geometry_msgs/Twist actual_velocity
+string actual_velocity_source
+float32 command_age_sec
+bool watchdog_active
+bool collision_protection_active
+string[] control_reasons

@@ -1,0 +1,5 @@
+use_online_s3net: true
+cmd_vel_topic: /sim_to_real/semantic_cnn/cmd_vel_shadow
+local_subgoal_topic: /semantic_cnn/local_subgoal
+final_goal_topic: /semantic_cnn/final_goal
+subgoal_timeout_sec: 0.3

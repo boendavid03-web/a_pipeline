@@ -24,6 +24,67 @@ PERSON_QUERY_COLLIDER_SUFFIXES = (
 # tighter than the former 1 mm depth/endpoint diagnostic threshold.
 ENDPOINT_HIT_WORLD_TOLERANCE_M = 5.0e-5
 
+# Calibrated from 300 stationary frames per sensor in the project-owned empty
+# scene with the current Isaac 6 robot visual, current dual mounts, native RTX
+# geometry, and a 0.01 m calibration range minimum.  Every finite return in
+# that scene was rejected by the base-frame robot-footprint filter, so the
+# union below is a conservative self-return envelope including RTX edge
+# jitter.  Runs are inclusive sensor-local beam indices for the 2000-beam
+# half-open [-pi, pi) grid.  Evidence:
+# runs/lidar_self_occlusion_empty_scene_20260922/candidate_self_occlusion_mask.json
+CURRENT_ROBOT_SELF_OCCLUSION_RUNS = {
+    1: ((0, 282), (1947, 1999)),
+    2: ((0, 282), (1948, 1999)),
+}
+
+
+def fixed_dual_self_occlusion_mask(
+    sensor_index: int,
+    sample_count: int,
+) -> np.ndarray:
+    """Return the current robot's empty-scene calibrated occlusion mask."""
+    if sensor_index not in CURRENT_ROBOT_SELF_OCCLUSION_RUNS:
+        raise ValueError("sensor_index must be 1 or 2")
+    if sample_count != 2000:
+        raise ValueError(
+            "the calibrated fixed self-occlusion mask requires 2000 beams"
+        )
+    mask = np.zeros(sample_count, dtype=np.bool_)
+    for start, end in CURRENT_ROBOT_SELF_OCCLUSION_RUNS[sensor_index]:
+        mask[start : end + 1] = True
+    return mask
+
+
+def apply_fixed_self_occlusion(
+    ranges: Sequence[float],
+    mask: object,
+) -> np.ndarray:
+    """Mark chassis-occluded raw beams invalid without inventing free space."""
+    values = np.asarray(ranges, dtype=float).reshape(-1).copy()
+    blocked = np.asarray(mask, dtype=np.bool_).reshape(-1)
+    if blocked.shape != values.shape:
+        raise ValueError("self-occlusion mask shape must match ranges")
+    values[blocked] = np.nan
+    return values
+
+
+def true_mask_runs(mask: object) -> list[list[int]]:
+    """Encode a boolean mask as inclusive runs for strict JSON transport."""
+    blocked = np.asarray(mask, dtype=np.bool_).reshape(-1)
+    indices = np.flatnonzero(blocked)
+    if not indices.size:
+        return []
+    runs: list[list[int]] = []
+    start = previous = int(indices[0])
+    for value in indices[1:]:
+        current = int(value)
+        if current != previous + 1:
+            runs.append([start, previous])
+            start = current
+        previous = current
+    runs.append([start, previous])
+    return runs
+
 
 def summarize_physics_time_qualification(
     samples: Sequence[Mapping[str, float | int]],

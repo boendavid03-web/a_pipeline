@@ -1,0 +1,11 @@
+std_msgs/Header header
+builtin_interfaces/Time input_stamp
+uint64 decision_sequence_id
+uint64 inference_sequence_id
+bool has_raw_action
+geometry_msgs/Twist raw_physical_action
+geometry_msgs/Twist final_command
+bool gated
+string[] gate_reasons
+bool has_front_min_range
+float32 front_min_range_m

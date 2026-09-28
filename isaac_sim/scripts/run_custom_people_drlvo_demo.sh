@@ -4,6 +4,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ISAAC_BACKEND="${ISAAC_BACKEND:-isaac5}"
+case "$ISAAC_BACKEND" in
+    isaac5) exec "$PROJECT_ROOT/isaac_sim/backends/isaac5/launch/run_production_demo.sh" --workflow drlvo "$@" ;;
+    isaac6) ;;
+    *) echo "ERROR: ISAAC_BACKEND must be isaac5 (default) or isaac6 (legacy/regression)." >&2; exit 2 ;;
+esac
 ROS_WS="$PROJECT_ROOT/workspaces/ros2_ws"
 ISAAC_LAUNCHER="$SCRIPT_DIR/run_isaac_6_0_warehouse_people_robot.sh"
 TRAIN_PYTHON="$PROJECT_ROOT/.venvs/train/bin/python"
@@ -84,6 +90,26 @@ case "${ISAAC_LIDAR_MODE,,}" in
     physx|rtx) export ISAAC_LIDAR_MODE="${ISAAC_LIDAR_MODE,,}" ;;
     *) echo "ERROR: ISAAC_LIDAR_MODE must be physx or rtx." >&2; exit 2 ;;
 esac
+export ISAAC_LIDAR_SELF_OCCLUSION_MODE="${ISAAC_LIDAR_SELF_OCCLUSION_MODE:-none}"
+case "${ISAAC_LIDAR_SELF_OCCLUSION_MODE,,}" in
+    none|fixed_mask)
+        export ISAAC_LIDAR_SELF_OCCLUSION_MODE="${ISAAC_LIDAR_SELF_OCCLUSION_MODE,,}"
+        ;;
+    *)
+        echo "ERROR: ISAAC_LIDAR_SELF_OCCLUSION_MODE must be none or fixed_mask." >&2
+        exit 2
+        ;;
+esac
+if [[ "$ISAAC_LIDAR_SELF_OCCLUSION_MODE" == "fixed_mask" \
+    && "$ISAAC_LIDAR_MODE" != "physx" ]]; then
+    echo "ERROR: fixed_mask self-occlusion currently requires ISAAC_LIDAR_MODE=physx." >&2
+    exit 2
+fi
+if [[ "${ISAAC_DEMO_RECORD_BAG:-0}" == "1" \
+    && "$ISAAC_LIDAR_MODE" == "physx" \
+    && "$ISAAC_LIDAR_SELF_OCCLUSION_MODE" == "none" ]]; then
+    echo "WARNING: recording PhysX LiDAR without self-occlusion; each sensor can see through the robot." >&2
+fi
 export ISAAC_LIDAR_RATE_HZ="${ISAAC_LIDAR_RATE_HZ:-15}"
 if [[ -z "${ISAAC_LIDAR_SAMPLE_COUNT+x}" ]]; then
     if [[ "$ISAAC_LIDAR_MODE" == "physx" ]]; then
@@ -454,7 +480,7 @@ if [[ "$demo_pedestrian_source" == "dr_spaam" ]]; then
 fi
 
 echo "Starting Isaac walking-people scene (ROS domain $ROS_DOMAIN_ID)..."
-echo "Control mode: $demo_control_mode; LiDAR: $ISAAC_LIDAR_MODE ${ISAAC_LIDAR_SAMPLE_COUNT}x2 @ ${ISAAC_LIDAR_RATE_HZ} Hz; pedestrian social: $ISAAC_PEDESTRIAN_SOCIAL_MODE"
+echo "Control mode: $demo_control_mode; LiDAR: $ISAAC_LIDAR_MODE ${ISAAC_LIDAR_SAMPLE_COUNT}x2 @ ${ISAAC_LIDAR_RATE_HZ} Hz; self-occlusion: $ISAAC_LIDAR_SELF_OCCLUSION_MODE; pedestrian social: $ISAAC_PEDESTRIAN_SOCIAL_MODE"
 setsid "$ISAAC_LAUNCHER" "$@" >"$log_dir/isaac.log" 2>&1 &
 isaac_pid=$!
 

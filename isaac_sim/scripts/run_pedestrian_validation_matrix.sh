@@ -4,6 +4,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+ISAAC_BACKEND="${ISAAC_BACKEND:-isaac5}"
+case "$ISAAC_BACKEND" in
+    isaac5) exec "$PROJECT_ROOT/isaac_sim/backends/isaac5/launch/run_production_demo.sh" --workflow matrix "$@" ;;
+    isaac6) ;;
+    *) echo "ERROR: ISAAC_BACKEND must be isaac5 (default) or isaac6 (legacy/regression)." >&2; exit 2 ;;
+esac
 CONFIG_DIR="$PROJECT_ROOT/runs/pedestrian_validation_matrix/configs"
 OUTPUT_ROOT="$PROJECT_ROOT/runs/pedestrian_validation_matrix/evaluation"
 DURATION_SEC="${ISAAC_MATRIX_DURATION_SEC:-60.0}"

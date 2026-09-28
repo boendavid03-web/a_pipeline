@@ -1,0 +1,6 @@
+mode: base
+pedestrian_source: dr_spaam
+require_pedestrian_truth: false
+pedestrian_tracks_topic: /pedestrian_tracks
+cmd_vel_topic: /sim_to_real/drl_vo/cmd_vel_shadow
+subgoal_timeout_sec: 0.3

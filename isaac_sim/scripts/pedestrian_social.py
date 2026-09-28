@@ -599,16 +599,21 @@ class YieldDecision:
     begin_yielding: tuple[str, ...]
     end_yielding: tuple[str, ...]
     active_yielders: tuple[str, ...]
+    begin_trigger_peers: tuple[tuple[str, str], ...] = ()
+    end_reasons: tuple[tuple[str, str], ...] = ()
 
 
 class SocialYieldPlanner:
     """Choose one deterministic yielder before two people become too close.
 
     This class only makes decisions; the Isaac adapter owns animation tasks.
-    A yielder remains paused until it is beyond ``resume_distance_m`` from
-    every other pedestrian, preventing rapid stop/start oscillation.  Active
-    yielders also form an independent set inside that same radius: otherwise
-    two paused neighbours can satisfy neither resume condition and deadlock.
+    A yielder remembers the peer that caused its pause.  It resumes after that
+    peer crosses ``resume_distance_m`` provided nobody is currently inside the
+    trigger radius.  This preserves pairwise hysteresis without requiring one
+    paused pedestrian to clear the resume radius of the entire crowd.  An
+    optional maximum hold releases a stale hysteresis state only when the
+    trigger radius is already clear.  Active yielders also form an independent
+    set inside the resume radius so two paused neighbours cannot deadlock.
     """
 
     def __init__(
@@ -616,6 +621,8 @@ class SocialYieldPlanner:
         *,
         trigger_distance_m: float = 0.90,
         resume_distance_m: float = 1.10,
+        maximum_hold_sec: float | None = None,
+        cooldown_sec: float = 0.0,
     ) -> None:
         self.trigger_distance_m = _finite_positive(
             "trigger_distance_m", trigger_distance_m
@@ -627,25 +634,92 @@ class SocialYieldPlanner:
             raise ValueError(
                 "resume_distance_m must be greater than trigger_distance_m"
             )
+        if maximum_hold_sec is None:
+            self.maximum_hold_sec = None
+        else:
+            self.maximum_hold_sec = _finite_positive(
+                "maximum_hold_sec", maximum_hold_sec
+            )
+        try:
+            self.cooldown_sec = float(cooldown_sec)
+        except (TypeError, ValueError) as error:
+            raise ValueError("cooldown_sec must be finite and non-negative") from error
+        if not math.isfinite(self.cooldown_sec) or self.cooldown_sec < 0.0:
+            raise ValueError("cooldown_sec must be finite and non-negative")
         self._active: set[str] = set()
+        self._trigger_peers: dict[str, str] = {}
+        self._started_at_sec: dict[str, float] = {}
+        self._cooldown_until_sec: dict[Pair, float] = {}
 
-    def update(self, positions: Mapping[str, Sequence[float]]) -> YieldDecision:
+    def update(
+        self,
+        positions: Mapping[str, Sequence[float]],
+        *,
+        current_time_sec: float | None = None,
+    ) -> YieldDecision:
+        if current_time_sec is not None:
+            try:
+                current_time_sec = float(current_time_sec)
+            except (TypeError, ValueError) as error:
+                raise ValueError("current_time_sec must be finite") from error
+            if not math.isfinite(current_time_sec):
+                raise ValueError("current_time_sec must be finite")
         points = _validated_planar_positions(positions)
         names = sorted(points)
         present = set(names)
+        removed = self._active - present
         self._active.intersection_update(present)
+        for name in removed:
+            self._trigger_peers.pop(name, None)
+            self._started_at_sec.pop(name, None)
+        if current_time_sec is not None:
+            self._cooldown_until_sec = {
+                pair: until
+                for pair, until in self._cooldown_until_sec.items()
+                if until > current_time_sec
+            }
 
         end: list[str] = []
+        end_reasons: list[tuple[str, str]] = []
         for name in sorted(self._active):
             x, y = points[name]
-            if all(
-                other == name
-                or math.hypot(points[other][0] - x, points[other][1] - y)
-                >= self.resume_distance_m
+            distances = {
+                other: math.hypot(points[other][0] - x, points[other][1] - y)
                 for other in names
-            ):
+                if other != name
+            }
+            trigger_peer = self._trigger_peers.get(name)
+            trigger_peer_cleared = (
+                trigger_peer not in distances
+                or distances[trigger_peer] >= self.resume_distance_m
+            )
+            trigger_radius_clear = all(
+                distance >= self.trigger_distance_m
+                for distance in distances.values()
+            )
+            hold_timed_out = (
+                current_time_sec is not None
+                and self.maximum_hold_sec is not None
+                and name in self._started_at_sec
+                and current_time_sec - self._started_at_sec[name]
+                >= self.maximum_hold_sec
+            )
+            if trigger_radius_clear and (trigger_peer_cleared or hold_timed_out):
                 self._active.remove(name)
                 end.append(name)
+                reason = (
+                    "trigger_peer_clear"
+                    if trigger_peer_cleared
+                    else "maximum_hold_trigger_radius_clear"
+                )
+                end_reasons.append((name, reason))
+                if current_time_sec is not None and trigger_peer is not None:
+                    pair = tuple(sorted((name, trigger_peer)))
+                    self._cooldown_until_sec[pair] = (
+                        current_time_sec + self.cooldown_sec
+                    )
+                self._trigger_peers.pop(name, None)
+                self._started_at_sec.pop(name, None)
 
         # Animation deceleration can move two previously separated yielders
         # closer after they were selected.  Re-establish the independent-set
@@ -668,9 +742,18 @@ class SocialYieldPlanner:
                 if distance < self.resume_distance_m:
                     self._active.remove(right_name)
                     end.append(right_name)
+                    end_reasons.append((right_name, "adjacent_active_yielder"))
                     forced_resumes.add(right_name)
+                    trigger_peer = self._trigger_peers.pop(right_name, None)
+                    self._started_at_sec.pop(right_name, None)
+                    if current_time_sec is not None and trigger_peer is not None:
+                        pair = tuple(sorted((right_name, trigger_peer)))
+                        self._cooldown_until_sec[pair] = (
+                            current_time_sec + self.cooldown_sec
+                        )
 
         begin: list[str] = []
+        begin_trigger_peers: list[tuple[str, str]] = []
         for left_index, left_name in enumerate(names):
             left_x, left_y = points[left_name]
             for right_name in names[left_index + 1 :]:
@@ -688,6 +771,13 @@ class SocialYieldPlanner:
                 yielder = right_name
                 if yielder in forced_resumes:
                     continue
+                pair = (left_name, right_name)
+                if (
+                    current_time_sec is not None
+                    and self._cooldown_until_sec.get(pair, -math.inf)
+                    > current_time_sec
+                ):
+                    continue
                 yielder_x, yielder_y = points[yielder]
                 if any(
                     math.hypot(
@@ -699,12 +789,18 @@ class SocialYieldPlanner:
                 ):
                     continue
                 self._active.add(yielder)
+                self._trigger_peers[yielder] = left_name
+                if current_time_sec is not None:
+                    self._started_at_sec[yielder] = current_time_sec
                 begin.append(yielder)
+                begin_trigger_peers.append((yielder, left_name))
 
         return YieldDecision(
             begin_yielding=tuple(begin),
             end_yielding=tuple(end),
             active_yielders=tuple(sorted(self._active)),
+            begin_trigger_peers=tuple(begin_trigger_peers),
+            end_reasons=tuple(end_reasons),
         )
 
 

@@ -1,0 +1,20 @@
+{
+    "lidar_range": {
+        "norm_threshold_95": 4.0,
+        "absolute_min": 0.12099999934434891,
+        "absolute_max": 4.0
+    },
+    "velocity_linear_x": {
+        "norm_bound_99": 0.4999999701976776,
+        "absolute_min": -0.4999999701976776,
+        "absolute_max": 0.4999999701976776
+    },
+    "velocity_angular_w": {
+        "norm_bound_99": 0.3999999761581421,
+        "absolute_min": -0.3999999761581421,
+        "absolute_max": 0.3999999761581421
+    },
+    "metadata": {
+        "total_frames_analyzed": 29875
+    }
+}

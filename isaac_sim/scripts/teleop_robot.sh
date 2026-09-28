@@ -51,7 +51,7 @@ if [[ -n "${publisher_count}" && "${publisher_count}" != "0" ]]; then
 fi
 if [[ -z "${subscriber_count}" || "${subscriber_count}" == "0" ]]; then
     echo "ERROR: no subscriber is listening on ${CMD_TOPIC}." >&2
-    echo "Start Isaac Sim first and wait for WAREHOUSE_PEOPLE_ROBOT_READY= (6.0) or NAVIGATION_RUNTIME_READY= (legacy)." >&2
+    echo "Start Isaac first and wait for GATE6B_CROWD_READY with mobile_robot=true (5.1), WAREHOUSE_PEOPLE_ROBOT_READY= (6.0), or NAVIGATION_RUNTIME_READY= (legacy)." >&2
     exit 4
 fi
 
@@ -59,9 +59,7 @@ echo "Isaac Sim Mecanum keyboard teleop"
 echo "  u/i/o     forward-left turn / forward / forward-right turn"
 echo "  j/l       turn left / turn right"
 echo "  m/,/.     backward-left turn / backward / backward-right turn"
-echo "  U/I/O     forward-left strafe / forward / forward-right strafe"
-echo "  J/L       strafe left / strafe right"
-echo "  M/</>     backward-left strafe / backward / backward-right strafe"
+echo "  Uppercase strafe keys are not consumed by the current Isaac 5 base adapter"
 echo "  t/b       positive / negative linear z (ignored by the planar base)"
 echo "  k/space   stop"
 echo "  q/z       increase/decrease linear and angular speed"

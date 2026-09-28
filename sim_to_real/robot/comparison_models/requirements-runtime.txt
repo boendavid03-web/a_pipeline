@@ -1,0 +1,6 @@
+numpy>=1.22
+PyYAML>=6.0
+Pillow>=9.0
+scipy>=1.8
+opencv-python>=4.5
+torch>=2.0

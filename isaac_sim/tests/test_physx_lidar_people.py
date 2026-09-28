@@ -12,9 +12,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from physx_lidar_people import (  # noqa: E402
     ENDPOINT_HIT_WORLD_TOLERANCE_M,
+    apply_fixed_self_occlusion,
     classify_query_hit_paths,
     endpoint_hit_world_diagnostic,
     endpoint_ranges_from_world_geometry,
+    fixed_dual_self_occlusion_mask,
     is_ignored_person_query_collider,
     is_ignored_robot_query_collider,
     merge_native_and_analytic_ranges,
@@ -25,6 +27,7 @@ from physx_lidar_people import (  # noqa: E402
     ray_capsule_intersection_matrix,
     scene_query_hit_value,
     summarize_physics_time_qualification,
+    true_mask_runs,
 )
 
 
@@ -278,6 +281,31 @@ def test_ray_start_offsets_preserve_minimum_and_exit_robot_box():
         0.5,
     )
     assert offsets.tolist() == pytest.approx([0.5, 0.51, 0.71])
+
+
+def test_fixed_dual_self_occlusion_masks_match_current_empty_scene_calibration():
+    first = fixed_dual_self_occlusion_mask(1, 2000)
+    second = fixed_dual_self_occlusion_mask(2, 2000)
+    assert int(first.sum()) == 336
+    assert int(second.sum()) == 335
+    assert np.all(first[:283])
+    assert np.all(first[1947:2000])
+    assert np.all(second[:283])
+    assert np.all(second[1948:2000])
+    assert not np.any(first[283:1947])
+    assert not np.any(second[283:1948])
+    with pytest.raises(ValueError, match="requires 2000 beams"):
+        fixed_dual_self_occlusion_mask(1, 360)
+
+
+def test_apply_fixed_self_occlusion_uses_nan_instead_of_free_space():
+    ranges = np.asarray([1.0, 2.0, 3.0])
+    masked = apply_fixed_self_occlusion(ranges, [False, True, False])
+    assert masked[0] == 1.0
+    assert math.isnan(masked[1])
+    assert masked[2] == 3.0
+    assert np.isfinite(ranges).all()
+    assert true_mask_runs([True, True, False, True, False]) == [[0, 1], [3, 3]]
 
 
 def test_sixty_physics_steps_produce_fifteen_capture_events():

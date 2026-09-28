@@ -1,0 +1,9 @@
+uint64 track_id
+geometry_msgs/Point position
+geometry_msgs/Vector3 velocity
+float32 confidence
+uint32 age
+uint32 hits
+uint32 misses
+string state
+float32 time_since_update

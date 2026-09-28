@@ -1,0 +1,24 @@
+# dataset_config.yaml
+
+# 1. Path Configuration
+io:
+  bag_folder: "/home/stardust/workspace/real_robot/data_record0701"
+  output_dir: "/home/stardust/workspace/real_robot/hdf5_dataset0701"
+
+# 2. Action Split / Chunking Parameters
+action_split:
+  v_threshold: 0.01
+  w_threshold: 0.01
+  split_threshold_frames: 30
+  buffer_frames: 5
+  max_files_per_chunk: 1000
+
+# 3. LiDAR Preprocessing Parameters (Based on multi-frame statistics)
+lidar:
+  max_range: 8.0           # Distances exceeding 8m will be clipped to 8.0
+  scan_01:
+    slice_start: 93        # Slice index to remove right-side occlusion
+    slice_end: 1500        # Slice index to remove left-side occlusion
+  scan_02:
+    slice_start: 109
+    slice_end: 1414

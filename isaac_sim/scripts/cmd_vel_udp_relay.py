@@ -445,6 +445,24 @@ class IsaacUdpRosBridge:
             else:
                 numeric = float(value)
                 ranges.append(numeric if math.isfinite(numeric) else float("inf"))
+        invalid_beam_runs = payload.get("invalid_beam_runs", [])
+        if not isinstance(invalid_beam_runs, list):
+            raise ValueError(f"{frame_id}.invalid_beam_runs must be a list")
+        for run in invalid_beam_runs:
+            if (
+                not isinstance(run, list)
+                or len(run) != 2
+                or not all(isinstance(value, int) for value in run)
+            ):
+                raise ValueError(
+                    f"{frame_id}.invalid_beam_runs entries must be [start, end] integers"
+                )
+            start, end = run
+            if start < 0 or end < start or end >= len(ranges):
+                raise ValueError(
+                    f"{frame_id}.invalid_beam_runs contains invalid run {run}"
+                )
+            ranges[start : end + 1] = [float("nan")] * (end - start + 1)
         raw_intensities = payload.get("intensities")
         intensities: list[float] = []
         if raw_intensities is not None:

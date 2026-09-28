@@ -1,0 +1,9 @@
+input_beams_per_sensor: 2000
+input_rate_hz_nominal: 15.0
+aligned_beams_per_sensor: 2000
+aligned_angle_min_rad: -3.141592653589793
+aligned_angle_max_rad: 3.141592653589793
+valid_range_min_m: 0.1
+valid_range_max_m: 8.0
+max_pair_time_difference_sec: 0.05
+self_filter_base_frame: base_link

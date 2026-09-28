@@ -1,0 +1,123 @@
+{
+  "schema": "a_pipeline.isaac5_backend_manifest/v4",
+  "backend": "isaac5",
+  "isaac_version": "5.1.0-rc.19+release.26219.9c81211b.gl",
+  "embedded_python": "3.11.13",
+  "ros_distro": "humble",
+  "rmw_implementation_default": "rmw_fastrtps_cpp",
+  "isaac_sim_root_default": "/home/user/isaacsim/5.1.0",
+  "canonical_robot": {
+    "path": "/home/user/navigation_project/robot_related/robots/chassis_arm/motion_wheel_arm_simple_sphere_usd/mecanum730_xms5_default.usd",
+    "sha256": "f9dec5e8554d6504c52dc91622338024e035f82697ff331dde0f5c53c1d15f4c"
+  },
+  "active_scene": {
+    "path": "isaac_sim/scenes/a_pipeline_eng_lobby.usda",
+    "sha256": "18e012a8d1b9614aefa1517bc3be3ac47775e62cd6fba78240a04b4b6652c1dd"
+  },
+  "copied_sources": [
+    {"path": "isaac_sim/scripts/run_navigation.py", "sha256": "fb828b208b64480026554fa4df6aae77839f88febbd0df5dcfcb58d490a4a872"},
+    {"path": "isaac_sim/scripts/run_navigation.sh", "sha256": "8127bef8b85e4cb94970636c28f3d613e91a6dbd81e7fba2a9f3d2755421680c"},
+    {"path": "isaac_sim/scripts/validate_robot.py", "sha256": "c6c8e6394e057eb94214d39eea59ca3449d3ae8b25c86f94547ebce9ee5d2f8"},
+    {"path": "isaac_sim/scripts/validate_robot.sh", "sha256": "a90bdc418f2b7bc2d263a7b058c705b7e231994df462a3cdd974207801d9254c"},
+    {"path": "isaac_sim/scripts/start_isaac_5_1_595_compat.sh", "sha256": "398ceaf9441c8594d51f49e34e6a463c13fed90fdb620731e7d2bf2f945b3921"},
+    {"path": "isaac_sim/scripts/isaacsim_rtx_595_compat.py", "sha256": "089524bd3099cb013d9f735306ab140a70dee9ad38ceffcab0e676fb3a5c724c"},
+    {"path": "isaac_sim/runtime/vulkan_595_compat/libVkLayer_khronos_profiles.so", "sha256": "14e5b56e6006ed5fa75536549f87d8c4228d7640d28f4e14eacd460f647d3896"}
+  ],
+  "capabilities": {
+    "robot_world_smoke": true,
+    "ros_common_messages": true,
+    "dual_distance_laserscan": {"backend": "physx_scene_query", "beams_per_sensor": 2000, "rate_hz": 15, "range_m": [0.5, 50]},
+    "pedestrians": {
+      "count": {"minimum": 1, "default": 20, "maximum": 20},
+      "backend": "isaac5_owned_textured_character_nvidia_retarget_with_kinematic_capsules",
+      "asset_bundle": {
+        "path": "isaac_sim/backends/isaac5/assets/people",
+        "manifest": "asset_manifest.json",
+        "sha256sums": "SHA256SUMS",
+        "dependency_audit": "generated/retirement_audit_20260912/people_dependency_audit.json",
+        "source_license_status": "local provenance recorded; redistribution permission not asserted",
+        "isaac6_runtime_or_asset_symlink": false
+      },
+      "visible_animation_joint_count": 101,
+      "retarget_source_joint_count": 81,
+      "runtime_gait": {
+        "mode": "distance_coupled_single_cycle_default_pose",
+        "cycle_pose_count": 80,
+        "duration_scaled_prebake": false,
+        "stopped_agent_advances_walk": false,
+        "idle_walk_blend_or_foot_ik": false
+      },
+      "character_forward_axis": "MINUS_Y",
+      "map_extent_m": [32, 24],
+      "map_wide_patrols": true,
+      "stateful_social_controller": {
+        "module": "runtime/crowd_social_control.py",
+        "social_modes": ["off", "social"],
+        "sole_movement_writer": true,
+        "waypoint_contract": "Isaac6-style reached-or-passed lookahead checkpoint on open ping-pong routes",
+        "acceptance_20_person": "PASS_WITH_LIMITATIONS",
+        "stage_d_short_runtime_and_gui": "PASS",
+        "stage_e_drspaam_tracker": "PASS",
+        "stage_f_headless_gate9_fixed_goal": "PASS",
+        "stage_f_gui_gate9g": "PASS_WITH_LIMITATIONS: 11.52 Hz wall-clock scans below 13.5 Hz gate",
+        "stage_g_multi_seed_stability": "FAIL: shared-corridor deadlock in 120-second pure-controller preflight",
+        "live_gait_gui_2026_09_13": "PASS for all 20 runtime skeletons; overall 30-second crowd gate remains FAIL on minimum separation and sustained stalls"
+      }
+    },
+    "perception": ["DR-SPAAM", "pedestrian_point_tracker", "S3-Net", "SemanticCNN"],
+    "policy": {"name": "DRL-VO", "mode": "base", "observation_size": 19202},
+    "safety_gates": ["scan_freshness", "track_freshness", "front_obstacle_veto"],
+    "closed_loop": {
+      "bounded_mobile_proxy": true,
+      "fixed_goal": [3.5, 2.0],
+      "goal_tolerance_m": 0.35,
+      "arm_pose_mode": "authored_upright_pose_on_dynamic_base",
+      "arm_dynamics_enabled": false
+    },
+    "rtx_sensor_producer": false,
+    "stage_output": "generated/ only"
+  },
+  "known_non_equivalences": [
+    "IRA 1.6 BehaviorAgent route and social-navigation runtime",
+    "RTX/intensity LiDAR",
+    "human mesh physical-contact truth",
+    "Arena service API, Nav2, SLAM, training, and long multi-seed benchmark",
+    "strict Isaac Sim 6.0.1 implementation equivalence"
+  ],
+  "runtime_generated_directory": "isaac_sim/backends/isaac5/generated/",
+  "default_project_backend": "isaac5",
+  "isaac6_access_retirement_2026_09_12": {
+    "status": "RUNTIME_PASS",
+    "static_runtime_launch_direct_references": 0,
+    "headless_crowd_file_access_audit": "generated/retirement_audit_20260912/headless_crowd_file_access.strace",
+    "forbidden_isaac6_or_assets6_open": false,
+    "full_gate9g_after_asset_copy": "PASS",
+    "note": "The GUI strace attempt is retained as a failed tool-interference record; the headless strace audit passed."
+  },
+  "verification_2026_09_12": {
+    "static_and_offline": {
+      "status": "PASS",
+      "evidence": [
+        "Python syntax check passed",
+        "Shell syntax check passed",
+        "Backend contract pytest passed"
+      ]
+    },
+    "isaac_core_gate": {
+      "status": "PASS",
+      "evidence": "Gate 1 robot-only GUI and Gates 2-6B active-scene/crowd runtime passed on Isaac 5.1.0"
+    },
+    "ros_graph_gate": {
+      "status": "PASS",
+      "evidence": "Gates 4-8.3 produced backend-local ROS graph, freshness, inference, and safety evidence"
+    },
+    "closed_loop_gate": {
+      "status": "PASS",
+      "evidence": "Gate 9G GUI passed with map-wide textured crowd, forward-aligned characters, 2x2000 scans at about 15 Hz, physical robot motion, authored upright arm, goal stop, and clean teardown"
+    },
+    "isaac6_regression_gate": {
+      "status": "PASS_WITH_LIMITATIONS",
+      "evidence": "Active lobby GUI 60 s passed at 2x2000/15 Hz PhysX; warehouse RTX smoke failed at requested 15 Hz and passed at 10 Hz"
+    }
+  }
+}

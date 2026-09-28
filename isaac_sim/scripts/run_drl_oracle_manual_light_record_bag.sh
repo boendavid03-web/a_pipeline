@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$PROJECT_ROOT"
+
+run_dir="${ISAAC_DEMO_OUTPUT_DIR:-$PROJECT_ROOT/runs/drl_oracle_manual_light_$(date +%Y%m%d_%H%M%S)}"
+echo "ISAAC_DRL_ORACLE_RECORD_RUN_DIR=$run_dir"
+
+exec env \
+    ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-78}" \
+    ISAAC_BACKEND=isaac6 \
+    ISAAC_MIN_SIMULATION_FRAME_RATE_HZ=10 \
+    ISAAC_DEMO_CONTROL_MODE=policy \
+    ISAAC_DEMO_FIXED_TEST=false \
+    ISAAC_DEMO_AUTO_GOAL=false \
+    ISAAC_DEMO_GOAL_PICKER=true \
+    ISAAC_DEMO_RVIZ=true \
+    ISAAC_DEMO_RECORD_TRACE=true \
+    ISAAC_DEMO_EVALUATE=false \
+    ISAAC_DEMO_RECORD_BAG=1 \
+    ISAAC_DEMO_RECORD_VIDEO=false \
+    ISAAC_DRLVO_PEDESTRIAN_SOURCE=oracle \
+    ISAAC_PEDESTRIAN_COUNT=26 \
+    ISAAC_PEDESTRIAN_SEED=7 \
+    ISAAC_PEDESTRIAN_SPEED=1.0 \
+    ISAAC_PEDESTRIAN_SOCIAL_MODE=gazebo_social \
+    ISAAC_PEDESTRIAN_AVOIDANCE_MODE=off \
+    ISAAC_PEDESTRIAN_ROBOT_EMERGENCY_STOP=1 \
+    ISAAC_ROBOT_COLLISION_PROTECTION=1 \
+    ISAAC_ROBOT_PHYSICS=1 \
+    ISAAC_PHYSX_GPU_DYNAMICS=0 \
+    ISAAC_LIDAR_MODE=physx \
+    ISAAC_LIDAR_SELF_OCCLUSION_MODE=fixed_mask \
+    ISAAC_LIDAR_RATE_HZ=15 \
+    ISAAC_LIDAR_SAMPLE_COUNT=2000 \
+    ISAAC_DEMO_INFLATE_RADIUS=0.45 \
+    ISAAC_PEDESTRIAN_SOCIAL_TRACE_PATH=/dev/null \
+    ISAAC_DEMO_OUTPUT_DIR="$run_dir" \
+    bash "$SCRIPT_DIR/run_custom_people_drlvo_demo.sh" \
+        --width "${ISAAC_VIEWPORT_WIDTH:-1920}" \
+        --height "${ISAAC_VIEWPORT_HEIGHT:-1080}" \
+        "$@"

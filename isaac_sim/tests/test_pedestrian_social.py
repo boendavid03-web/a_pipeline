@@ -426,6 +426,83 @@ class SocialYieldPlannerTest(unittest.TestCase):
         self.assertEqual(drifted.begin_yielding, ())
         self.assertEqual(drifted.active_yielders, ("b",))
 
+    def test_unrelated_peer_in_hysteresis_band_does_not_block_release(self) -> None:
+        planner = SocialYieldPlanner(
+            trigger_distance_m=0.5,
+            resume_distance_m=0.8,
+        )
+        started = planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0), "c": (4.0, 0.0)}
+        )
+        resumed = planner.update(
+            {"a": (-1.0, 0.0), "b": (0.0, 0.0), "c": (0.6, 0.0)}
+        )
+
+        self.assertEqual(started.begin_trigger_peers, (("b", "a"),))
+        self.assertEqual(resumed.end_yielding, ("b",))
+        self.assertEqual(resumed.end_reasons, (("b", "trigger_peer_clear"),))
+
+    def test_peer_inside_trigger_radius_still_blocks_release(self) -> None:
+        planner = SocialYieldPlanner(
+            trigger_distance_m=0.5,
+            resume_distance_m=0.8,
+        )
+        planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0), "c": (4.0, 0.0)}
+        )
+        held = planner.update(
+            {"a": (-1.0, 0.0), "b": (0.0, 0.0), "c": (0.4, 0.0)}
+        )
+
+        self.assertEqual(held.end_yielding, ())
+        self.assertEqual(held.active_yielders, ("b",))
+
+    def test_maximum_hold_only_releases_after_trigger_radius_is_clear(self) -> None:
+        planner = SocialYieldPlanner(
+            trigger_distance_m=0.5,
+            resume_distance_m=0.8,
+            maximum_hold_sec=2.0,
+            cooldown_sec=1.0,
+        )
+        planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0)}, current_time_sec=0.0
+        )
+        still_dangerous = planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0)}, current_time_sec=2.0
+        )
+        resumed = planner.update(
+            {"a": (0.0, 0.0), "b": (0.6, 0.0)}, current_time_sec=2.1
+        )
+
+        self.assertEqual(still_dangerous.end_yielding, ())
+        self.assertEqual(
+            resumed.end_reasons,
+            (("b", "maximum_hold_trigger_radius_clear"),),
+        )
+
+    def test_timeout_cooldown_prevents_immediate_same_pair_reyield(self) -> None:
+        planner = SocialYieldPlanner(
+            trigger_distance_m=0.5,
+            resume_distance_m=0.8,
+            maximum_hold_sec=1.0,
+            cooldown_sec=2.0,
+        )
+        planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0)}, current_time_sec=0.0
+        )
+        planner.update(
+            {"a": (0.0, 0.0), "b": (0.6, 0.0)}, current_time_sec=1.0
+        )
+        during_cooldown = planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0)}, current_time_sec=1.1
+        )
+        after_cooldown = planner.update(
+            {"a": (0.0, 0.0), "b": (0.4, 0.0)}, current_time_sec=3.0
+        )
+
+        self.assertEqual(during_cooldown.begin_yielding, ())
+        self.assertEqual(after_cooldown.begin_yielding, ("b",))
+
     def test_rejects_inverted_hysteresis(self) -> None:
         with self.assertRaisesRegex(ValueError, "greater than"):
             SocialYieldPlanner(

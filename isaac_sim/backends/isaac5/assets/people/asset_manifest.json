@@ -1,0 +1,21 @@
+{
+  "schema": "a_pipeline.isaac5_people_asset_bundle/v1",
+  "bundle_scope": "local Isaac5 runtime asset closure; not a redistribution grant",
+  "asset_root": "isaac_sim/backends/isaac5/assets/people",
+  "characters": [
+    "characters/male_adult_construction_01_new/male_adult_construction_01_new.usd",
+    "characters/female_adult_police_01_new/female_adult_police_01_new.usd",
+    "characters/male_adult_construction_03/male_adult_construction_03.usd",
+    "characters/female_adult_police_02/female_adult_police_02.usd",
+    "characters/male_adult_police_04/male_adult_police_04.usd",
+    "characters/female_adult_police_03_new/female_adult_police_03_new.usd",
+    "characters/F_Medical_01/F_Medical_01.usd",
+    "characters/M_Medical_01/M_Medical_01.usd"
+  ],
+  "animation": "animations/stand_walk_loop_in_place.skelanim.usd",
+  "retarget_source": "retarget/biped_demo_meters.usd",
+  "source_record": "SOURCE.md",
+  "sha256_manifest": "SHA256SUMS",
+  "dependency_audit": "../../generated/retirement_audit_20260912/people_dependency_audit.json",
+  "license_notice": "licenses/NVIDIA_OMNIVERSE_LICENSE_SOURCE.txt"
+}

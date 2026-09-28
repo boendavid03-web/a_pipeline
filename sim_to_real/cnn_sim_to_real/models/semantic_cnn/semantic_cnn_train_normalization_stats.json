@@ -1,0 +1,52 @@
+{
+  "pool_mode": "global_virtual_angle_80",
+  "scan_map": {
+    "dataset_mean_std_required": false,
+    "normalization": "virtual range clipped to pool_range_max then divided by pool_range_max",
+    "range": [
+      0.0,
+      1.0
+    ]
+  },
+  "schema": "semanticcnn_training_input_stats/v1",
+  "scope": "valid train-window endpoints only; dev/test excluded",
+  "sequence_length": 10,
+  "sub_goal_local_xy": {
+    "count": 38883,
+    "max": [
+      1.9455499649047852,
+      1.8103383779525757
+    ],
+    "mean": [
+      0.8427590349640696,
+      -0.05663554181717563
+    ],
+    "min": [
+      -1.7723017930984497,
+      -2.2284626960754395
+    ],
+    "std_population": [
+      0.5528307344658029,
+      0.3217333801507847
+    ]
+  },
+  "target_linear_x_angular_z": {
+    "count": 38883,
+    "max": [
+      0.5,
+      1.071200966835022
+    ],
+    "mean": [
+      0.4079019581404248,
+      -0.04191932235565064
+    ],
+    "min": [
+      0.0,
+      -1.043586254119873
+    ],
+    "std_population": [
+      0.13762526487575624,
+      0.20626005144571335
+    ]
+  }
+}

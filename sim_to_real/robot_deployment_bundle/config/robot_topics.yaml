@@ -1,0 +1,9 @@
+# Edit only these hardware-facing names/frames for the target robot.
+scan_01_topic: /scan_01
+scan_02_topic: /scan_02
+odom_topic: /odom
+path_topic: /plan
+goal_topic: /goal_pose
+map_frame: map
+odom_frame: odom
+base_frame: base_link

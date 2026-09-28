@@ -1,0 +1,12 @@
+dr_spaam_ros2:
+  ros__parameters:
+    weight_file: "/home/user/navigation_project/a_pipeline/github_src/drl_vo_nav-drl_vo/GenSafeNav-ROS2-main/dr_spaam_ros2/model_weight/ckpt_jrdb_ann_ft_dr_spaam_e20.pth"
+    detector_model: "DR-SPAAM"  # DROW3 or DR-SPAAM
+    conf_thresh: 0.95
+    stride: 5  # use this to skip laser points
+    panoramic_scan: True  # Set to true if the scan covers 360 degrees
+    # Isaac LaserScan angles are ROS left-positive; DR-SPAAM's DROW frame is
+    # right-positive and therefore consumes the rays in reverse order.
+    reverse_scan: True
+    drow_to_ros: True
+    target_frame: base_link

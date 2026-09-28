@@ -67,6 +67,9 @@ def test_dual_lidar_policy_contract_remains_2000_beams_at_15_hz():
     assert "fixed at 2000 beams per sensor" in source
     assert "--sensor-preflight --verify-lidar-rate" in source
     assert "--require-realtime-lidar" not in source
+    assert 'ISAAC_LIDAR_SELF_OCCLUSION_MODE:-none' in source
+    assert "none|fixed_mask)" in source
+    assert "recording PhysX LiDAR without self-occlusion" in source
     readiness = (
         ROOT / "isaac_sim/scripts/check_capture_ready.py"
     ).read_text(encoding="utf-8")
@@ -108,6 +111,10 @@ def test_physx_lidar_uses_native_raycast_sensor_and_independent_scan_telemetry()
     assert "native_ranges_m" in source
     assert "scene_query.raycast_all(" in source
     assert "ray_start_offsets_outside_box(" in source
+    assert '"ISAAC_LIDAR_SELF_OCCLUSION_MODE"' in source
+    assert "fixed_dual_self_occlusion_mask(" in source
+    assert '"invalid_beam_runs": self._self_occlusion_runs[topic]' in source
+    assert 'payload.get("invalid_beam_runs", [])' in bridge
     assert "raycast_all" in source
     assert "candidate_distance_m = (" in source
     assert "self.ros.send_lidar_telemetry(" in source

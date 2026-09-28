@@ -1,0 +1,61 @@
+
+common:
+  action_dim: 2               
+  action_chunk_size: 24      
+  
+  lidar_channels: 1          
+  lidar_seq_len: 2400       
+  obs_steps: 1               
+  
+  use_tf_pose: false       
+  use_nav_goal: true        
+
+dataset:
+  type: "lidar_hdf5"
+  dataset_dir: "/home/stardust/workspace/real_robot/hdf5_dataset0701"
+  val_dir: 
+  
+  indices:
+    obs_indices: [0]
+    act_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    
+    use_nav_goal: true       
+    goal_type: "relative"    
+    
+    goal_source: "dynamic_time"  
+    goal_t_delay_min: 10          
+    goal_t_delay_max: 120         
+    mask_action_beyond_goal: true 
+
+model:
+  hidden_dim: 512
+  
+  perception:
+    conv_kernel: 32          
+    conv_stride: 32           
+    num_cls_tokens: 4        
+    depth: 3                 
+    num_heads: 4             
+    dropout: 0.
+  
+  action_head:
+    depth: 4                 
+    num_heads: 4             
+    dropout: 0.
+
+
+training:
+  batch_size: 128
+  time_sampler: "logit_normal"
+  time_mu: 0.0               
+  time_sigma: 1.0            
+  learning_rate: 2e-4
+  weight_decay: 1e-2
+  betas: [0.9, 0.99]
+  grad_clip_norm: 1.0
+
+system:
+  log_level: "INFO"
+  num_workers: 8             
+  pin_memory: true           
+  log_interval: 20

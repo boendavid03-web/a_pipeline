@@ -6,6 +6,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+ISAAC_BACKEND="${ISAAC_BACKEND:-isaac5}"
+case "$ISAAC_BACKEND" in
+    isaac5) exec "$PROJECT_ROOT/isaac_sim/backends/isaac5/launch/run_production_demo.sh" --workflow semantic "$@" ;;
+    isaac6) ;;
+    *) echo "ERROR: ISAAC_BACKEND must be isaac5 (default) or isaac6 (legacy/regression)." >&2; exit 2 ;;
+esac
 ROS_WS="$PROJECT_ROOT/workspaces/ros2_ws"
 ISAAC_LAUNCHER="$PROJECT_ROOT/isaac_sim/scripts/run_isaac_6_0_warehouse_people_robot.sh"
 VIDEO_RENDERER="$PROJECT_ROOT/pipelines/v7_native_pipeline/scripts/render_fixed_four_evaluation_video.py"
