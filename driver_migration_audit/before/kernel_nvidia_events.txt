@@ -1,0 +1,138 @@
+COMMAND:
+journalctl -k -b --no-pager 2>&1 | rg -i 'NVRM|Xid|nvidia|nouveau' | tail -400
+
+OUTPUT:
+Sep 06 12:36:57 user kernel: r8169 0000:06:00.0 eth0: RTL8125B, 30:c5:99:b4:36:ad, XID 641, IRQ 156
+Sep 06 12:36:57 user kernel: nvidia: loading out-of-tree module taints kernel.
+Sep 06 12:36:57 user kernel: nvidia: module verification failed: signature and/or required key missing - tainting kernel
+Sep 06 12:36:57 user kernel: nvidia-nvlink: Nvlink Core is being initialized, major device number 235
+Sep 06 12:36:57 user kernel: nvidia 0000:01:00.0: vgaarb: VGA decodes changed: olddecodes=io+mem,decodes=none:owns=none
+Sep 06 12:36:57 user kernel: NVRM: loading NVIDIA UNIX Open Kernel Module for x86_64  595.84  Release Build  (dvs-builder@U22-I3-AM25-26-2)  Wed Jun 10 21:06:37 UTC 2026
+Sep 06 12:36:57 user kernel: audit: type=1400 audit(1788669417.983:5): apparmor="STATUS" operation="profile_load" profile="unconfined" name="nvidia_modprobe" pid=821 comm="apparmor_parser"
+Sep 06 12:36:57 user kernel: audit: type=1400 audit(1788669417.983:6): apparmor="STATUS" operation="profile_load" profile="unconfined" name="nvidia_modprobe//kmod" pid=821 comm="apparmor_parser"
+Sep 06 12:36:58 user kernel: nvidia-modeset: Loading NVIDIA UNIX Open Kernel Mode Setting Driver for x86_64  595.84  Release Build  (dvs-builder@U22-I3-AM25-26-2)  Wed Jun 10 20:53:33 UTC 2026
+Sep 06 12:36:58 user kernel: [drm] [nvidia-drm] [GPU ID 0x00000100] Loading driver
+Sep 06 12:36:58 user kernel: input: HDA NVidia HDMI/DP,pcm=3 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input11
+Sep 06 12:36:58 user kernel: input: HDA NVidia HDMI/DP,pcm=7 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input12
+Sep 06 12:36:58 user kernel: input: HDA NVidia HDMI/DP,pcm=8 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input13
+Sep 06 12:36:58 user kernel: input: HDA NVidia HDMI/DP,pcm=9 as /devices/pci0000:00/0000:00:01.0/0000:01:00.1/sound/card1/input14
+Sep 06 12:36:59 user kernel: [drm] Initialized nvidia-drm 0.0.0 20160202 for 0000:01:00.0 on minor 1
+Sep 06 12:36:59 user kernel: nvidia 0000:01:00.0: vgaarb: deactivate vga console
+Sep 06 12:36:59 user kernel: fbcon: nvidia-drmdrmfb (fb0) is primary device
+Sep 06 12:36:59 user kernel: nvidia 0000:01:00.0: [drm] fb0: nvidia-drmdrmfb frame buffer device
+Sep 06 14:56:22 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 16:05:42 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 16:38:24 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 16:49:29 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 17:00:17 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 17:38:09 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 17:56:03 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 17:56:14 user kernel: nvidia 0000:01:00.0: Using 39-bit DMA addresses
+Sep 06 18:00:52 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 06 18:04:33 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 09:17:02 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 09:28:18 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 09:32:07 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 09:34:56 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 09:48:55 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 10:36:48 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 10:39:50 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 10:42:49 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 12:16:28 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 12:21:25 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 15:00:10 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 16:04:17 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 16:48:43 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 16:58:21 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 17:12:27 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 17:20:06 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 19:11:11 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 19:15:27 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 19:17:12 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 19:20:50 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 19:23:18 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 20:55:11 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:01:56 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:15:35 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:18:30 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:20:54 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:21:32 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:21:42 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:21:52 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:25:18 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:30:18 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:30:56 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:31:31 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:31:49 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:38:28 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:39:02 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:39:36 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 21:49:32 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 23:30:20 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 07 23:32:54 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:35:42 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:36:12 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:36:52 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:37:32 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:40:28 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:41:12 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:42:00 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:44:25 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 09:45:02 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:00:01 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:18:36 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:19:46 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:20:43 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:22:02 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:22:39 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:22:54 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:23:09 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:23:24 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:23:39 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:23:55 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:24:09 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:24:24 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:24:38 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:24:53 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:25:08 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:25:24 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:25:39 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:25:54 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:26:09 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:26:23 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:26:39 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:26:54 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:27:09 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 10:27:25 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 11:46:09 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 11:51:19 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 12:21:50 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 12:35:13 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 14:32:08 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 14:41:25 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 14:46:20 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 21:18:01 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 21:27:51 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 21:35:41 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:36:24 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:37:31 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:37:56 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:38:42 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:38:58 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:39:13 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:39:28 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:39:44 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 22:39:59 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 23:03:42 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 08 23:06:28 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 08:21:17 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 09:56:34 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 10:12:10 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 10:50:55 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 21:28:15 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 21:31:12 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 21:36:44 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 21:51:56 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+
+__EXIT_CODE__=0
+

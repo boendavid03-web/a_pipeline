@@ -1,0 +1,11 @@
+COMMAND:
+lsmod | rg '^nvidia' || true
+
+OUTPUT:
+nvidia_uvm           2060288  8
+nvidia_drm            139264  16
+nvidia_modeset       1744896  21 nvidia_drm
+nvidia              14807040  298 nvidia_uvm,nvidia_modeset
+
+__EXIT_CODE__=0
+

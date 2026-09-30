@@ -1,0 +1,67 @@
+COMMAND:
+date --iso-8601=seconds; nvidia-smi; printf '\nMODULE_VERSION\n'; modinfo -F version nvidia; printf '\nDKMS\n'; dkms status; printf '\nDRIVER_PACKAGES\n'; dpkg -l | rg '^ii\s+(nvidia-driver|nvidia-dkms|nvidia-kernel|nvidia-utils|libnvidia)' || true; printf '\nSSH\n'; systemctl is-enabled ssh 2>&1; systemctl is-active ssh 2>&1; printf '\nPROJECT_RECORDER_COUNT\n'; ps -eo args= | rg -c 'closed_loop_demo_recorder\.py' || true
+
+OUTPUT:
+2026-09-12T13:17:03+08:00
+Sat Sep 12 13:17:03 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 595.84                 Driver Version: 595.84         CUDA Version: 13.2     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 5090        Off |   00000000:01:00.0  On |                  N/A |
+|  0%   53C    P5             65W /  600W |    1023MiB /  32607MiB |      9%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            2098      G   /usr/lib/xorg/Xorg                      619MiB |
+|    0   N/A  N/A            2293      G   /usr/bin/gnome-shell                     84MiB |
+|    0   N/A  N/A            2495      G   /usr/local/awesun/awesun                 49MiB |
+|    0   N/A  N/A          729312      G   ...rack-uuid=3190708988185955192          6MiB |
+|    0   N/A  N/A          730206      G   ...rack-uuid=3190708988185955192        153MiB |
++-----------------------------------------------------------------------------------------+
+
+MODULE_VERSION
+595.84
+
+DKMS
+nvidia/595.84, 6.8.0-136-generic, x86_64: installed
+
+DRIVER_PACKAGES
+ii  libnvidia-cfg1-595:amd64                           595.84-0ubuntu0.22.04.1                          amd64        NVIDIA binary OpenGL/GLX configuration library
+ii  libnvidia-common-595                               595.84-0ubuntu0.22.04.1                          amd64        Shared files used by the NVIDIA libraries
+ii  libnvidia-compute-595:amd64                        595.84-0ubuntu0.22.04.1                          amd64        NVIDIA libcompute package
+ii  libnvidia-compute-595:i386                         595.84-0ubuntu0.22.04.1                          i386         NVIDIA libcompute package
+ii  libnvidia-decode-595:amd64                         595.84-0ubuntu0.22.04.1                          amd64        NVIDIA Video Decoding runtime libraries
+ii  libnvidia-decode-595:i386                          595.84-0ubuntu0.22.04.1                          i386         NVIDIA Video Decoding runtime libraries
+ii  libnvidia-egl-wayland1:amd64                       1:1.1.9-1.1ubuntu0.1                             amd64        Wayland EGL External Platform library -- shared library
+ii  libnvidia-egl-wayland1:i386                        1:1.1.9-1.1ubuntu0.1                             i386         Wayland EGL External Platform library -- shared library
+ii  libnvidia-encode-595:amd64                         595.84-0ubuntu0.22.04.1                          amd64        NVENC Video Encoding runtime library
+ii  libnvidia-encode-595:i386                          595.84-0ubuntu0.22.04.1                          i386         NVENC Video Encoding runtime library
+ii  libnvidia-extra-595:amd64                          595.84-0ubuntu0.22.04.1                          amd64        Extra libraries for the NVIDIA driver
+ii  libnvidia-fbc1-595:amd64                           595.84-0ubuntu0.22.04.1                          amd64        NVIDIA OpenGL-based Framebuffer Capture runtime library
+ii  libnvidia-fbc1-595:i386                            595.84-0ubuntu0.22.04.1                          i386         NVIDIA OpenGL-based Framebuffer Capture runtime library
+ii  libnvidia-gl-595:amd64                             595.84-0ubuntu0.22.04.1                          amd64        NVIDIA OpenGL/GLX/EGL/GLES GLVND libraries and Vulkan ICD
+ii  libnvidia-gl-595:i386                              595.84-0ubuntu0.22.04.1                          i386         NVIDIA OpenGL/GLX/EGL/GLES GLVND libraries and Vulkan ICD
+ii  nvidia-dkms-595-open                               595.84-0ubuntu0.22.04.1                          amd64        NVIDIA DKMS package (open kernel module)
+ii  nvidia-driver-595-open                             595.84-0ubuntu0.22.04.1                          amd64        NVIDIA driver (open kernel) metapackage
+ii  nvidia-kernel-common-595                           595.84-0ubuntu0.22.04.1                          amd64        Shared files used with the kernel module
+ii  nvidia-kernel-source-595-open                      595.84-0ubuntu0.22.04.1                          amd64        NVIDIA kernel source package
+ii  nvidia-utils-595                                   595.84-0ubuntu0.22.04.1                          amd64        NVIDIA driver support binaries
+
+SSH
+enabled
+active
+
+PROJECT_RECORDER_COUNT
+24
+
+__EXIT_CODE__=0
+

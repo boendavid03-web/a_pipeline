@@ -1,0 +1,7 @@
+COMMAND:
+apt-cache policy | rg -i 'nvidia|cuda' || true
+
+OUTPUT:
+
+__EXIT_CODE__=0
+

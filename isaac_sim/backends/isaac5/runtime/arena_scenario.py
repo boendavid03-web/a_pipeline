@@ -39,8 +39,10 @@ BEHAVIORS = frozenset(
 
 
 def _point3(value: object, label: str) -> Point3:
-    if not isinstance(value, list) or len(value) != 3:
-        raise ValueError(f"{label} must be a three-element list")
+    if not isinstance(value, list) or len(value) not in (2, 3):
+        raise ValueError(f"{label} must be a two- or three-element list")
+    if len(value) == 2:
+        value = [*value, 0.0]
     point = tuple(float(component) for component in value)
     if not all(math.isfinite(component) for component in point):
         raise ValueError(f"{label} must contain finite coordinates")
@@ -51,12 +53,22 @@ def load_arena_pedestrians(path: Path) -> tuple[ArenaPedestrian, ...]:
     """Read legacy Arena or neutral dynamic-crowd entries without ROS imports."""
     document = json.loads(path.read_text(encoding="utf-8"))
     neutral = document.get("schema") == "a_pipeline.isaac_hunav.scene/v1"
-    dynamic = document.get("agents") if neutral else document.get("obstacles", {}).get("dynamic")
-    if not isinstance(dynamic, list) or not dynamic:
-        raise ValueError("Arena scenario must contain a non-empty obstacles.dynamic list")
+    if neutral:
+        dynamic = document.get("agents", [])
+    else:
+        obstacles = document.get("obstacles", {})
+        dynamic = obstacles.get("dynamic", []) if isinstance(obstacles, dict) else None
+    if not isinstance(dynamic, list):
+        raise ValueError("Arena scenario obstacles.dynamic/agents must be a list")
+    # Some official Arena scenarios intentionally contain no dynamic agents
+    # (for example ``empty.json`` and ``marl.json``).  Treat these as valid
+    # zero-person scenes so the all-scene audit can cover them as well.
+    if not dynamic:
+        return ()
 
     pedestrians: list[ArenaPedestrian] = []
     names: set[str] = set()
+    used_track_ids: set[int] = set()
     for index, entry in enumerate(dynamic):
         if not isinstance(entry, dict):
             raise ValueError(f"obstacles.dynamic[{index}] must be an object")
@@ -65,20 +77,29 @@ def load_arena_pedestrians(path: Path) -> tuple[ArenaPedestrian, ...]:
             raise ValueError(f"obstacles.dynamic[{index}] has a missing or duplicate name")
         names.add(name)
         waypoint_mode = int(entry.get("waypoint_mode", 1))
-        if waypoint_mode != 1:
-            raise ValueError(
-                f"{name}: Isaac 5 preview currently supports Arena waypoint_mode=1 only"
-            )
+        if waypoint_mode not in (0, 1, 2):
+            raise ValueError(f"{name}: unsupported Arena waypoint_mode={waypoint_mode}")
         stable_id = str(entry.get("stable_id", name)).strip()
         track_id = int(entry.get("track_id", entry.get("id", index + 1)))
+        # Several legacy Arena files use ``id: 0`` for every dynamic
+        # obstacle.  Keep explicit neutral track IDs, but make the legacy
+        # fallback deterministic and unique for downstream tracking.
+        if track_id in used_track_ids:
+            track_id = index + 1
+            while track_id in used_track_ids:
+                track_id += 1
+        used_track_ids.add(track_id)
         route_values = entry.get("resolved_route") if neutral else None
         if route_values is None:
             waypoints = entry.get("waypoints")
-            if not isinstance(waypoints, list) or not waypoints:
-                raise ValueError(f"{name}: at least one waypoint is required")
+            if not isinstance(waypoints, list):
+                raise ValueError(f"{name}: waypoints must be a list")
+            # waypoint_mode=0 is used by Arena for stationary/blocked agents;
+            # the native Isaac backend imports these with their spawn pose as
+            # the goal.  Preserve that contract as a one-point route.
             route_values = [entry.get("pos"), *waypoints]
-        if not isinstance(route_values, list) or len(route_values) < 2:
-            raise ValueError(f"{name}: resolved route must contain at least two points")
+        if not isinstance(route_values, list) or not route_values:
+            raise ValueError(f"{name}: resolved route must contain at least one point")
         route = tuple(
             _point3(point, f"{name}.resolved_route[{route_index}]")
             for route_index, point in enumerate(route_values)
@@ -90,7 +111,9 @@ def load_arena_pedestrians(path: Path) -> tuple[ArenaPedestrian, ...]:
             _point3(point, f"{name}.semantic_route[{route_index}]")
             for route_index, point in enumerate(semantic_values)
         )
-        if len(route) < 2 or all(
+        if waypoint_mode != 0 and len(route) < 2:
+            raise ValueError(f"{name}: moving route must contain at least two points")
+        if waypoint_mode != 0 and all(
             math.dist(route[0][:2], point[:2]) <= 1.0e-9 for point in route[1:]
         ):
             raise ValueError(f"{name}: route must contain a non-zero planar leg")

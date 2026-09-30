@@ -1,0 +1,10 @@
+COMMAND:
+command -v nvidia-smi || true; p=$(command -v nvidia-smi || true); if [ -n "$p" ]; then readlink -f "$p"; dpkg -S "$(readlink -f "$p")" 2>&1 || true; fi
+
+OUTPUT:
+/usr/bin/nvidia-smi
+/usr/bin/nvidia-smi
+nvidia-utils-595: /usr/bin/nvidia-smi
+
+__EXIT_CODE__=0
+

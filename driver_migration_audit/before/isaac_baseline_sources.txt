@@ -1,0 +1,148 @@
+COMMAND:
+printf 'ISAAC5 REPORT EVIDENCE\n'; rg -n 'Result C|580\.173\.02|595\.84|carbOnPluginStartup|Isaac Sim Full App is loaded|SceneDB v4\.4|SceneDB v6\.1' isaac5_renderer_viewport_analysis.md | head -120; printf '\nISAAC LOG CANDIDATES\n'; find /home/user/.nvidia-omniverse/logs/Kit /home/user/isaacsim/5.1.0/kit/logs/Kit /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit -type f -name '*.log' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -120
+
+OUTPUT:
+ISAAC5 REPORT EVIDENCE
+9:**本轮最终判定：Result C — RTX PATH BLOCKED。**
+15:默认 Isaac 5.1 GUI 的 RTX 路径则在 RTX 5090 + driver 595.84 上重复失败。本轮唯一一次隔离 RTX 复现已经同时设置 `multi_gpu=False`、`renderer/multiGpu/enabled=false` 和 `renderer/multiGpu/autoEnable=false`，仍在 `rtx.scenedb.plugin` 初始化附近原生段错误。现有带符号回溯把失败点进一步限定到 `librtx.scenedb.plugin.so!carbOnPluginStartup+0x3b4de`。所以 multi-GPU 自动启用不是必要触发条件。
+69:| Observed GUI evidence | 同一 5.1 build 在 driver 580.173.02 历史日志中成功加载 Full app；595.84 当前失败 | 本地可读成功日志使用 580.173.02；“6.0.1 + 595.84 GUI PASS”是用户给定的当前事实 | 本地日志不能把 Isaac6/595.84 当成本轮重新验证；但 newer SceneDB stack 与当前用户事实一致 |
+71:回答“Isaac 5.1 本身是否支持真正 GUI”：**支持。** `/home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_200257.log` 是同一个 Isaac 5.1 / Kit hash，在 RTX 5090、driver 580.173.02 下运行的历史证据：SceneDB v4.4 初始化，RTX viewport 被分配到 device 0，73.876 s 输出 `Isaac Sim Full App is loaded`，进程运行到约 142 s 后由用户中断。这不是本轮的视觉复验，但足以证明产品和该安装并非 physics-only。
+73:回答“为什么 Isaac6 能显示而 Isaac5 当前不能”：可防御的解释是 **Isaac 5.1 的旧 RTX/SceneDB binary stack 与当前 RTX 5090 + driver 595.84 组合发生 native runtime incompatibility，而 Isaac 6 使用更新的 Kit/GPU Foundation/Hydra RTX/SceneDB v6.1 stack并能越过同一阶段**。现有 stripped binary 和日志不能把原因再精确到某一行 NVIDIA 内部源码，因此不把它描述成已证明的单一 driver bug。
+170:当前 595.84 下的已证实链条：
+188:librtx.scenedb.plugin.so!carbOnPluginStartup+0x3b4de
+271:| Isaac5/Kit 107.3.3 + RTX5090 + driver 580.173.02 | 多个 Full 5.1 日志；`kit_20260808_200257.log` 最清晰 | SceneDB v4.4 PASS，view device 0，Full app loaded，运行 > 60 s |
+272:| Isaac5/Kit 107.3.3 + RTX5090 + driver 595.84 | 多个当前/历史日志 + 本轮唯一隔离复现 | SceneDB startup 附近 native crash；无 Full app loaded |
+273:| Isaac6/Kit 110.1.2 + RTX5090 + driver 580.173.02 | `kit_20260809_200928.log` | SceneDB v6.1 PASS，后续 rasterizing/materialdb/denoising/postprocessing 启动，Full app loaded |
+274:| Isaac6 + RTX5090 + driver 595.84 | 用户给定当前事实 | 真正 GUI/3D viewport PASS；本轮未重启复验 |
+278:**First diverging component：** `rtx.scenedb.plugin` native initialization。Isaac5 SceneDB v4.4 在 `carbOnPluginStartup` 内崩溃；Isaac6 SceneDB v6.1 越过该点并继续初始化 rasterizing、MaterialDB、denoising 和 postprocessing。
+286:> **Isaac 5.1 的 RTX SceneDB native plugin 在首次 RTX viewport 激活后的 `rtx.scenedb.plugin` startup 阶段发生 SIGSEGV，符号化到 `librtx.scenedb.plugin.so!carbOnPluginStartup+0x3b4de`。**
+315:8. **唯一一次隔离 RTX reproduction**：headless、单 GPU、multi-GPU/autoEnable 均 false、无机器人/ROS/传感器、20 s 上限；4.773 s `app ready` 后仍 native segfault，Kit log 最后一组关键事件包含 SceneDB v4.4 initialization。运行后 `nvidia-smi` 正常显示 RTX 5090/595.84；未观察到 Xid 输出。
+357:**Result C — RTX PATH BLOCKED**
+363:选择 Result C：默认/已安装完整 viewport 路径只有 RTX，且 Isaac 5.1 SceneDB v4.4 在当前 595.84 环境中的 native startup 仍被阻塞；no-RTX Core/PhysX backend 不受该阻塞影响。
+368:2. 为什么 Isaac6 可显示、Isaac5 当前不能？**首个差异在旧 SceneDB v4.4 与新版 v6.1；旧 stack 在当前组合 native crash，新 stack 能越过。内部具体修复点未知。**
+374:8. SceneDB crash 在哪一阶段？**`rtx.scenedb.plugin` native startup，`carbOnPluginStartup+0x3b4de`。**
+375:9. Isaac6 为什么同阶段成功？**使用不同且更新的 SceneDB v6.1/renderer binary stack；日志显示继续进入后续 RTX plugins。**
+
+ISAAC LOG CANDIDATES
+1789187399.1433703870 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260912_122954.log
+1789187130.5363705180 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX PXR Viewport Probe/5.1/kit_20260912_122530.log
+1789186933.2208990590 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX PXR Viewport Probe/5.1/kit_20260912_122213.log
+1789112764.6005164480 /home/user/.nvidia-omniverse/logs/Kit/omni.app.hydra/1.0/kit_20260911_154550.log
+1789112583.9510117300 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX GUI Preview/5.1/kit_20260911_154257.log
+1789112548.8993143970 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX GUI Preview/5.1/kit_20260911_154222.log
+1789112503.4957136070 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX GUI Preview/5.1/kit_20260911_154137.log
+1789111808.5285928840 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_153005.log
+1789111792.9838307180 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_152949.log
+1789111607.7750197780 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_152630.log
+1789111353.2938571810 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_152230.log
+1789111340.3642136600 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_152217.log
+1789111327.0885868610 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_152204.log
+1789111219.3459099960 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_152016.log
+1789111093.8115602770 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_151810.log
+1789110949.5162311540 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_151525.log
+1789110890.0094927350 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_151426.log
+1789110441.0781551400 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_150716.log
+1789110413.6111379270 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_150649.log
+1789109953.4265527150 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145911.log
+1789109875.5248129970 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145752.log
+1789109850.7119121670 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145728.log
+1789109786.3182104060 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145623.log
+1789109772.2722838440 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145609.log
+1789109751.4603985450 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145549.log
+1789109727.2365412500 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_145524.log
+1789108019.1331066270 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_142656.log
+1789107929.4672835830 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_142526.log
+1789107775.1528746960 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_142250.log
+1789107013.1462092600 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_141010.log
+1789106681.8364310020 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140439.log
+1789106592.9245945140 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140307.log
+1789106569.9363790090 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140243.log
+1789106541.7201149670 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140213.log
+1789106512.4378415320 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140145.log
+1789106481.2415509130 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140114.log
+1789106451.4322739220 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140043.log
+1789106423.3610137490 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac 5.1 Minimal Core PhysX No RTX Probe/5.1/kit_20260911_140020.log
+1789099564.8197396200 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260911_120558.log
+1788962129.5849278580 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_215155.log
+1788961158.0009174970 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_213643.log
+1788960917.9520087720 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_213112.log
+1788960594.9973574310 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_212814.log
+1788930200.1812842480 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_105054.log
+1788922078.9116899980 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_101209.log
+1788919868.2666212230 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_095634.log
+1788913501.7848892140 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260909_082117.log
+1788880212.3135685420 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_230627.log
+1788879832.1979400720 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_230341.log
+1788878413.5527741090 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223958.log
+1788878397.9886850740 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223943.log
+1788878382.8885983840 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223927.log
+1788878367.4125092070 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223912.log
+1788878352.2464214870 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223857.log
+1788878337.0933335040 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223842.log
+1788878291.0940642560 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223756.log
+1788878265.5879134740 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223730.log
+1788878199.0515146740 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_223624.log
+1788874765.0139904210 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_213540.log
+1788874295.5376051300 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_212751.log
+1788873705.7435355030 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_211800.log
+1788850204.8767858910 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_144619.log
+1788849909.5088729240 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_144124.log
+1788849352.9452562190 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_143208.log
+1788842266.2191075240 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_123512.log
+1788841515.9224993690 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_122150.log
+1788839604.0633533540 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_115118.log
+1788839399.0906488030 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_114608.log
+1788834459.4698516580 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_102724.log
+1788834444.3419510270 /home/user/navigation_project/a_pipeline/isaac_sim/isaacsim-6.0.1/kit/logs/Kit/Isaac-Sim Python/6.0/kit_20260908_102709.log
+1786277383.5393245140 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_200928.log
+1786277357.3180228070 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_200904.log
+1786275791.4130898580 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_194258.log
+1786275416.4290863700 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_193644.log
+1786275316.7905812930 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_193456.log
+1786274163.3946535260 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_190959.log
+1786273767.0474770360 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_190743.log
+1786273560.9872358550 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_190530.log
+1786273527.9643665450 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_184349.log
+1786255118.3166235700 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_135821.log
+1786254762.7287562550 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_134225.log
+1786254140.1932363660 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_133847.log
+1786253457.2498947900 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_133047.log
+1786253204.8722828500 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260809_132636.log
+1786203629.6210422960 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_234015.log
+1786203576.9057488330 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_233918.log
+1786203486.9513052640 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_233736.log
+1786203396.6059443570 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_233617.log
+1786203325.7477311250 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_233509.log
+1786203046.2736950570 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_233031.log
+1786203023.7357633310 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_233007.log
+1786203002.7368386430 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_232949.log
+1786202866.0336398840 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_232719.log
+1786200565.2811485800 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_224328.log
+1786197859.3507142540 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_220209.log
+1786197498.4495047020 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_215807.log
+1786194014.7163294140 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_205851.log
+1786193842.6611450280 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_205505.log
+1786193669.7477334460 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_205248.log
+1786193489.6068453750 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_205013.log
+1786193370.2761284020 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_204827.log
+1786193278.8362773320 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_204702.log
+1786193075.8816370110 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_204423.log
+1786193045.5887057300 /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260808_204350.log
+1786190719.9343069430 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_200257.log
+1786189437.9901705790 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_194349.log
+1786189406.0152456190 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_193918.log
+1786187096.7041513670 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_190447.log
+1786187061.7466404080 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_190318.log
+1786187061.5826768610 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim_Compatibility_Checker/5.1/kit_20260808_190238.log
+1786186978.4771471000 /home/user/.nvidia-omniverse/logs/Kit/omni.app.mini/0.1/kit_20260808_190255.log
+1786186875.7438985310 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_185931.log
+1786179976.6861966130 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_164336.log
+1786176253.2350086530 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_155447.log
+1786175207.2008100640 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_005452.log
+1786119546.5257034580 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_001447.log
+1786119208.6881732020 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim_App_Selector/5.1/kit_20260808_001134.log
+1786119090.2975279950 /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim_Compatibility_Checker/5.1/kit_20260808_000208.log
+1786118924.9494865230 /home/user/.nvidia-omniverse/logs/Kit/omni.app.mini/0.1/kit_20260808_000821.log
+
+__EXIT_CODE__=0
+

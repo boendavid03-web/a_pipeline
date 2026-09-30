@@ -1,0 +1,17 @@
+COMMAND:
+lspci -nnk | rg -A4 -i 'vga|3d|nvidia' || true
+
+OUTPUT:
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation Device [10de:2b85] (rev a1)
+	Subsystem: Gigabyte Technology Co., Ltd Device [1458:416f]
+	Kernel driver in use: nvidia
+	Kernel modules: nvidiafb, nouveau, nvidia_drm, nvidia
+01:00.1 Audio device [0403]: NVIDIA Corporation Device [10de:22e8] (rev a1)
+	Subsystem: NVIDIA Corporation Device [10de:0000]
+	Kernel driver in use: snd_hda_intel
+	Kernel modules: snd_hda_intel
+02:00.0 Non-Volatile memory controller [0108]: Yangtze Memory Technologies Co.,Ltd Device [1e49:00a1] (rev 01)
+	Subsystem: Yangtze Memory Technologies Co.,Ltd Device [1e49:00a1]
+
+__EXIT_CODE__=0
+

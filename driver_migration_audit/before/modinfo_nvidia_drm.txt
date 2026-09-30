@@ -1,0 +1,39 @@
+COMMAND:
+modinfo nvidia_drm
+
+OUTPUT:
+filename:       /lib/modules/6.8.0-136-generic/updates/dkms/nvidia-drm.ko
+description:    NVIDIA DRM kernel module
+version:        595.84
+supported:      external
+license:        Dual MIT/GPL
+srcversion:     642BF8D90E804AFE3321FB5
+alias:          pci:v000010DEd*sv*sd*bc06sc80i00*
+alias:          pci:v000010DEd*sv*sd*bc03sc02i00*
+alias:          pci:v000010DEd*sv*sd*bc03sc00i00*
+depends:        nvidia-modeset
+retpoline:      Y
+name:           nvidia_drm
+vermagic:       6.8.0-136-generic SMP preempt mod_unload modversions 
+sig_id:         PKCS#7
+signer:         user Secure Boot Module Signature key
+sig_key:        65:C9:DC:13:4A:90:00:39:36:41:26:D1:6E:F7:CF:F2:4D:87:97:40
+sig_hashalgo:   sha512
+signature:      0D:FE:FB:42:C4:FD:D1:C3:C7:A9:DB:67:3C:B4:12:35:72:82:FB:DB:
+		C9:E1:6D:4D:DA:76:38:BE:1E:93:DD:29:16:CF:A4:8C:20:D5:4D:82:
+		6C:EE:6C:B8:B9:53:86:9C:37:1D:24:E8:8E:A9:6A:E6:FC:1A:72:DE:
+		09:9F:AB:92:5A:82:8C:3F:A4:34:F6:30:6D:EE:92:C2:C3:20:51:90:
+		E2:6E:E6:26:50:71:5D:0D:15:EB:2A:9F:B3:65:91:C9:94:04:52:5C:
+		D0:00:10:8B:01:60:94:C8:DF:1A:D0:7E:EF:16:CA:63:D7:59:CF:A7:
+		5A:EE:ED:F7:7F:34:56:CA:C1:31:D4:F6:D1:16:04:05:FF:8D:58:12:
+		26:9F:4C:5D:8B:02:0D:BA:E3:26:05:E2:9B:31:1C:AA:DD:AB:26:19:
+		C6:D2:6A:70:35:3C:56:70:CB:BB:DC:F4:56:85:D4:69:47:11:8B:09:
+		5A:F7:5A:63:7C:CD:45:43:82:50:5E:6D:57:39:9A:57:6C:AE:00:20:
+		DF:7B:DC:21:CB:6D:6E:51:07:8A:25:11:0E:56:B5:11:4E:21:8A:F9:
+		CE:CF:FE:6A:E3:FD:22:71:2C:30:DC:81:5F:83:59:34:55:14:68:F0:
+		7C:48:8D:E4:CF:AF:F4:D4:11:80:4D:96:71:33:12:CA
+parm:           modeset:Enable atomic kernel modesetting (1 = enable (default), 0 = disable) (bool)
+parm:           fbdev:Create a framebuffer device (1 = enable (default), 0 = disable) (bool)
+
+__EXIT_CODE__=0
+

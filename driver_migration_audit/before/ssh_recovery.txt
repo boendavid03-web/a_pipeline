@@ -1,0 +1,27 @@
+COMMAND:
+systemctl is-enabled ssh 2>&1; systemctl is-active ssh 2>&1; systemctl status ssh --no-pager --full 2>&1; ss -ltnp | rg '(:22\s|sshd)' || true
+
+OUTPUT:
+enabled
+active
+● ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (/lib/systemd/system/ssh.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sun 2026-09-06 12:36:59 CST; 6 days ago
+       Docs: man:sshd(8)
+             man:sshd_config(5)
+   Main PID: 1153 (sshd)
+      Tasks: 1 (limit: 76390)
+     Memory: 3.3M
+        CPU: 13ms
+     CGroup: /system.slice/ssh.service
+             └─1153 "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups"
+
+Sep 06 12:36:59 user systemd[1]: Starting OpenBSD Secure Shell server...
+Sep 06 12:36:59 user sshd[1153]: Server listening on 0.0.0.0 port 22.
+Sep 06 12:36:59 user sshd[1153]: Server listening on :: port 22.
+Sep 06 12:36:59 user systemd[1]: Started OpenBSD Secure Shell server.
+LISTEN 0      128          0.0.0.0:22         0.0.0.0:*                                            
+LISTEN 0      128             [::]:22            [::]:*                                            
+
+__EXIT_CODE__=0
+

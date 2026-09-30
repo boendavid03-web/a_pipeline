@@ -1,0 +1,46 @@
+COMMAND:
+apt-cache policy nvidia-driver-595-open nvidia-dkms-595-open linux-modules-nvidia-595-open-generic-hwe-22.04; printf '\nMADISON\n'; apt-cache madison nvidia-driver-595-open nvidia-dkms-595-open linux-modules-nvidia-595-open-generic-hwe-22.04; printf '\nSHOW META\n'; apt-cache show nvidia-driver-595-open | rg '^(Package|Version|Architecture|Depends|Recommends|Suggests|Description|Source):' || true
+
+OUTPUT:
+nvidia-driver-595-open:
+  已安装：595.84-0ubuntu0.22.04.1
+  候选： 595.84-0ubuntu0.22.04.1
+  版本列表：
+ *** 595.84-0ubuntu0.22.04.1 500
+        500 http://cn.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages
+        500 http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages
+        100 /var/lib/dpkg/status
+nvidia-dkms-595-open:
+  已安装：595.84-0ubuntu0.22.04.1
+  候选： 595.84-0ubuntu0.22.04.1
+  版本列表：
+ *** 595.84-0ubuntu0.22.04.1 500
+        500 http://cn.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages
+        500 http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages
+        100 /var/lib/dpkg/status
+linux-modules-nvidia-595-open-generic-hwe-22.04:
+  已安装：(无)
+  候选： 6.8.0-138.138~22.04.1
+  版本列表：
+     6.8.0-138.138~22.04.1 500
+        500 http://cn.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages
+        500 http://security.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages
+
+MADISON
+nvidia-driver-595-open | 595.84-0ubuntu0.22.04.1 | http://cn.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages
+nvidia-driver-595-open | 595.84-0ubuntu0.22.04.1 | http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages
+nvidia-dkms-595-open | 595.84-0ubuntu0.22.04.1 | http://cn.archive.ubuntu.com/ubuntu jammy-updates/multiverse amd64 Packages
+nvidia-dkms-595-open | 595.84-0ubuntu0.22.04.1 | http://security.ubuntu.com/ubuntu jammy-security/multiverse amd64 Packages
+linux-modules-nvidia-595-open-generic-hwe-22.04 | 6.8.0-138.138~22.04.1 | http://cn.archive.ubuntu.com/ubuntu jammy-updates/restricted amd64 Packages
+linux-modules-nvidia-595-open-generic-hwe-22.04 | 6.8.0-138.138~22.04.1 | http://security.ubuntu.com/ubuntu jammy-security/restricted amd64 Packages
+
+SHOW META
+Package: nvidia-driver-595-open
+Source: nvidia-graphics-drivers-595
+Architecture: amd64
+Version: 595.84-0ubuntu0.22.04.1
+Recommends: nvidia-settings, nvidia-prime (>= 0.8), libnvidia-compute-595:i386 (= 595.84-0ubuntu0.22.04.1), libnvidia-decode-595:i386 (= 595.84-0ubuntu0.22.04.1), libnvidia-encode-595:i386 (= 595.84-0ubuntu0.22.04.1), libnvidia-fbc1-595:i386 (= 595.84-0ubuntu0.22.04.1), libnvidia-gl-595:i386 (= 595.84-0ubuntu0.22.04.1)
+Depends: libnvidia-gl-595 (= 595.84-0ubuntu0.22.04.1), nvidia-dkms-595-open (<= 595.84-1), nvidia-dkms-595-open (>= 595.84), nvidia-kernel-common-595 (<= 595.84-1), nvidia-kernel-common-595 (>= 595.84), nvidia-kernel-source-595-open (= 595.84-0ubuntu0.22.04.1), libnvidia-compute-595 (= 595.84-0ubuntu0.22.04.1), libnvidia-extra-595 (= 595.84-0ubuntu0.22.04.1), nvidia-compute-utils-595 (= 595.84-0ubuntu0.22.04.1), libnvidia-decode-595 (= 595.84-0ubuntu0.22.04.1), libnvidia-encode-595 (= 595.84-0ubuntu0.22.04.1), nvidia-utils-595 (= 595.84-0ubuntu0.22.04.1), xserver-xorg-video-nvidia-595 (= 595.84-0ubuntu0.22.04.1), libnvidia-cfg1-595 (= 595.84-0ubuntu0.22.04.1), libnvidia-fbc1-595 (= 595.84-0ubuntu0.22.04.1)
+
+__EXIT_CODE__=0
+

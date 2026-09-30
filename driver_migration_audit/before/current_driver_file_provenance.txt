@@ -1,0 +1,31 @@
+COMMAND:
+printf 'MODULES\n'; for m in nvidia nvidia_uvm nvidia_drm nvidia_modeset; do p=$(modinfo -F filename "$m" 2>/dev/null || true); printf '%s=%s\n' "$m" "$p"; [ -n "$p" ] && dpkg -S "$p" 2>&1 || true; done; printf '\nUSERSPACE\n'; for p in "$(readlink -f "$(command -v nvidia-smi)")" /usr/lib/x86_64-linux-gnu/libcuda.so.595.84 /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.595.84 /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.595.84 /usr/lib/x86_64-linux-gnu/nvidia/xorg/nvidia_drv.so; do ls -l "$p" 2>&1; dpkg -S "$p" 2>&1 || true; done; printf '\nVERSIONS\n'; modinfo -F version nvidia; strings /usr/lib/x86_64-linux-gnu/libcuda.so.595.84 2>/dev/null | rg -m1 'NVIDIA CUDA Driver' || true
+
+OUTPUT:
+MODULES
+nvidia=/lib/modules/6.8.0-136-generic/updates/dkms/nvidia.ko
+dpkg-query: 没有找到与 /lib/modules/6.8.0-136-generic/updates/dkms/nvidia.ko 相匹配的路径
+nvidia_uvm=/lib/modules/6.8.0-136-generic/updates/dkms/nvidia-uvm.ko
+dpkg-query: 没有找到与 /lib/modules/6.8.0-136-generic/updates/dkms/nvidia-uvm.ko 相匹配的路径
+nvidia_drm=/lib/modules/6.8.0-136-generic/updates/dkms/nvidia-drm.ko
+dpkg-query: 没有找到与 /lib/modules/6.8.0-136-generic/updates/dkms/nvidia-drm.ko 相匹配的路径
+nvidia_modeset=/lib/modules/6.8.0-136-generic/updates/dkms/nvidia-modeset.ko
+dpkg-query: 没有找到与 /lib/modules/6.8.0-136-generic/updates/dkms/nvidia-modeset.ko 相匹配的路径
+
+USERSPACE
+-rwxr-xr-x 1 root root 1259616 Jun 30 01:29 /usr/bin/nvidia-smi
+nvidia-utils-595: /usr/bin/nvidia-smi
+-rw-r--r-- 1 root root 91505672 Jun 30 01:29 /usr/lib/x86_64-linux-gnu/libcuda.so.595.84
+libnvidia-compute-595:amd64: /usr/lib/x86_64-linux-gnu/libcuda.so.595.84
+-rw-r--r-- 1 root root 1211968 Jun 30 01:29 /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.595.84
+libnvidia-gl-595:amd64: /usr/lib/x86_64-linux-gnu/libGLX_nvidia.so.595.84
+-rw-r--r-- 1 root root 39846280 Jun 30 01:29 /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.595.84
+libnvidia-gl-595:amd64: /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.595.84
+-rw-r--r-- 1 root root 3643440 Jun 30 01:29 /usr/lib/x86_64-linux-gnu/nvidia/xorg/nvidia_drv.so
+xserver-xorg-video-nvidia-595: /usr/lib/x86_64-linux-gnu/nvidia/xorg/nvidia_drv.so
+
+VERSIONS
+595.84
+
+__EXIT_CODE__=0
+

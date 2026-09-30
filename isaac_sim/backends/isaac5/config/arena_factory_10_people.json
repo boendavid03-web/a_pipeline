@@ -1,0 +1,252 @@
+{
+  "robots": [
+    {
+      "start": [
+        -7.62,
+        4.35,
+        0.7
+      ],
+      "goal": [
+        8.86,
+        -8.04,
+        0
+      ]
+    }
+  ],
+  "obstacles": {
+    "static": [],
+    "dynamic": [
+      {
+        "name": "0",
+        "id": 0,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          -5,
+          4,
+          0
+        ],
+        "waypoints": [
+          [
+            -3,
+            4,
+            0
+          ],
+          [
+            -5,
+            4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "1",
+        "id": 1,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          -2,
+          4,
+          0
+        ],
+        "waypoints": [
+          [
+            0,
+            4,
+            0
+          ],
+          [
+            -2,
+            4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "2",
+        "id": 2,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          1,
+          4,
+          0
+        ],
+        "waypoints": [
+          [
+            3,
+            4,
+            0
+          ],
+          [
+            1,
+            4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "3",
+        "id": 3,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          4,
+          4,
+          0
+        ],
+        "waypoints": [
+          [
+            6,
+            4,
+            0
+          ],
+          [
+            4,
+            4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "4",
+        "id": 4,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          7,
+          4,
+          0
+        ],
+        "waypoints": [
+          [
+            6.5,
+            5.5,
+            0
+          ],
+          [
+            7,
+            4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "5",
+        "id": 5,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          -7,
+          -4,
+          0
+        ],
+        "waypoints": [
+          [
+            -5,
+            -4,
+            0
+          ],
+          [
+            -7,
+            -4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "6",
+        "id": 6,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          -4,
+          -4,
+          0
+        ],
+        "waypoints": [
+          [
+            -2,
+            -4,
+            0
+          ],
+          [
+            -4,
+            -4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "7",
+        "id": 7,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          -1,
+          -4,
+          0
+        ],
+        "waypoints": [
+          [
+            1,
+            -4,
+            0
+          ],
+          [
+            -1,
+            -4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "8",
+        "id": 8,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          5,
+          -4,
+          0
+        ],
+        "waypoints": [
+          [
+            7,
+            -4,
+            0
+          ],
+          [
+            5,
+            -4,
+            0
+          ]
+        ]
+      },
+      {
+        "name": "9",
+        "id": 9,
+        "type": "adult",
+        "model": "gazebo_actor",
+        "pos": [
+          0,
+          0,
+          0
+        ],
+        "waypoints": [
+          [
+            2,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    ],
+    "interactive": []
+  }
+}

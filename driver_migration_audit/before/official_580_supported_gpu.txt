@@ -1,0 +1,37 @@
+COMMAND:
+printf 'SOURCE=https://us.download.nvidia.com/XFree86/Linux-x86_64/580.173.02/README/supportedchips.html\n'; printf 'FETCHED_AT='; date --iso-8601=seconds; curl -fsSL --max-time 30 https://us.download.nvidia.com/XFree86/Linux-x86_64/580.173.02/README/supportedchips.html | rg -n -i -C2 'GeForce RTX 5090|2B85' | head -80
+
+OUTPUT:
+SOURCE=https://us.download.nvidia.com/XFree86/Linux-x86_64/580.173.02/README/supportedchips.html
+FETCHED_AT=2026-09-12T13:10:48+08:00
+5378-<td>K</td>
+5379-</tr>
+5380:<tr id="devid2B85">
+5381:<td>NVIDIA GeForce RTX 5090</td>
+5382:<td>2B85</td>
+5383-<td>K</td>
+5384-</tr>
+5385-<tr id="devid2B87">
+5386:<td>NVIDIA GeForce RTX 5090 D</td>
+5387-<td>2B87</td>
+5388-<td>K</td>
+5389-</tr>
+5390-<tr id="devid2B8C">
+5391:<td>NVIDIA GeForce RTX 5090 D v2</td>
+5392-<td>2B8C</td>
+5393-<td>K</td>
+--
+5499-</tr>
+5500-<tr id="devid2C18">
+5501:<td>NVIDIA GeForce RTX 5090 Laptop GPU</td>
+5502-<td>2C18</td>
+5503-<td>K</td>
+--
+5579-</tr>
+5580-<tr id="devid2C58">
+5581:<td>NVIDIA GeForce RTX 5090 Laptop GPU</td>
+5582-<td>2C58</td>
+5583-<td>K</td>
+
+__EXIT_CODE__=0
+

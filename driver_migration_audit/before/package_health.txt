@@ -1,0 +1,26 @@
+COMMAND:
+dpkg --audit; printf '\nAPT CHECK\n'; LC_ALL=C apt-get check; printf '\nBROKEN STATES\n'; dpkg-query -W -f='${db:Status-Abbrev} ${binary:Package} ${Version}\n' | rg -v '^ii ' | head -200 || true
+
+OUTPUT:
+
+APT CHECK
+E: Could not open lock file /var/lib/dpkg/lock-frontend - open (13: Permission denied)
+E: Unable to acquire the dpkg frontend lock (/var/lib/dpkg/lock-frontend), are you root?
+
+BROKEN STATES
+rc  libnvidia-compute-580:amd64 580.173.02-0ubuntu0.22.04.1
+hi  linux-headers-6.8.0-40-generic 6.8.0-40.40~22.04.3
+rc  linux-image-6.8.0-117-generic 6.8.0-117.117~22.04.1
+hi  linux-image-6.8.0-40-generic 6.8.0-40.40~22.04.3
+rc  linux-modules-6.8.0-117-generic 6.8.0-117.117~22.04.1
+hi  linux-modules-6.8.0-40-generic 6.8.0-40.40~22.04.3
+rc  linux-modules-extra-6.8.0-117-generic 6.8.0-117.117~22.04.1
+hi  linux-modules-extra-6.8.0-40-generic 6.8.0-40.40~22.04.3
+rc  linux-modules-nvidia-595-open-6.8.0-136-generic 6.8.0-136.136~22.04.1+1
+rc  nvidia-compute-utils-580 580.173.02-0ubuntu0.22.04.1
+rc  nvidia-dkms-580-open 580.173.02-0ubuntu0.22.04.1
+rc  nvidia-kernel-common-580 580.173.02-0ubuntu0.22.04.1
+rc  python3-rosdep2 0.21.0-2
+
+__EXIT_CODE__=0
+

@@ -1,0 +1,141 @@
+COMMAND:
+printf 'NVIDIA INSTALLER LOG METADATA\n'; stat /var/log/nvidia-installer.log 2>&1; sed -n '1,24p' /var/log/nvidia-installer.log 2>&1; tail -36 /var/log/nvidia-installer.log 2>&1; printf '\nUNINSTALLER\n'; for p in /usr/bin/nvidia-uninstall /usr/lib/nvidia/uninstall /usr/local/bin/nvidia-uninstall; do if [ -e "$p" ]; then ls -l "$p"; else echo "ABSENT $p"; fi; done; printf '\nXORG CONFIG\n'; ls -l /etc/X11/xorg.conf /etc/X11/xorg.conf.* 2>&1; sed -n '1,260p' /etc/X11/xorg.conf 2>&1
+
+OUTPUT:
+NVIDIA INSTALLER LOG METADATA
+  文件：/var/log/nvidia-installer.log
+  大小：55313     	块：112        IO 块大小：4096   普通文件
+设备：10302h/66306d	Inode：114557140   硬链接：1
+权限：(0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+访问时间：2026-09-12 13:07:47.423901265 +0800
+修改时间：2026-05-11 17:10:59.823484214 +0800
+变更时间：2026-05-11 17:10:59.823484214 +0800
+创建时间：2026-05-11 17:01:34.793255515 +0800
+nvidia-installer log file '/var/log/nvidia-installer.log'
+creation time: Mon May 11 17:08:12 2026
+installer version: 570.211.01
+
+PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+
+nvidia-installer command line:
+    ./nvidia-installer
+    --no-opengl-files
+
+Using: nvidia-installer ncurses v6 user interface
+-> Detected 32 CPUs online; setting concurrency level to 32.
+-> Scanning the initramfs with lsinitramfs...
+-> Executing: /usr/bin/lsinitramfs   -l /boot/initrd.img-6.8.0-40-generic
+-> Initramfs scan complete.
+-> Multiple kernel module types are available for this system. Which would you like to use? (Answer: MIT/GPL)
+-> Installing NVIDIA driver version 570.211.01.
+-> There appears to already be a driver installed on your system (version: 570.211.01).  As part of installing this driver (version: 570.211.01), the existing driver will be uninstalled.  Are you sure you want to continue? (Answer: Continue installation)
+-> An alternate method of installing the NVIDIA driver was detected. (This is usually a package provided by your distributor.) A driver installed via that method may integrate better with your system than a driver installed by nvidia-installer.
+
+Please review the message provided by the maintainer of this alternate installation method and decide how to proceed:
+
+The NVIDIA driver provided by Ubuntu can be installed by launching the "Software & Updates" application, and by selecting the NVIDIA driver from the "Additional Drivers" tab.
+
+[  108.503194]  ? __x64_sys_openat+0x6c/0xa0
+[  108.503200]  ? syscall_exit_to_user_mode+0x89/0x260
+[  108.503207]  ? do_syscall_64+0x8d/0x170
+[  108.503212]  ? do_user_addr_fault+0x337/0x670
+[  108.503218]  ? irqentry_exit_to_user_mode+0x7e/0x260
+[  108.503225]  ? irqentry_exit+0x43/0x50
+[  108.503231]  ? exc_page_fault+0x94/0x1b0
+[  108.503237]  entry_SYSCALL_64_after_hwframe+0x78/0x80
+[  108.503244] RIP: 0033:0x7f9550f26b6b
+[  108.503254] Code: 73 01 c3 48 8b 0d c5 32 0f 00 f7 d8 64 89 01 48 83 c8 ff c3 66 2e 0f 1f 84 00 00 00 00 00 90 f3 0f 1e fa b8 b0 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 8b 0d 95 32 0f 00 f7 d8 64 89 01 48
+[  108.503257] RSP: 002b:00007ffc8b020628 EFLAGS: 00000206 ORIG_RAX: 00000000000000b0
+[  108.503261] RAX: ffffffffffffffda RBX: 000064becddff780 RCX: 00007f9550f26b6b
+[  108.503263] RDX: 000000000000000a RSI: 0000000000000800 RDI: 000064becddff7e8
+[  108.503265] RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000000
+[  108.503267] R10: 00007f9550fbeac0 R11: 0000000000000206 R12: 00007ffc8b020880
+[  108.503269] R13: 000064becddff2a0 R14: 00007ffc8b02286c R15: 000064becddff780
+[  108.503274]  </TASK>
+[  108.503275] ---[ end trace 0000000000000000 ]---
+-> Install NVIDIA's 32-bit compatibility libraries? (Answer: No)
+-> Uninstalling the previous installation
+-> done.
+-> Searching for conflicting files:
+-> done.
+-> Installing 'NVIDIA Accelerated Graphics Driver for Linux-x86_64' (570.211.01):
+-> No NVIDIA modules detected in the initramfs.
+-> The initramfs will not be rebuild.
+   executing: '/usr/sbin/ldconfig'...
+   executing: '/usr/sbin/depmod -a '...
+   executing: '/usr/bin/systemctl daemon-reload'...
+-> done.
+-> Driver file installation is complete.
+-> Running post-install sanity check:
+-> done.
+-> Post-install sanity check passed.
+-> Would you like to run the nvidia-xconfig utility to automatically update your X configuration file so that the NVIDIA X driver will be used when you restart X?  Any pre-existing X configuration file will be backed up. (Answer: Yes)
+-> Your X configuration file has been successfully updated.  Installation of the NVIDIA Accelerated Graphics Driver for Linux-x86_64 (version: 570.211.01) is now complete.
+
+UNINSTALLER
+ABSENT /usr/bin/nvidia-uninstall
+ABSENT /usr/lib/nvidia/uninstall
+ABSENT /usr/local/bin/nvidia-uninstall
+
+XORG CONFIG
+-rw-r--r-- 1 root root 1223 May 11 17:10 /etc/X11/xorg.conf
+-rw-r--r-- 1 root root    0 May 11 17:10 /etc/X11/xorg.conf.nvidia-xconfig-original
+
+/etc/X11/xorg.conf.d:
+总计 0
+# nvidia-xconfig: X configuration file generated by nvidia-xconfig
+# nvidia-xconfig:  version 570.211.01
+
+Section "ServerLayout"
+    Identifier     "Layout0"
+    Screen      0  "Screen0"
+    InputDevice    "Keyboard0" "CoreKeyboard"
+    InputDevice    "Mouse0" "CorePointer"
+EndSection
+
+Section "Files"
+EndSection
+
+Section "InputDevice"
+    # generated from default
+    Identifier     "Mouse0"
+    Driver         "mouse"
+    Option         "Protocol" "auto"
+    Option         "Device" "/dev/psaux"
+    Option         "Emulate3Buttons" "no"
+    Option         "ZAxisMapping" "4 5"
+EndSection
+
+Section "InputDevice"
+    # generated from default
+    Identifier     "Keyboard0"
+    Driver         "kbd"
+EndSection
+
+Section "Monitor"
+    Identifier     "Monitor0"
+    VendorName     "Unknown"
+    ModelName      "Unknown"
+    Option         "DPMS"
+EndSection
+
+Section "Device"
+    Identifier     "Device0"
+    Driver         "nvidia"
+    VendorName     "NVIDIA Corporation"
+    BusID          "PCI:1:0:0"
+EndSection
+
+Section "Screen"
+    Identifier     "Screen0"
+    Device         "Device0"
+    Monitor        "Monitor0"
+    DefaultDepth    24
+    SubSection     "Display"
+        Depth       24
+    EndSubSection
+EndSection
+
+
+__EXIT_CODE__=0
+

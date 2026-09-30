@@ -1,0 +1,7 @@
+COMMAND:
+rg -n -i 'nvidia|cuda' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null || true
+
+OUTPUT:
+
+__EXIT_CODE__=0
+

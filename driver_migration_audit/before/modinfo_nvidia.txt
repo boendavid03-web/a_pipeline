@@ -1,0 +1,98 @@
+COMMAND:
+modinfo nvidia
+
+OUTPUT:
+filename:       /lib/modules/6.8.0-136-generic/updates/dkms/nvidia.ko
+import_ns:      DMA_BUF
+alias:          char-major-195-*
+description:    NVIDIA core GPU kernel module
+version:        595.84
+supported:      external
+license:        Dual MIT/GPL
+firmware:       nvidia/595.84/gsp_tu10x.bin
+firmware:       nvidia/595.84/gsp_ga10x.bin
+softdep:        pre: ecdh_generic,ecdsa_generic
+srcversion:     994F25EB7E5C36B1A597251
+alias:          of:N*T*Cnvidia,tegra264-displayC*
+alias:          of:N*T*Cnvidia,tegra264-display
+alias:          of:N*T*Cnvidia,tegra234-displayC*
+alias:          of:N*T*Cnvidia,tegra234-display
+alias:          pci:v000010DEd*sv*sd*bc06sc80i00*
+alias:          pci:v000010DEd*sv*sd*bc03sc02i00*
+alias:          pci:v000010DEd*sv*sd*bc03sc00i00*
+depends:        ecc
+retpoline:      Y
+name:           nvidia
+vermagic:       6.8.0-136-generic SMP preempt mod_unload modversions 
+sig_id:         PKCS#7
+signer:         user Secure Boot Module Signature key
+sig_key:        65:C9:DC:13:4A:90:00:39:36:41:26:D1:6E:F7:CF:F2:4D:87:97:40
+sig_hashalgo:   sha512
+signature:      26:CF:08:C0:97:F5:22:DE:DE:A0:BB:00:8D:2E:CB:B8:F5:72:EC:2F:
+		91:23:55:E1:6C:D8:D1:F9:96:3C:2E:FE:95:E8:3E:96:91:86:8A:2F:
+		49:E9:28:C9:1C:DE:0C:17:FC:71:84:3C:F8:08:2F:D6:33:97:B0:23:
+		53:B0:99:71:61:E9:78:6B:D3:37:F2:BD:36:44:A7:DC:0B:14:FE:55:
+		73:A2:59:11:CD:52:D8:EE:A1:78:76:C5:8F:38:4B:32:8B:EA:E9:1E:
+		C5:FF:0A:7F:FB:29:3D:94:FE:92:B9:FF:29:72:FA:34:14:AC:07:53:
+		6A:07:9F:87:10:0B:CD:AA:C4:60:45:0F:30:EB:A9:D1:16:52:A5:17:
+		98:6A:60:CE:83:70:7A:8E:EC:20:5A:7E:89:E9:76:AA:FC:A0:4C:AE:
+		EC:15:3F:A2:72:3C:A4:FD:19:7D:EF:2D:13:FE:54:2B:C2:1C:DF:E5:
+		FC:29:F9:3C:DB:C9:E0:3C:0C:7D:D7:8E:2F:96:01:ED:2E:5C:2E:56:
+		D1:19:D7:5A:52:8F:13:D5:50:DE:1A:34:70:76:FE:40:8B:69:8C:B7:
+		43:1C:88:49:E5:07:E7:78:69:95:B1:C3:D7:CF:1D:22:E9:C0:47:34:
+		DE:81:C9:5F:0C:DA:15:6E:28:67:1C:DD:20:03:DB:52
+parm:           NvSwitchRegDwords:NvSwitch regkey (charp)
+parm:           NvSwitchBlacklist:NvSwitchBlacklist=uuid[,uuid...] (charp)
+parm:           NVreg_ResmanDebugLevel:int
+parm:           NVreg_RmLogonRC:int
+parm:           NVreg_ModifyDeviceFiles:int
+parm:           NVreg_DeviceFileUID:int
+parm:           NVreg_DeviceFileGID:int
+parm:           NVreg_DeviceFileMode:int
+parm:           NVreg_InitializeSystemMemoryAllocations:int
+parm:           NVreg_UsePageAttributeTable:int
+parm:           NVreg_EnablePCIeGen3:int
+parm:           NVreg_EnableMSI:int
+parm:           NVreg_EnableStreamMemOPs:int
+parm:           NVreg_RestrictProfilingToAdminUsers:int
+parm:           NVreg_PreserveVideoMemoryAllocations:int
+parm:           NVreg_EnableS0ixPowerManagement:int
+parm:           NVreg_S0ixPowerManagementVideoMemoryThreshold:int
+parm:           NVreg_DynamicPowerManagement:int
+parm:           NVreg_DynamicPowerManagementVideoMemoryThreshold:int
+parm:           NVreg_EnableGpuFirmware:int
+parm:           NVreg_EnableGpuFirmwareLogs:int
+parm:           NVreg_OpenRmEnableUnsupportedGpus:int
+parm:           NVreg_EnableUserNUMAManagement:int
+parm:           NVreg_MemoryPoolSize:int
+parm:           NVreg_KMallocHeapMaxSize:int
+parm:           NVreg_VMallocHeapMaxSize:int
+parm:           NVreg_IgnoreMMIOCheck:int
+parm:           NVreg_NvLinkDisable:int
+parm:           NVreg_EnablePCIERelaxedOrderingMode:int
+parm:           NVreg_RegisterPCIDriver:int
+parm:           NVreg_RegisterPlatformDeviceDriver:int
+parm:           NVreg_EnableResizableBar:int
+parm:           NVreg_EnableDbgBreakpoint:int
+parm:           NVreg_TegraGpuPgMask:int
+parm:           NVreg_EnableNonblockingOpen:int
+parm:           NVreg_ExcludeAllGpus:int
+parm:           NVreg_GpuInitOnProbe:int
+parm:           NVreg_CoherentGPUMemoryMode:charp
+parm:           NVreg_RegistryDwords:charp
+parm:           NVreg_RegistryDwordsPerDevice:charp
+parm:           NVreg_RmMsg:charp
+parm:           NVreg_GpuBlacklist:charp
+parm:           NVreg_TemporaryFilePath:charp
+parm:           NVreg_ExcludedGpus:charp
+parm:           NVreg_DmaRemapPeerMmio:int
+parm:           NVreg_RmNvlinkBandwidth:charp
+parm:           NVreg_RmNvlinkBandwidthLinkCount:int
+parm:           NVreg_ImexChannelCount:int
+parm:           NVreg_CreateImexChannel0:int
+parm:           NVreg_EnableSystemMemoryPools:int
+parm:           NVreg_UseKernelSuspendNotifiers:int
+parm:           rm_firmware_active:charp
+
+__EXIT_CODE__=0
+

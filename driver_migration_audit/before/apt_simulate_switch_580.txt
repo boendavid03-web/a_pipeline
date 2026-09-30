@@ -1,0 +1,105 @@
+COMMAND:
+LC_ALL=C apt-get -s --allow-downgrades install nvidia-driver-580-open=580.173.02-0ubuntu0.22.04.1
+
+OUTPUT:
+NOTE: This is only a simulation!
+      apt-get needs root privileges for real execution.
+      Keep also in mind that locking is deactivated,
+      so don't depend on the relevance to the real current situation!
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  libfwupd2 libfwupdplugin5 libgcab-1.0-0 libsmbios-c2
+  nvidia-firmware-595-595.84
+Use 'apt autoremove' to remove them.
+The following additional packages will be installed:
+  libnvidia-cfg1-580 libnvidia-common-580 libnvidia-compute-580
+  libnvidia-compute-580:i386 libnvidia-decode-580 libnvidia-decode-580:i386
+  libnvidia-encode-580 libnvidia-encode-580:i386 libnvidia-extra-580
+  libnvidia-fbc1-580 libnvidia-fbc1-580:i386 libnvidia-gl-580
+  libnvidia-gl-580:i386 nvidia-compute-utils-580 nvidia-dkms-580-open
+  nvidia-kernel-common-580 nvidia-kernel-source-580-open nvidia-utils-580
+  xserver-xorg-video-nvidia-580
+Suggested packages:
+  nvidia-driver-580
+The following packages will be REMOVED:
+  libnvidia-cfg1-595 libnvidia-common-595 libnvidia-compute-595
+  libnvidia-compute-595:i386 libnvidia-decode-595 libnvidia-decode-595:i386
+  libnvidia-encode-595 libnvidia-encode-595:i386 libnvidia-extra-595
+  libnvidia-fbc1-595 libnvidia-fbc1-595:i386 libnvidia-gl-595
+  libnvidia-gl-595:i386 nvidia-compute-utils-595 nvidia-dkms-595-open
+  nvidia-driver-595-open nvidia-kernel-common-595
+  nvidia-kernel-source-595-open nvidia-utils-595 xserver-xorg-video-nvidia-595
+The following NEW packages will be installed:
+  libnvidia-cfg1-580 libnvidia-common-580 libnvidia-compute-580
+  libnvidia-compute-580:i386 libnvidia-decode-580 libnvidia-decode-580:i386
+  libnvidia-encode-580 libnvidia-encode-580:i386 libnvidia-extra-580
+  libnvidia-fbc1-580 libnvidia-fbc1-580:i386 libnvidia-gl-580
+  libnvidia-gl-580:i386 nvidia-compute-utils-580 nvidia-dkms-580-open
+  nvidia-driver-580-open nvidia-kernel-common-580
+  nvidia-kernel-source-580-open nvidia-utils-580 xserver-xorg-video-nvidia-580
+0 upgraded, 20 newly installed, 20 to remove and 120 not upgraded.
+Remv nvidia-driver-595-open [595.84-0ubuntu0.22.04.1]
+Remv xserver-xorg-video-nvidia-595 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-cfg1-595 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-gl-595 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-gl-595:i386 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-common-595 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-encode-595:i386 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-decode-595:i386 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-compute-595:i386 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-encode-595 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-decode-595 [595.84-0ubuntu0.22.04.1]
+Remv nvidia-utils-595 [595.84-0ubuntu0.22.04.1]
+Remv libnvidia-compute-595 [595.84-0ubuntu0.22.04.1] [nvidia-compute-utils-595:amd64 ]
+Remv libnvidia-extra-595 [595.84-0ubuntu0.22.04.1] [nvidia-compute-utils-595:amd64 ]
+Remv libnvidia-fbc1-595 [595.84-0ubuntu0.22.04.1] [nvidia-compute-utils-595:amd64 ]
+Remv libnvidia-fbc1-595:i386 [595.84-0ubuntu0.22.04.1] [nvidia-compute-utils-595:amd64 ]
+Remv nvidia-compute-utils-595 [595.84-0ubuntu0.22.04.1]
+Remv nvidia-dkms-595-open [595.84-0ubuntu0.22.04.1]
+Remv nvidia-kernel-common-595 [595.84-0ubuntu0.22.04.1]
+Remv nvidia-kernel-source-595-open [595.84-0ubuntu0.22.04.1]
+Inst nvidia-kernel-common-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-cfg1-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-common-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [all])
+Inst libnvidia-compute-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Inst libnvidia-compute-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-decode-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-decode-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Inst libnvidia-encode-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-encode-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Inst libnvidia-extra-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-fbc1-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Inst libnvidia-fbc1-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libnvidia-gl-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Inst libnvidia-gl-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst nvidia-compute-utils-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst nvidia-kernel-source-580-open (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst nvidia-dkms-580-open (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst nvidia-utils-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst xserver-xorg-video-nvidia-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst nvidia-driver-580-open (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf nvidia-kernel-common-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-cfg1-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-common-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [all])
+Conf libnvidia-compute-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Conf libnvidia-compute-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-decode-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-decode-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Conf libnvidia-encode-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-encode-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Conf libnvidia-extra-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-fbc1-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Conf libnvidia-fbc1-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf libnvidia-gl-580:i386 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [i386])
+Conf libnvidia-gl-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf nvidia-compute-utils-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf nvidia-kernel-source-580-open (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf nvidia-dkms-580-open (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf nvidia-utils-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf xserver-xorg-video-nvidia-580 (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Conf nvidia-driver-580-open (580.173.02-0ubuntu0.22.04.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+
+__EXIT_CODE__=0
+

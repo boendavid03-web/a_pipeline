@@ -1,0 +1,17 @@
+COMMAND:
+hostname; hostname -I; ip -brief address; ip route show default; printf '\nSSH SERVICE\n'; systemctl is-enabled ssh 2>&1; systemctl is-active ssh 2>&1
+
+OUTPUT:
+user
+10.17.127.113 
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eno1             DOWN           
+wlp0s20f3        UP             10.17.127.113/21 fe80::6c9a:dcdf:9039:9163/64 
+default via 10.17.127.254 dev wlp0s20f3 proto dhcp metric 600 
+
+SSH SERVICE
+enabled
+active
+
+__EXIT_CODE__=0
+

@@ -1,0 +1,40 @@
+COMMAND:
+dpkg -l | rg -i 'nvidia|cuda' || true
+
+OUTPUT:
+ii  libnvidia-cfg1-595:amd64                           595.84-0ubuntu0.22.04.1                          amd64        NVIDIA binary OpenGL/GLX configuration library
+ii  libnvidia-common-595                               595.84-0ubuntu0.22.04.1                          amd64        Shared files used by the NVIDIA libraries
+rc  libnvidia-compute-580:amd64                        580.173.02-0ubuntu0.22.04.1                      amd64        NVIDIA libcompute package
+ii  libnvidia-compute-595:amd64                        595.84-0ubuntu0.22.04.1                          amd64        NVIDIA libcompute package
+ii  libnvidia-compute-595:i386                         595.84-0ubuntu0.22.04.1                          i386         NVIDIA libcompute package
+ii  libnvidia-decode-595:amd64                         595.84-0ubuntu0.22.04.1                          amd64        NVIDIA Video Decoding runtime libraries
+ii  libnvidia-decode-595:i386                          595.84-0ubuntu0.22.04.1                          i386         NVIDIA Video Decoding runtime libraries
+ii  libnvidia-egl-wayland1:amd64                       1:1.1.9-1.1ubuntu0.1                             amd64        Wayland EGL External Platform library -- shared library
+ii  libnvidia-egl-wayland1:i386                        1:1.1.9-1.1ubuntu0.1                             i386         Wayland EGL External Platform library -- shared library
+ii  libnvidia-encode-595:amd64                         595.84-0ubuntu0.22.04.1                          amd64        NVENC Video Encoding runtime library
+ii  libnvidia-encode-595:i386                          595.84-0ubuntu0.22.04.1                          i386         NVENC Video Encoding runtime library
+ii  libnvidia-extra-595:amd64                          595.84-0ubuntu0.22.04.1                          amd64        Extra libraries for the NVIDIA driver
+ii  libnvidia-fbc1-595:amd64                           595.84-0ubuntu0.22.04.1                          amd64        NVIDIA OpenGL-based Framebuffer Capture runtime library
+ii  libnvidia-fbc1-595:i386                            595.84-0ubuntu0.22.04.1                          i386         NVIDIA OpenGL-based Framebuffer Capture runtime library
+ii  libnvidia-gl-595:amd64                             595.84-0ubuntu0.22.04.1                          amd64        NVIDIA OpenGL/GLX/EGL/GLES GLVND libraries and Vulkan ICD
+ii  libnvidia-gl-595:i386                              595.84-0ubuntu0.22.04.1                          i386         NVIDIA OpenGL/GLX/EGL/GLES GLVND libraries and Vulkan ICD
+rc  linux-modules-nvidia-595-open-6.8.0-136-generic    6.8.0-136.136~22.04.1+1                          amd64        Linux kernel nvidia modules for version 6.8.0-136
+rc  nvidia-compute-utils-580                           580.173.02-0ubuntu0.22.04.1                      amd64        NVIDIA compute utilities
+ii  nvidia-compute-utils-595                           595.84-0ubuntu0.22.04.1                          amd64        NVIDIA compute utilities
+rc  nvidia-dkms-580-open                               580.173.02-0ubuntu0.22.04.1                      amd64        NVIDIA DKMS package (open kernel module)
+ii  nvidia-dkms-595-open                               595.84-0ubuntu0.22.04.1                          amd64        NVIDIA DKMS package (open kernel module)
+ii  nvidia-driver-595-open                             595.84-0ubuntu0.22.04.1                          amd64        NVIDIA driver (open kernel) metapackage
+ii  nvidia-firmware-580-580.173.02                     580.173.02-0ubuntu0.22.04.1                      amd64        Firmware files used by the kernel module
+ii  nvidia-firmware-595-595.84                         595.84-0ubuntu0.22.04.1                          amd64        Firmware files used by the kernel module
+rc  nvidia-kernel-common-580                           580.173.02-0ubuntu0.22.04.1                      amd64        Shared files used with the kernel module
+ii  nvidia-kernel-common-595                           595.84-0ubuntu0.22.04.1                          amd64        Shared files used with the kernel module
+ii  nvidia-kernel-source-595-open                      595.84-0ubuntu0.22.04.1                          amd64        NVIDIA kernel source package
+ii  nvidia-prime                                       0.8.17.1                                         all          Tools to enable NVIDIA's Prime
+ii  nvidia-settings                                    510.47.03-0ubuntu1.22.04.1                       amd64        Tool for configuring the NVIDIA graphics driver
+ii  nvidia-utils-595                                   595.84-0ubuntu0.22.04.1                          amd64        NVIDIA driver support binaries
+ii  nvtop                                              1.2.2-1                                          amd64        Interactive NVIDIA GPU process monitor
+ii  screen-resolution-extra                            0.18.2ubuntu0.1                                  all          Extension for the nvidia-settings control panel
+ii  xserver-xorg-video-nvidia-595                      595.84-0ubuntu0.22.04.1                          amd64        NVIDIA binary Xorg driver
+
+__EXIT_CODE__=0
+

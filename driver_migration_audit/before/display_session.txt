@@ -1,0 +1,14 @@
+COMMAND:
+printf 'XDG_SESSION_TYPE=%s\nDISPLAY=%s\nWAYLAND_DISPLAY=%s\nSSH_CONNECTION=%s\nSSH_TTY=%s\n' "${XDG_SESSION_TYPE-}" "${DISPLAY-}" "${WAYLAND_DISPLAY-}" "${SSH_CONNECTION-}" "${SSH_TTY-}"; loginctl list-sessions --no-legend 2>&1 || true; who -u
+
+OUTPUT:
+XDG_SESSION_TYPE=x11
+DISPLAY=:1
+WAYLAND_DISPLAY=
+SSH_CONNECTION=
+SSH_TTY=
+3 1000 user seat0 tty2
+user     :1           2026-09-06 12:37   ?          2096 (:1)
+
+__EXIT_CODE__=0
+

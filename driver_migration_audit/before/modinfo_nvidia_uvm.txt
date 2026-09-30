@@ -1,0 +1,87 @@
+COMMAND:
+modinfo nvidia_uvm
+
+OUTPUT:
+filename:       /lib/modules/6.8.0-136-generic/updates/dkms/nvidia-uvm.ko
+description:    NVIDIA Unified Virtual Memory kernel module
+version:        595.84
+supported:      external
+license:        Dual MIT/GPL
+srcversion:     3C783E61615657261CE1AF5
+depends:        nvidia
+retpoline:      Y
+name:           nvidia_uvm
+vermagic:       6.8.0-136-generic SMP preempt mod_unload modversions 
+sig_id:         PKCS#7
+signer:         user Secure Boot Module Signature key
+sig_key:        65:C9:DC:13:4A:90:00:39:36:41:26:D1:6E:F7:CF:F2:4D:87:97:40
+sig_hashalgo:   sha512
+signature:      40:BE:1A:F9:4F:61:72:EF:0F:3A:D0:B0:31:33:D3:4D:5F:AA:8D:E0:
+		46:BA:87:41:6D:7E:B9:40:CE:57:CD:CA:AA:32:30:29:8E:B1:44:1F:
+		7D:95:B9:44:5C:42:39:72:65:4A:B4:69:12:1B:1D:CB:01:20:62:3F:
+		02:69:BD:08:66:DF:FC:E1:8C:85:CA:9F:69:41:3F:BD:34:69:A3:B7:
+		D5:E0:E4:27:DD:73:38:41:ED:62:7C:C5:64:B8:42:B9:D8:84:50:54:
+		AA:7E:6A:B7:9A:0C:71:30:3F:65:2D:E4:F1:D8:CC:AA:41:B3:E7:61:
+		6B:62:74:A6:84:94:3D:38:E4:6E:1F:09:49:2D:B4:46:1F:1A:D6:A1:
+		12:CE:8A:97:97:51:BD:D9:5C:6F:79:4A:69:2C:E2:FC:DA:83:26:15:
+		82:E5:B1:36:70:96:D9:60:CB:71:7D:0E:80:1D:0B:55:DB:CB:68:93:
+		FC:EB:18:28:2B:77:B4:AE:4A:40:20:7B:32:A9:47:4E:29:3C:7A:C1:
+		F5:BA:B5:4C:7C:3E:3C:65:38:1F:86:E6:24:8D:4E:C7:C0:CE:11:66:
+		5A:10:4A:AA:B7:CC:C1:9C:4E:55:A1:19:1A:5C:E9:67:A3:80:7D:6A:
+		61:9E:FC:E1:11:C3:2B:17:A7:4F:77:89:CF:12:82:25
+parm:           uvm_conf_computing_channel_iv_rotation_limit:ulong
+parm:           uvm_ats_mode:Set to 0 to disable ATS (Address Translation Services). Any other value is ignored. Has no effect unless the platform supports ATS. (int)
+parm:           uvm_perf_prefetch_enable:uint
+parm:           uvm_perf_prefetch_threshold:uint
+parm:           uvm_perf_prefetch_min_faults:uint
+parm:           uvm_perf_thrashing_enable:uint
+parm:           uvm_perf_thrashing_threshold:uint
+parm:           uvm_perf_thrashing_pin_threshold:uint
+parm:           uvm_perf_thrashing_lapse_usec:uint
+parm:           uvm_perf_lapse_vote_threshold:uint
+parm:           uvm_perf_thrashing_nap:uint
+parm:           uvm_perf_thrashing_epoch:uint
+parm:           uvm_perf_thrashing_pin:uint
+parm:           uvm_perf_thrashing_max_resets:uint
+parm:           uvm_perf_map_remote_on_native_atomics_fault:uint
+parm:           uvm_disable_hmm:Force-disable HMM functionality in the UVM driver. Default: false (HMM is enabled if possible). However, even with uvm_disable_hmm=false, HMM will not be enabled if is not supported in this driver build configuration, or if ATS settings conflict with HMM. (bool)
+parm:           uvm_perf_migrate_cpu_preunmap_enable:int
+parm:           uvm_perf_migrate_cpu_preunmap_block_order:uint
+parm:           uvm_global_oversubscription:Enable (1) or disable (0) global oversubscription support. (int)
+parm:           uvm_perf_pma_batch_nonpinned_order:uint
+parm:           uvm_cpu_chunk_allocation_sizes:OR'ed value of all CPU chunk allocation sizes. (uint)
+parm:           uvm_leak_checker:Enable uvm memory leak checking. 0 = disabled, 1 = count total bytes allocated and freed, 2 = per-allocation origin tracking. (int)
+parm:           uvm_debug_enable_push_desc:Enable push description tracking (uint)
+parm:           uvm_debug_enable_push_acquire_info:Enable push acquire information tracking (uint)
+parm:           uvm_page_table_location:Set the location for UVM-allocated page tables. Choices are: vid, sys. (charp)
+parm:           uvm_perf_access_counter_migration_enable:Whether access counters will trigger migrations.Valid values: <= -1 (default policy), 0 (off), >= 1 (on) (int)
+parm:           uvm_perf_access_counter_batch_count:uint
+parm:           uvm_perf_access_counter_threshold:Number of remote accesses on a region required to trigger a notification.Valid values: [1, 65535] (uint)
+parm:           uvm_perf_reenable_prefetch_faults_lapse_msec:uint
+parm:           uvm_perf_fault_batch_count:uint
+parm:           uvm_perf_fault_replay_policy:uint
+parm:           uvm_perf_fault_replay_update_put_ratio:uint
+parm:           uvm_perf_fault_max_batches_per_service:uint
+parm:           uvm_perf_fault_max_throttle_per_service:uint
+parm:           uvm_perf_fault_coalesce:uint
+parm:           uvm_fault_force_sysmem:Force (1) using sysmem storage for pages that faulted. Default: 0. (int)
+parm:           uvm_perf_map_remote_on_eviction:int
+parm:           uvm_block_cpu_to_cpu_copy_with_ce:Use GPU CEs for CPU-to-CPU migrations. (int)
+parm:           uvm_exp_gpu_cache_peermem:Force caching for mappings to peer memory. This is an experimental parameter that may cause correctness issues if used. (uint)
+parm:           uvm_exp_gpu_cache_sysmem:Force caching for mappings to system memory. This is an experimental parameter that may cause correctness issues if used. (uint)
+parm:           uvm_downgrade_force_membar_sys:Force all TLB invalidation downgrades to use MEMBAR_SYS (uint)
+parm:           uvm_channel_num_gpfifo_entries:uint
+parm:           uvm_channel_gpfifo_loc:charp
+parm:           uvm_channel_gpput_loc:charp
+parm:           uvm_channel_pushbuffer_loc:charp
+parm:           uvm_enable_va_space_mm:Set to 0 to disable UVM from using mmu_notifiers to create an association between a UVM VA space and a process. This will also disable pageable memory access via either ATS or HMM. (int)
+parm:           uvm_enable_debug_procfs:Enable debug procfs entries in /proc/driver/nvidia-uvm (int)
+parm:           uvm_peer_copy:Choose the addressing mode for peer copying, options: phys [default] or virt. Valid for Ampere+ GPUs. (charp)
+parm:           uvm_debug_prints:Enable uvm debug prints. (int)
+parm:           uvm_enable_builtin_tests:Enable the UVM built-in tests. (This is a security risk) (int)
+parm:           uvm_release_asserts:Enable uvm asserts included in release builds. (int)
+parm:           uvm_release_asserts_dump_stack:dump_stack() on failed UVM release asserts. (int)
+parm:           uvm_release_asserts_set_global_error:Set UVM global fatal error on failed release asserts. (int)
+
+__EXIT_CODE__=0
+

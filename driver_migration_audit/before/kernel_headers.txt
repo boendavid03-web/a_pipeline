@@ -1,0 +1,13 @@
+COMMAND:
+uname -r; if [ -e "/lib/modules/$(uname -r)/build" ]; then ls -ld "/lib/modules/$(uname -r)/build"; readlink -f "/lib/modules/$(uname -r)/build"; else echo 'CURRENT_KERNEL_BUILD_LINK_MISSING'; fi; dpkg -l | rg '^ii\s+linux-headers' || true
+
+OUTPUT:
+6.8.0-136-generic
+lrwxrwxrwx 1 root root 40 Jul  3 18:54 /lib/modules/6.8.0-136-generic/build -> /usr/src/linux-headers-6.8.0-136-generic
+/usr/src/linux-headers-6.8.0-136-generic
+ii  linux-headers-6.8.0-124-generic                    6.8.0-124.124~22.04.1                            amd64        Linux kernel headers for version 6.8.0 on 64 bit x86 SMP
+ii  linux-headers-6.8.0-136-generic                    6.8.0-136.136~22.04.1                            amd64        Linux kernel headers for version 6.8.0 on 64 bit x86 SMP
+ii  linux-headers-generic-hwe-22.04                    6.8.0-136.136~22.04.1                            amd64        Generic Linux kernel headers
+
+__EXIT_CODE__=0
+

@@ -1,0 +1,70 @@
+COMMAND:
+for f in '/home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_200257.log' '/home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_200928.log' '/home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260912_122954.log' 'isaac_sim/backends/isaac5/generated/isaac5_rtx_multigpu_off_repro.log'; do printf '\nFILE %s\n' "$f"; stat -c 'size=%s mtime=%y' "$f" 2>&1; rg -n -i -m40 'Driver Version|NVIDIA driver|580\.173\.02|595\.84|SceneDb v|FabricSceneDb|view device|Full App is loaded|Simulation App Startup Complete|carbOnPluginStartup|rtx\.scenedb|Segmentation fault|SIGSEGV|multi.?gpu' "$f" 2>&1 || true; done
+
+OUTPUT:
+
+FILE /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_20260808_200257.log
+size=2136351 mtime=2026-08-08 20:05:19.934306943 +0800
+3908:Driver Version                                         : 580.173.02
+3934:    MultiGPU Board                                     : No
+3964:    GSP Firmware Version                               : 580.173.02
+4179:| Driver Version: 580.173.02    | Graphics API: Vulkan
+5164:2026-08-08T12:03:01Z [4,029ms] [Info] [carb] Registered plugin: rtx.multigpumanager.plugin (interfaces: [rtx::multigpumanager::MultiGpuManager v0.9]) (impl: rtx.multigpumanager.plugin)
+5165:2026-08-08T12:03:01Z [4,032ms] [Info] [carb] Registered plugin: rtx.scenedb.plugin (interfaces: [rtx::scenedb::FabricSceneDb v0.1],[rtx::scenedb::SceneDb v4.4]) (impl: rtx.scenedb.plugin)
+12602:2026-08-08T12:03:06Z [9,335ms] [Info] [omni.usd-abi.plugin] Mapping carb-setting '/rtx/realtime/mgpu/enabled' to usd-property 'OmniRtxSettingsGlobalRtAdvancedAPI_1.omni:rtx:rt:multigpu:enabled'
+12603:2026-08-08T12:03:06Z [9,335ms] [Info] [omni.usd-abi.plugin] Mapping carb-setting '/rtx/pathtracing/mgpu/enabled' to usd-property 'OmniRtxSettingsGlobalPtAdvancedAPI_1.omni:rtx:pt:multigpu:enabled'
+13505:The latest driver version may also work but is not fully tested.
+13506:2026-08-08T12:03:06Z [9,454ms] [Info] [carb] Initializing plugin: rtx.multigpumanager.plugin (interfaces: [rtx::multigpumanager::MultiGpuManager v0.9]) (impl: rtx.multigpumanager.plugin)
+13507:2026-08-08T12:03:06Z [9,454ms] [Info] [carb] Initializing plugin: rtx.scenedb.plugin (interfaces: [rtx::scenedb::FabricSceneDb v0.1],[rtx::scenedb::SceneDb v4.4]) (impl: rtx.scenedb.plugin)
+13508:2026-08-08T12:03:06Z [9,614ms] [Info] [carb] Plugin rtx.scenedb.plugin is already a dependency of omni.fabric.plugin; not changing unload order
+13509:2026-08-08T12:03:06Z [9,614ms] [Info] [carb] Plugin rtx.scenedb.plugin is already a dependency of omni.fabric.plugin; not changing unload order
+14472:2026-08-08T12:03:14Z [17,802ms] [Info] [rtx.scenedb.plugin] [MBVH]: Creating scene acceleration structures for context 0, device mask: 0x1
+14530:2026-08-08T12:04:05Z [67,862ms] [Info] [rtx.multigpumanager.plugin] View 0 (/Render/OmniverseKit/HydraTextures/omni_kit_widget_viewport_ViewportTexture_0) assigned to device 0
+14531:2026-08-08T12:04:05Z [67,862ms] [Info] [rtx.multigpumanager.plugin] View 0 (/Render/OmniverseKit/HydraTextures/omni_kit_widget_viewport_ViewportTexture_0) switching to 1x1 layout
+14533:2026-08-08T12:04:10Z [73,853ms] [Info] [omni.kit.app.plugin] [73.876s] Isaac Sim Full App is loaded.
+
+FILE /home/user/.nvidia-omniverse/logs/Kit/Isaac-Sim Full/6.0/kit_20260809_200928.log
+size=3099895 mtime=2026-08-09 20:09:43.539324514 +0800
+4207:Driver Version                                         : 580.173.02
+4233:    MultiGPU Board                                     : No
+4263:    GSP Firmware Version                               : 580.173.02
+4484:| Driver Version: 580.173.02    | Graphics API: Vulkan
+5724:2026-08-09T12:09:32Z [3,837ms] [Info] [carb] Registered plugin: rtx.multigpumanager.plugin (interfaces: [rtx::multigpumanager::MultiGpuManager v0.9]) (impl: rtx.multigpumanager.plugin)
+5725:2026-08-09T12:09:32Z [3,838ms] [Info] [carb] Registered plugin: rtx.scenedb.plugin (interfaces: [rtx::scenedb::FabricSceneDb v0.2],[rtx::scenedb::SceneDb v6.1]) (impl: rtx.scenedb.plugin)
+13819:2026-08-09T12:09:37Z [8,979ms] [Info] [omni.rtx] Mapping carb-setting '/rtx/realtime/mgpu/enabled' to usd-property 'OmniRtxSettingsGlobalRtAdvancedAPI_1.omni:rtx:rt:multigpu:enabled'
+13820:2026-08-09T12:09:37Z [8,979ms] [Info] [omni.rtx] Mapping carb-setting '/rtx/pathtracing/mgpu/enabled' to usd-property 'OmniRtxSettingsGlobalPtAdvancedAPI_1.omni:rtx:pt:multigpu:enabled'
+15611:The latest driver version may also work but is not fully tested.
+15612:2026-08-09T12:09:37Z [9,061ms] [Info] [carb] Initializing plugin: rtx.multigpumanager.plugin (interfaces: [rtx::multigpumanager::MultiGpuManager v0.9]) (impl: rtx.multigpumanager.plugin)
+15613:2026-08-09T12:09:37Z [9,061ms] [Info] [carb] Initializing plugin: rtx.scenedb.plugin (interfaces: [rtx::scenedb::FabricSceneDb v0.2],[rtx::scenedb::SceneDb v6.1]) (impl: rtx.scenedb.plugin)
+15753:2026-08-09T12:09:37Z [9,466ms] [Info] [rtx.scenedb] [MBVH]: Creating scene acceleration structures for context 0, device mask: 0x1
+20334:2026-08-09T12:09:38Z [9,931ms] [Info] [omni.kit.app.plugin] [9.956s] Isaac Sim Full App is loaded.
+20355:2026-08-09T12:09:39Z [10,774ms] [Info] [rtx.scenedb] [MBVH]: Creating scene acceleration structures for context 0, device mask: 0x1
+20419:Driver Version                                         : 580.173.02
+20445:    MultiGPU Board                                     : No
+20594:2026-08-09T12:09:43Z [15,052ms] [Info] [carb] Shutting down plugin rtx.scenedb.plugin
+20597:2026-08-09T12:09:43Z [15,052ms] [Info] [carb] Shutting down plugin rtx.multigpumanager.plugin
+
+FILE /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim Python/5.1/kit_20260912_122954.log
+size=1022469 mtime=2026-09-12 12:29:59.143370387 +0800
+6:2026-09-12T04:29:54Z [0ms] [Info] [omni.kit.app.plugin] Cmd: /home/user/isaacsim/5.1.0/exts/isaacsim.simulation_app/isaacsim/simulation_app/simulation_app.py /home/user/isaacsim/5.1.0/apps/isaacsim.exp.base.python.kit --/app/tokens/exe-path=/home/user/isaacsim/5.1.0/kit --/persistent/app/viewport/displayOptions=3094 --/rtx/materialDb/syncLoads=True --/rtx/hydra/materialSyncLoads=True --/omni.kit.plugin/syncUsdLoads=True --/app/renderer/resolution/width=1280 --/app/renderer/resolution/height=720 --/app/window/width=1440 --/app/window/height=900 --/renderer/multiGpu/enabled=False --/app/fastShutdown=False --/app/installSignalHandlers=0 --ext-folder /home/user/isaacsim/5.1.0/exts --ext-folder /home/user/isaacsim/5.1.0/apps --/renderer/multiGpu/autoEnable=false --/renderer/multiGpu/enabled=false --/physics/cudaDevice=0 --/plugins/carb.tasking.plugin/threadCount=8 --/plugins/omni.tbb.globalcontrol/maxThreadCount=8 --portable --no-window --/app/window/hideUi=1
+2730:Driver Version                                         : 595.84
+2756:    MultiGPU Board                                     : No
+2786:    GSP Firmware Version                               : 595.84
+3020:| Driver Version: 595.84        | Graphics API: Vulkan
+4092:2026-09-12T04:29:56Z [2,325ms] [Info] [carb] Registered plugin: rtx.multigpumanager.plugin (interfaces: [rtx::multigpumanager::MultiGpuManager v0.9]) (impl: rtx.multigpumanager.plugin)
+4093:2026-09-12T04:29:56Z [2,326ms] [Info] [carb] Registered plugin: rtx.scenedb.plugin (interfaces: [rtx::scenedb::FabricSceneDb v0.1],[rtx::scenedb::SceneDb v4.4]) (impl: rtx.scenedb.plugin)
+5789:2026-09-12T04:29:58Z [4,743ms] [Info] [omni.usd-abi.plugin] Mapping carb-setting '/rtx/realtime/mgpu/enabled' to usd-property 'OmniRtxSettingsGlobalRtAdvancedAPI_1.omni:rtx:rt:multigpu:enabled'
+5790:2026-09-12T04:29:58Z [4,744ms] [Info] [omni.usd-abi.plugin] Mapping carb-setting '/rtx/pathtracing/mgpu/enabled' to usd-property 'OmniRtxSettingsGlobalPtAdvancedAPI_1.omni:rtx:pt:multigpu:enabled'
+6684:The latest driver version may also work but is not fully tested.
+6685:2026-09-12T04:29:59Z [4,819ms] [Info] [carb] Initializing plugin: rtx.multigpumanager.plugin (interfaces: [rtx::multigpumanager::MultiGpuManager v0.9]) (impl: rtx.multigpumanager.plugin)
+6686:2026-09-12T04:29:59Z [4,819ms] [Info] [carb] Initializing plugin: rtx.scenedb.plugin (interfaces: [rtx::scenedb::FabricSceneDb v0.1],[rtx::scenedb::SceneDb v4.4]) (impl: rtx.scenedb.plugin)
+6687:2026-09-12T04:29:59Z [4,913ms] [Info] [carb] Plugin rtx.scenedb.plugin is already a dependency of omni.fabric.plugin; not changing unload order
+6688:2026-09-12T04:29:59Z [4,913ms] [Info] [carb] Plugin rtx.scenedb.plugin is already a dependency of omni.fabric.plugin; not changing unload order
+
+FILE isaac_sim/backends/isaac5/generated/isaac5_rtx_multigpu_off_repro.log
+size=44152 mtime=2026-09-12 12:29:59.367370041 +0800
+19:| Driver Version: 595.84        | Graphics API: Vulkan
+423:Fatal Python error: Segmentation fault
+
+__EXIT_CODE__=0
+

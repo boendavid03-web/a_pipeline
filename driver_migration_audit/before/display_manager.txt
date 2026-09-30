@@ -1,0 +1,30 @@
+COMMAND:
+systemctl status display-manager --no-pager --full 2>&1; systemctl show display-manager -p Id -p Names -p FragmentPath -p SubState -p ActiveState 2>&1
+
+OUTPUT:
+● gdm.service - GNOME Display Manager
+     Loaded: loaded (/lib/systemd/system/gdm.service; static)
+     Active: active (running) since Sun 2026-09-06 12:36:59 CST; 6 days ago
+   Main PID: 1477 (gdm3)
+      Tasks: 3 (limit: 76390)
+     Memory: 5.1M
+        CPU: 102ms
+     CGroup: /system.slice/gdm.service
+             └─1477 /usr/sbin/gdm3
+
+Sep 06 12:36:59 user systemd[1]: Starting GNOME Display Manager...
+Sep 06 12:36:59 user systemd[1]: Started GNOME Display Manager.
+Sep 06 12:37:00 user gdm-launch-environment][1516]: pam_unix(gdm-launch-environment:session): session opened for user gdm(uid=128) by (uid=0)
+Sep 06 12:37:12 user gdm-password][2078]: gkr-pam: unable to locate daemon control file
+Sep 06 12:37:12 user gdm-password][2078]: gkr-pam: stashed password to try later in open session
+Sep 06 12:37:12 user gdm-password][2078]: pam_unix(gdm-password:session): session opened for user user(uid=1000) by (uid=0)
+Sep 06 12:37:12 user gdm-password][2078]: gkr-pam: gnome-keyring-daemon started properly and unlocked keyring
+Sep 06 12:37:15 user gdm3[1477]: Gdm: Child process -1592 was already dead.
+Id=gdm.service
+Names=gdm.service gdm3.service display-manager.service
+ActiveState=active
+SubState=running
+FragmentPath=/lib/systemd/system/gdm.service
+
+__EXIT_CODE__=0
+

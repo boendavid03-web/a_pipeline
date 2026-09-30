@@ -1,0 +1,9 @@
+COMMAND:
+for p in /var/log/nvidia-installer.log /usr/bin/nvidia-uninstall /usr/lib/nvidia/uninstall /usr/share/nvidia/nvidia-application-profiles-*-rc; do if compgen -G "$p" >/dev/null; then ls -ld $p 2>/dev/null; fi; done; find /usr /opt -maxdepth 4 \( -name 'nvidia-uninstall' -o -name '.manifest' \) -print 2>/dev/null | head -200
+
+OUTPUT:
+-rw-r--r-- 1 root root 55313 May 11 17:10 /var/log/nvidia-installer.log
+-rw-r--r-- 1 root root 21672 Jun 11 04:30 /usr/share/nvidia/nvidia-application-profiles-595.84-rc
+
+__EXIT_CODE__=0
+

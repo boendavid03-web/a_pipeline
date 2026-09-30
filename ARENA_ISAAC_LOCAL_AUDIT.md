@@ -6,6 +6,22 @@
 
 证据等级：`CONFIRMED_BY_LOG` 表示有本机运行日志或结构化数据；`REPORTED_NOT_CURRENTLY_VERIFIED` 表示历史报告有结论但本轮未复跑；`SOURCE_EXISTS_ONLY` 表示仅静态源码/配置存在；`UNKNOWN` 表示本轮证据不足。
 
+**2026-09-29 后续更新：**本文件记录的是 2026-09-28 的只读快照。后续已把 Arena 原有 `factory.world` 的 66 个模型、175 个可视几何和 209 个带几何的碰撞项生成完整 Isaac USD，并通过 Arena GUI 入口加载；10 人在完整场景中创建，连续采样均有位移。见 [ARENA_ISAAC_FACTORY_10P_VALIDATION.md](ARENA_ISAAC_FACTORY_10P_VALIDATION.md)。下文“factory 当前 overlay 非直接”“无完整 Isaac world”等表述仅代表原审计时状态，不代表 2026-09-29 续测结果；Nav2 到达仍未通过。
+
+**2026-09-29 基础场景矩阵：**已顺序启动原 Arena 的 `map_empty`、`factory`、`generated`、`house17`、`ignc`、`hospital` 默认场景及本机 `map_highly_social`，并测试代表性的 5/7/10 人变体。人物创建和运动在多数场景通过；`generated` 缺 `CoffeTable` 的 Isaac USD，`hospital`/`ignc` 的原三维建筑未导入，多个场景仍有 Nav2 出界或目标失败。精确分层结果与证据见 [ARENA_ISAAC_BASIC_SCENE_MATRIX_20260929.md](ARENA_ISAAC_BASIC_SCENE_MATRIX_20260929.md)。下文是审计日历史状态，不能再作为当前基础测试结论。
+
+**2026-09-29 三维场景续测：**原 `ignc.dae` 已导入并经 Arena GUI 复跑；原 `hospital.world` 的 178 个顶层模型也已转换并加载，17 人全部创建、短时均有位移。原文件有 3 个模型埋在极深地下；Nav2 到达仍未通过。见 [ARENA_ISAAC_SCENE_GEOMETRY_CONTINUATION_20260929.md](ARENA_ISAAC_SCENE_GEOMETRY_CONTINUATION_20260929.md)。
+
+**2026-09-29 完整场景优先门禁：**按原场景模型、墙体、静态障碍和碰撞独立核验，当前六个正式场景中 `factory`、`hospital`、`ignc`、`house17`、`map_empty` 的几何门禁通过；`generated` 因原家具资产缺失未通过。`map_empty` 的原书架已在隔离 overlay 恢复并验证。见 [ARENA_ISAAC_FULL_SCENE_GATE_20260929.md](ARENA_ISAAC_FULL_SCENE_GATE_20260929.md)。在补齐 `generated` 前，不以人物创建或位移称其场景完成。
+
+**2026-09-29 Arena 5 原版来源核对：**六个正式世界的本机源码共 87 个文件，与 Arena 入口 `.repos` 指定的 `voshch/arena-simulation-setup@3f142b2` 逐文件一致；生成的 Isaac USD 是其派生物。`generated` 仍缺 7 种原名模型；`map_empty`、`house17`、`ignc` 的书架已在隔离 overlay 去掉根节点嵌套 `RigidBodyAPI` 并复验无 PhysX nested-rigidbody 错误。现有 wrapper 使用 `human:=isaac`，而入口对 Isaac 的默认值是 `hunav`，因此现有人物运动不是原版 HuNav 控制证据。详见 [ARENA5_ORIGINAL_SCENES_AND_PEOPLE_20260929.md](ARENA5_ORIGINAL_SCENES_AND_PEOPLE_20260929.md)。
+
+**执行顺序已固定：**先完成固定 Arena 5 源场景的 visual、collision、PhysX 和 GUI 导入门禁；再接入口默认的 HuNav/`arena_people_msgs` 行人控制。`human:=isaac` 的当前 People/NavMesh 适配仅作为 Isaac 执行器对照，不能先行替代原版行人控制。
+
+**当前状态速览（2026-09-29 复核）：**六个正式世界的源码身份已核对为 `87/87`；`factory`、`hospital`、`ignc`、`house17`、`map_empty` 已有几何加载证据。其中后三者的书架嵌套刚体和材质越界问题已在隔离 overlay 修复，最新无行人场景复测的对应错误数均为 0。新增独立 PhysX 抽样在前述五个场景全部通过：三份主场景 USD 的方块落体被碰撞面托住，两个地图场景的墙体阻挡及 4/4 书架射线命中。依赖检查又发现 `hospital` 的原 MTL 指向两张缺失的 TGA 法线贴图，因此它的**完整视觉门禁仍失败**；结合依赖检查的独立探针结果为 4 PASS、1 FAIL。这些抽样还不是全部碰撞体或 Arena GUI 内动态物理验收。`generated` 因 7 种原名家具资产未取得，完整场景也未通过；原版 HuNav→Isaac 人物控制和 Isaac Nav2 到达仍未整体验收。官方 `arena5-isaac5.1.0` 分支头仍为 `16b8e341`（2026-06-20），较新的 Isaac 6 分支提交不能替代 5.1 证据。详见 [完整场景门禁](ARENA_ISAAC_FULL_SCENE_GATE_20260929.md)与[原版来源、近期工作与缺口](ARENA5_ORIGINAL_SCENES_AND_PEOPLE_20260929.md)。
+
+**2026-09-30 `hospital` 续测：**从固定 Arena 5 源码中已有的两张 PNG 法线图生成独立 USD 派生版，保留原文件。该版 USD 依赖缺失为 0，独立 PhysX 接触抽样通过；Arena GUI 无行人加载确认 `178/178/178`，进程已回收。原 MTL 指向的两张 TGA 仍不存在，PNG 与 TGA 的视觉等价未知。GUI 还持续报 PhysX tensor view 与 RTX LiDAR 错误，因此不能称完整动态物理或机器人传感器验收。`generated` 的 7 种原名家具仍缺，六场景整体门禁仍未全部通过。证据见 [完整场景门禁](ARENA_ISAAC_FULL_SCENE_GATE_20260929.md)。
+
 # 1. EXECUTIVE SUMMARY
 
 1. **最快答案：可以复用既有入口打开一个小规模 Arena + Isaac Sim 5.1 多人场景；它历史上已真实跑通，但本轮按要求没有启动复验。**
@@ -288,9 +304,9 @@ Downloads 内已有 Hospital/Office/Warehouse USD 和 9/8/5-agent 配置，避�
 
 # 16. RECOMMENDED NEXT ACTION
 
-**唯一下一步：在用户授权执行后，先核对并隔离当前相关长期进程，在干净的 ROS domain/GPU 窗口中仅复跑 Option 1 的既有 `map_empty` Arena+Isaac5 wrapper，并采集人物数量、连续 pose/位移、People/NavMesh 状态和 owned-process teardown 证据。**
+**下一步：书架嵌套刚体问题已在隔离 overlay 修复并完成无行人复验。现在优先追溯 `generated` 缺失的 7 种原名资产；找到可核对的原资产后再做 55 墙、20 障碍的完整 GUI/碰撞复验。六个正式场景完成场景门禁后，才复跑入口默认 `human:=hunav` 的原版行人控制。**
 
-不要先修 10 人场景，不要切官方 branch，不要接 HuNav。只有 Option 1 当前复验成功后，再把同一条链切到已有 `map_highly_social/default.json`。
+不要先修 10 人场景，不要把当前 `human:=isaac` People/NavMesh 结果写成原版行人控制，也不要用相似家具替代 `generated` 的原资产。原版场景门禁通过后，再按固定入口接入 HuNav；缺失的 `arena_people_msgs` 必须先由上游消息包或同一版本的生成接口补齐。
 
 核心问题最终回答：
 

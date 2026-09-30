@@ -1,0 +1,38 @@
+COMMAND:
+printf 'TOOLS\n'; command -v vulkaninfo || true; command -v glxinfo || true; printf '\nVULKANINFO SUMMARY\n'; if command -v vulkaninfo >/dev/null; then timeout 45s vulkaninfo --summary 2>&1; else echo 'NOT INSTALLED'; fi; printf '\nGLXINFO\n'; if command -v glxinfo >/dev/null; then timeout 30s glxinfo -B 2>&1; else echo 'NOT INSTALLED'; fi; printf '\nLDCONFIG\n'; ldconfig -p | rg -i 'libGLX_nvidia|libnvidia-gl|libcuda|libvulkan' || true
+
+OUTPUT:
+TOOLS
+
+VULKANINFO SUMMARY
+NOT INSTALLED
+
+GLXINFO
+NOT INSTALLED
+
+LDCONFIG
+	libvulkan_virtio.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan_virtio.so
+	libvulkan_radeon.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan_radeon.so
+	libvulkan_lvp.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan_lvp.so
+	libvulkan_intel_hasvk.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan_intel_hasvk.so
+	libvulkan_intel.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan_intel.so
+	libvulkan.so.1 (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan.so.1
+	libvulkan.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libvulkan.so
+	libnvidia-glvkspirv.so.595.84 (libc6,x86-64) => /lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.595.84
+	libnvidia-glvkspirv.so.595.84 (libc6) => /lib/i386-linux-gnu/libnvidia-glvkspirv.so.595.84
+	libnvidia-glsi.so.595.84 (libc6,x86-64) => /lib/x86_64-linux-gnu/libnvidia-glsi.so.595.84
+	libnvidia-glsi.so.595.84 (libc6) => /lib/i386-linux-gnu/libnvidia-glsi.so.595.84
+	libnvidia-glcore.so.595.84 (libc6,x86-64) => /lib/x86_64-linux-gnu/libnvidia-glcore.so.595.84
+	libnvidia-glcore.so.595.84 (libc6) => /lib/i386-linux-gnu/libnvidia-glcore.so.595.84
+	libcudart.so.12 (libc6,x86-64) => /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so.12
+	libcudart.so (libc6,x86-64) => /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so
+	libcudadebugger.so.1 (libc6,x86-64) => /lib/x86_64-linux-gnu/libcudadebugger.so.1
+	libcuda.so.1 (libc6,x86-64) => /lib/x86_64-linux-gnu/libcuda.so.1
+	libcuda.so.1 (libc6) => /lib/i386-linux-gnu/libcuda.so.1
+	libcuda.so (libc6,x86-64) => /lib/x86_64-linux-gnu/libcuda.so
+	libcuda.so (libc6) => /lib/i386-linux-gnu/libcuda.so
+	libGLX_nvidia.so.0 (libc6,x86-64) => /lib/x86_64-linux-gnu/libGLX_nvidia.so.0
+	libGLX_nvidia.so.0 (libc6) => /lib/i386-linux-gnu/libGLX_nvidia.so.0
+
+__EXIT_CODE__=0
+

@@ -1,0 +1,47 @@
+COMMAND:
+modinfo nvidia_modeset
+
+OUTPUT:
+filename:       /lib/modules/6.8.0-136-generic/updates/dkms/nvidia-modeset.ko
+description:    NVIDIA modeset kernel module
+version:        595.84
+supported:      external
+license:        Dual MIT/GPL
+srcversion:     5AD5F0AFD2BA67346812F74
+depends:        video,nvidia
+retpoline:      Y
+name:           nvidia_modeset
+vermagic:       6.8.0-136-generic SMP preempt mod_unload modversions 
+sig_id:         PKCS#7
+signer:         user Secure Boot Module Signature key
+sig_key:        65:C9:DC:13:4A:90:00:39:36:41:26:D1:6E:F7:CF:F2:4D:87:97:40
+sig_hashalgo:   sha512
+signature:      99:8C:1F:6E:EA:15:F3:21:7D:39:B8:35:2A:EE:EC:26:BA:3C:98:9E:
+		B1:01:93:D3:7E:B0:E9:3D:58:AA:27:A1:2A:33:FC:18:01:C4:AA:E9:
+		B7:15:7D:2C:B7:7F:C4:F2:0A:D5:59:38:98:0C:A6:99:D3:41:DF:0F:
+		0B:4A:5C:2A:BB:E7:B4:18:4A:6C:5D:94:75:F5:68:D1:53:9E:77:4A:
+		E4:66:49:DD:67:74:C2:5F:04:B7:81:EF:50:CB:AA:B3:63:B4:66:31:
+		D0:8C:55:DD:10:97:E9:17:CD:8C:37:C3:58:43:7A:C7:E7:A1:DE:44:
+		B3:7E:60:2B:4D:BC:C2:5B:47:84:D3:A8:64:C5:71:4A:17:FF:3A:B3:
+		3B:05:A0:AE:20:83:FF:1B:F3:8D:F0:DE:4F:65:60:72:18:43:52:24:
+		5D:E4:F8:B1:6A:F2:3C:59:9F:F9:36:AB:46:CD:F8:28:2D:1F:55:5B:
+		37:13:97:AA:7F:BB:B9:2A:9C:BC:0E:D9:5A:B0:DF:0F:C2:6C:73:53:
+		CA:FB:4D:A5:ED:E4:B8:3F:DF:82:BB:1B:2A:D3:15:86:E5:79:05:E4:
+		D4:0B:0F:F9:F7:83:AB:A1:CB:CA:05:26:04:B6:4E:83:DC:6B:E2:AF:
+		37:E7:FF:29:7D:66:57:E0:B8:D5:1D:0F:28:EF:60:DB
+parm:           output_rounding_fix:bool
+parm:           disable_hdmi_frl:bool
+parm:           disable_vrr_memclk_switch:bool
+parm:           hdmi_deepcolor:bool
+parm:           opportunistic_display_sync:bool
+parm:           debug_force_color_space:uint
+parm:           enable_overlay_layers:bool
+parm:           fail_malloc:Fail the Nth call to nvkms_alloc (int)
+parm:           malloc_verbose:Report information about malloc calls on module unload (bool)
+parm:           conceal_vrr_caps:Conceal all display VRR capabilities (bool)
+parm:           fail_alloc_core_channel:Control testing for hardware core channel allocation failure (int)
+parm:           debug:Enable debug logging (int)
+parm:           config_file:Path to the nvidia-modeset configuration file (default: disabled) (charp)
+
+__EXIT_CODE__=0
+

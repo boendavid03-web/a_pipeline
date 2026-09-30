@@ -6,6 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROJECT_ROOT="$(cd "$BACKEND_ROOT/../../../.." && pwd)"
 
+export ARENA_CHARACTER_ASSETS_ROOT="${ARENA_CHARACTER_ASSETS_ROOT:-$PROJECT_ROOT/isaac_sim/backends/isaac5/assets/people/characters}"
+export ARENA_BIPED_SETUP_PATH="${ARENA_BIPED_SETUP_PATH:-/home/user/arena_isaac5_host_runtime/assets/Biped_Setup.usda}"
+
 count="${ISAAC_PEDESTRIAN_COUNT:-3}"
 seed="${ISAAC_PEDESTRIAN_SEED:-7}"
 speed="${ISAAC_PEDESTRIAN_SPEED:-}"

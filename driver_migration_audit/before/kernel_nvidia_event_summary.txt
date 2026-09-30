@@ -1,0 +1,14 @@
+COMMAND:
+log=$(journalctl -k -b --no-pager 2>/dev/null); printf 'NVRM_REFCOUNT_FAILURES='; printf '%s\n' "$log" | rg -c 'NVRM: GPU0 refcntRequestReference_IMPL' || true; printf 'NVRM_XID_EVENTS='; printf '%s\n' "$log" | rg -c 'NVRM: Xid' || true; printf 'NOUVEAU_LINES='; printf '%s\n' "$log" | rg -c -i 'nouveau' || true; printf '\nFIRST_LAST_REFCOUNT\n'; printf '%s\n' "$log" | rg 'NVRM: GPU0 refcntRequestReference_IMPL' | head -1; printf '%s\n' "$log" | rg 'NVRM: GPU0 refcntRequestReference_IMPL' | tail -1; printf '\nXID_LINES\n'; printf '%s\n' "$log" | rg 'NVRM: Xid' || true
+
+OUTPUT:
+NVRM_REFCOUNT_FAILURES=112
+NVRM_XID_EVENTS=NOUVEAU_LINES=
+FIRST_LAST_REFCOUNT
+Sep 06 14:56:22 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+Sep 09 21:51:56 user kernel: NVRM: GPU0 refcntRequestReference_IMPL: Failed to enter state 1 (current state: 0, status: 0x00000056)
+
+XID_LINES
+
+__EXIT_CODE__=0
+

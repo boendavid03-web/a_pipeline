@@ -1,0 +1,14 @@
+COMMAND:
+command -v mokutil || true; mokutil --sb-state 2>&1; modinfo nvidia | rg -i 'sign|sig' || true
+
+OUTPUT:
+/usr/bin/mokutil
+SecureBoot disabled
+sig_id:         PKCS#7
+signer:         user Secure Boot Module Signature key
+sig_key:        65:C9:DC:13:4A:90:00:39:36:41:26:D1:6E:F7:CF:F2:4D:87:97:40
+sig_hashalgo:   sha512
+signature:      26:CF:08:C0:97:F5:22:DE:DE:A0:BB:00:8D:2E:CB:B8:F5:72:EC:2F:
+
+__EXIT_CODE__=0
+

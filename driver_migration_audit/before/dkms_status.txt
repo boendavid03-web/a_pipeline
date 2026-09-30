@@ -1,0 +1,8 @@
+COMMAND:
+dkms status
+
+OUTPUT:
+nvidia/595.84, 6.8.0-136-generic, x86_64: installed
+
+__EXIT_CODE__=0
+

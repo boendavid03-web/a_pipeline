@@ -1,0 +1,20 @@
+COMMAND:
+LC_ALL=C apt-get -s --allow-downgrades install nvidia-driver-595-open=595.84-0ubuntu0.22.04.1
+
+OUTPUT:
+NOTE: This is only a simulation!
+      apt-get needs root privileges for real execution.
+      Keep also in mind that locking is deactivated,
+      so don't depend on the relevance to the real current situation!
+Reading package lists...
+Building dependency tree...
+Reading state information...
+nvidia-driver-595-open is already the newest version (595.84-0ubuntu0.22.04.1).
+The following packages were automatically installed and are no longer required:
+  libfwupd2 libfwupdplugin5 libgcab-1.0-0 libsmbios-c2
+  nvidia-firmware-580-580.173.02
+Use 'apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 0 to remove and 120 not upgraded.
+
+__EXIT_CODE__=0
+
