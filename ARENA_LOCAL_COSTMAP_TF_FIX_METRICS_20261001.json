@@ -1,0 +1,520 @@
+{
+  "before": {
+    "scans": 57,
+    "scan_near_frames": 46,
+    "scan_callback_received": 57,
+    "tf_accepted": 0,
+    "tf_dropped": 55,
+    "tf_unresolved": 2,
+    "tf_drop_reasons": {
+      "1": 55
+    },
+    "marker_counts": {
+      "VOXEL_CYCLE": 362,
+      "COMBINE": 362,
+      "SCAN_CALLBACK": 57,
+      "TF_DROP": 55
+    },
+    "voxel_cycle_max": {
+      "marking_obs": 0,
+      "marking_input": 0,
+      "range_pass": 0,
+      "map_pass": 0,
+      "mark_voxel_calls": 0,
+      "mark_cell_calls": 0,
+      "clearing_obs": 0,
+      "clearing_input": 0,
+      "voxels_after_mark": 0,
+      "lethal_after_mark": 0
+    },
+    "combine_max": {
+      "layer_lethal": 0,
+      "master_after": 0
+    },
+    "local_grids": 166,
+    "nonzero_grids": 0,
+    "max_occupied_cells": 0,
+    "voxel_grids": 358,
+    "marked_voxel_grids": 0,
+    "max_marked_voxels": 0,
+    "tf_edge_lidar_count": 6,
+    "terminal_tf_arrival_lag_median_sim_s": 3.350000175,
+    "terminal_tf_arrival_lag_max_sim_s": 4.033333544000001,
+    "terminal_tf_publish_interval_median_sim_s": 3.350000175,
+    "terminal_tf_publish_interval_max_sim_s": 7.3833337189999995,
+    "trace_json_sha256": "3e46f092808e7f91424db27bdd28797048bd30f770b7f46a0b29de61d883b3e5",
+    "diagnostic_log_counts": {
+      "sums": {
+        "marking_obs": 0,
+        "clearing_obs": 0,
+        "range_pass": 0,
+        "mark_voxel_calls": 0,
+        "mark_cell_calls": 0,
+        "voxels_after_mark": 0
+      },
+      "positive_cycles": {
+        "marking_obs_positive_cycles": 0,
+        "clearing_obs_positive_cycles": 0,
+        "range_pass_positive_cycles": 0,
+        "mark_voxel_calls_positive_cycles": 0,
+        "mark_cell_calls_positive_cycles": 0,
+        "voxels_after_mark_positive_cycles": 0
+      }
+    }
+  },
+  "after_isolated_bounded": {
+    "scans": 65,
+    "scan_near_frames": 48,
+    "scan_callback_received": 65,
+    "tf_accepted": 62,
+    "tf_dropped": 2,
+    "tf_unresolved": 1,
+    "tf_drop_reasons": {
+      "0": 1,
+      "1": 1
+    },
+    "marker_counts": {
+      "VOXEL_CYCLE": 434,
+      "COMBINE": 434,
+      "SCAN_CALLBACK": 65,
+      "TF_ACCEPT": 62,
+      "LASER_PROJECT": 62,
+      "BUFFER_ENTER": 62,
+      "BUFFER_FILTER": 62,
+      "BUFFER_STORED": 62,
+      "CLEAR": 333,
+      "TF_DROP": 2
+    },
+    "voxel_cycle_max": {
+      "marking_obs": 1,
+      "marking_input": 439,
+      "range_pass": 216,
+      "map_pass": 216,
+      "mark_voxel_calls": 216,
+      "mark_cell_calls": 216,
+      "clearing_obs": 1,
+      "clearing_input": 439,
+      "voxels_after_mark": 72,
+      "lethal_after_mark": 72
+    },
+    "combine_max": {
+      "layer_lethal": 72,
+      "master_after": 72
+    },
+    "local_grids": 173,
+    "nonzero_grids": 117,
+    "max_occupied_cells": 72,
+    "voxel_grids": 429,
+    "marked_voxel_grids": 328,
+    "max_marked_voxels": 72,
+    "tf_edge_lidar_count": 219,
+    "terminal_tf_arrival_lag_median_sim_s": 0.0,
+    "terminal_tf_arrival_lag_max_sim_s": 0.0,
+    "terminal_tf_publish_interval_median_sim_s": 0.116666673000001,
+    "terminal_tf_publish_interval_max_sim_s": 0.4000000210000003,
+    "trace_json_sha256": "7b8b58f7307962148c60a2e2d56fe32c082603919482c247e8a94eb360ae05f0",
+    "diagnostic_log_counts": {
+      "sums": {
+        "marking_obs": 333,
+        "clearing_obs": 333,
+        "range_pass": 32873,
+        "mark_voxel_calls": 32873,
+        "mark_cell_calls": 32873,
+        "voxels_after_mark": 18697,
+        "projected_points": 20220,
+        "height_accepted_points": 20220
+      },
+      "positive_cycles": {
+        "marking_obs_positive_cycles": 333,
+        "clearing_obs_positive_cycles": 333,
+        "range_pass_positive_cycles": 268,
+        "mark_voxel_calls_positive_cycles": 268,
+        "mark_cell_calls_positive_cycles": 268,
+        "voxels_after_mark_positive_cycles": 333
+      }
+    }
+  },
+  "short_no_human": {
+    "scans": 297,
+    "scan_near_frames": 60,
+    "scan_callback_received": 297,
+    "tf_accepted": 296,
+    "tf_dropped": 0,
+    "tf_unresolved": 1,
+    "tf_drop_reasons": {},
+    "marker_counts": {
+      "VOXEL_CYCLE": 671,
+      "COMBINE": 671,
+      "SCAN_CALLBACK": 297,
+      "TF_ACCEPT": 296,
+      "LASER_PROJECT": 296,
+      "BUFFER_ENTER": 296,
+      "BUFFER_FILTER": 296,
+      "BUFFER_STORED": 296,
+      "CLEAR": 568
+    },
+    "voxel_cycle_max": {
+      "marking_obs": 1,
+      "marking_input": 433,
+      "range_pass": 218,
+      "map_pass": 218,
+      "mark_voxel_calls": 218,
+      "mark_cell_calls": 218,
+      "clearing_obs": 1,
+      "clearing_input": 433,
+      "voxels_after_mark": 71,
+      "lethal_after_mark": 71
+    },
+    "combine_max": {
+      "layer_lethal": 68,
+      "master_after": 68
+    },
+    "local_grids": 613,
+    "nonzero_grids": 527,
+    "max_occupied_cells": 70,
+    "voxel_grids": 665,
+    "marked_voxel_grids": 568,
+    "max_marked_voxels": 71,
+    "tf_edge_lidar_count": 651,
+    "terminal_tf_arrival_lag_median_sim_s": 0.0,
+    "terminal_tf_arrival_lag_max_sim_s": 0.0,
+    "terminal_tf_publish_interval_median_sim_s": 0.116666673000001,
+    "terminal_tf_publish_interval_max_sim_s": 0.13333334100001082,
+    "trace_json_sha256": "c88919c47bef3d253753b502ed2dbe6f48b12539f1aeb41a7a8c76c45f0559da",
+    "action": {
+      "status_transitions": [
+        {
+          "receipt_wall": 1790869743.1692486,
+          "uuid": "3f23f3e3024a6512e7154390684763a2",
+          "status": 2
+        },
+        {
+          "receipt_wall": 1790869743.4700036,
+          "uuid": "3f23f3e3024a6512e7154390684763a2",
+          "status": 6
+        },
+        {
+          "receipt_wall": 1790869746.1693895,
+          "uuid": "7340d9a5de890b21fb3fd6a62f6e7f85",
+          "status": 2
+        },
+        {
+          "receipt_wall": 1790869755.9697044,
+          "uuid": "7340d9a5de890b21fb3fd6a62f6e7f85",
+          "status": 4
+        }
+      ],
+      "goal_poses": [
+        {
+          "wall": 1790869743.1689525,
+          "xy": [
+            27.212105,
+            2.860544
+          ]
+        },
+        {
+          "wall": 1790869746.1692846,
+          "xy": [
+            27.212105,
+            2.860544
+          ]
+        }
+      ],
+      "terminal": {
+        "receipt_wall": 1790869755.9697044,
+        "uuid": "7340d9a5de890b21fb3fd6a62f6e7f85",
+        "status": 4
+      },
+      "odom_terminal_xy": [
+        27.11536407470703,
+        2.7826495170593297
+      ],
+      "terminal_xy_error_m": 0.12420288683897143,
+      "terminal_yaw_error_rad": 0.0011777279002539445,
+      "odom_path_during_final_goal_m": 2.393779165294577,
+      "cmd_vel_count": 200,
+      "cmd_vel_nonzero": 181,
+      "cmd_vel_nav_count": 12,
+      "cmd_vel_nav_nonzero": 10,
+      "post_terminal_cmd_count": 8,
+      "post_terminal_cmd_nonzero": 0,
+      "last_cmd_vel": [
+        0.0,
+        0.0
+      ],
+      "human_state_frames": 0,
+      "humans": []
+    },
+    "action_analysis_sha256": "f2aed5c00c4559179593ba4431a2ee64f5f93b119decf0a6c3f9482b47f4cdf4",
+    "diagnostic_log_counts": {
+      "sums": {
+        "marking_obs": 568,
+        "clearing_obs": 568,
+        "range_pass": 17480,
+        "mark_voxel_calls": 17480,
+        "mark_cell_calls": 17480,
+        "voxels_after_mark": 37225,
+        "projected_points": 127274,
+        "height_accepted_points": 127274
+      },
+      "positive_cycles": {
+        "marking_obs_positive_cycles": 568,
+        "clearing_obs_positive_cycles": 568,
+        "range_pass_positive_cycles": 123,
+        "mark_voxel_calls_positive_cycles": 123,
+        "mark_cell_calls_positive_cycles": 123,
+        "voxels_after_mark_positive_cycles": 568
+      }
+    }
+  },
+  "default_three_hunav": {
+    "scans": 546,
+    "scan_near_frames": 216,
+    "scan_callback_received": 546,
+    "tf_accepted": 544,
+    "tf_dropped": 1,
+    "tf_unresolved": 1,
+    "tf_drop_reasons": {
+      "1": 1
+    },
+    "marker_counts": {
+      "VOXEL_CYCLE": 3279,
+      "COMBINE": 3279,
+      "SCAN_CALLBACK": 546,
+      "TF_ACCEPT": 544,
+      "LASER_PROJECT": 544,
+      "BUFFER_ENTER": 544,
+      "BUFFER_FILTER": 544,
+      "BUFFER_STORED": 544,
+      "CLEAR": 3182,
+      "TF_DROP": 1
+    },
+    "voxel_cycle_max": {
+      "marking_obs": 1,
+      "marking_input": 428,
+      "range_pass": 217,
+      "map_pass": 217,
+      "mark_voxel_calls": 217,
+      "mark_cell_calls": 217,
+      "clearing_obs": 1,
+      "clearing_input": 428,
+      "voxels_after_mark": 89,
+      "lethal_after_mark": 89
+    },
+    "combine_max": {
+      "layer_lethal": 89,
+      "master_after": 89
+    },
+    "local_grids": 1448,
+    "nonzero_grids": 677,
+    "max_occupied_cells": 89,
+    "voxel_grids": 3277,
+    "marked_voxel_grids": 1548,
+    "max_marked_voxels": 89,
+    "tf_edge_lidar_count": 1364,
+    "terminal_tf_arrival_lag_median_sim_s": 0.11666667299999745,
+    "terminal_tf_arrival_lag_max_sim_s": 0.13333334100002503,
+    "terminal_tf_publish_interval_median_sim_s": 0.11666667299999745,
+    "terminal_tf_publish_interval_max_sim_s": 0.35000001799999936,
+    "trace_json_sha256": "658affe3efa4531331ee4865844f6cc1c3a88cc369ad3d1ccffdedfd5de06a04",
+    "action": {
+      "status_transitions": [
+        {
+          "receipt_wall": 1790869984.5157866,
+          "uuid": "7edf9c96207122a70aff8a6dd687f603",
+          "status": 2
+        },
+        {
+          "receipt_wall": 1790869984.8163261,
+          "uuid": "7edf9c96207122a70aff8a6dd687f603",
+          "status": 6
+        },
+        {
+          "receipt_wall": 1790869990.0642781,
+          "uuid": "ee5c36f61ecbb658ddb030442049218b",
+          "status": 2
+        },
+        {
+          "receipt_wall": 1790870268.5714598,
+          "uuid": "ee5c36f61ecbb658ddb030442049218b",
+          "status": 6
+        }
+      ],
+      "goal_poses": [
+        {
+          "wall": 1790869984.515502,
+          "xy": [
+            6.0,
+            21.8
+          ]
+        },
+        {
+          "wall": 1790869990.0641165,
+          "xy": [
+            6.0,
+            21.8
+          ]
+        }
+      ],
+      "terminal": {
+        "receipt_wall": 1790870268.5714598,
+        "uuid": "ee5c36f61ecbb658ddb030442049218b",
+        "status": 6
+      },
+      "odom_terminal_xy": [
+        6.155032157897942,
+        21.677690505981452
+      ],
+      "terminal_xy_error_m": 0.19747045933396154,
+      "terminal_yaw_error_rad": 0.3770594950870776,
+      "odom_path_during_final_goal_m": 28.939600432118365,
+      "cmd_vel_count": 5575,
+      "cmd_vel_nonzero": 5556,
+      "cmd_vel_nav_count": 280,
+      "cmd_vel_nav_nonzero": 278,
+      "post_terminal_cmd_count": 14,
+      "post_terminal_cmd_nonzero": 0,
+      "last_cmd_vel": [
+        0.0,
+        0.0
+      ],
+      "human_state_frames": 3131,
+      "humans": [
+        {
+          "id": 1,
+          "samples": 3131,
+          "first_xy": [
+            25.5,
+            19.0
+          ],
+          "last_xy": [
+            15.014706479268625,
+            19.0
+          ],
+          "max_speed_mps": 0.30000001192092896,
+          "name": "D_test_1"
+        },
+        {
+          "id": 2,
+          "samples": 3131,
+          "first_xy": [
+            25.93,
+            7.52
+          ],
+          "last_xy": [
+            12.637027245335128,
+            10.605815371370795
+          ],
+          "max_speed_mps": 0.300000011920929,
+          "name": "2"
+        },
+        {
+          "id": 3,
+          "samples": 3131,
+          "first_xy": [
+            30.1,
+            12.2
+          ],
+          "last_xy": [
+            28.804157179333618,
+            12.792217759671063
+          ],
+          "max_speed_mps": 0.300000011920929,
+          "name": "3"
+        }
+      ]
+    },
+    "action_analysis_sha256": "df52f10cbf19559504d478e191f25332654ec143a88bbb5b25055c3ce8ba2686",
+    "diagnostic_log_counts": {
+      "sums": {
+        "marking_obs": 3182,
+        "clearing_obs": 3182,
+        "range_pass": 137086,
+        "mark_voxel_calls": 137086,
+        "mark_cell_calls": 137086,
+        "voxels_after_mark": 102064,
+        "projected_points": 144876,
+        "height_accepted_points": 144876
+      },
+      "positive_cycles": {
+        "marking_obs_positive_cycles": 3182,
+        "clearing_obs_positive_cycles": 3182,
+        "range_pass_positive_cycles": 990,
+        "mark_voxel_calls_positive_cycles": 990,
+        "mark_cell_calls_positive_cycles": 990,
+        "voxels_after_mark_positive_cycles": 1549
+      }
+    }
+  },
+  "after_supplemental_bounded": {
+    "scans": 66,
+    "scan_near_frames": 56,
+    "scan_callback_received": 66,
+    "tf_accepted": 65,
+    "tf_dropped": 1,
+    "tf_unresolved": 0,
+    "tf_drop_reasons": {
+      "1": 1
+    },
+    "marker_counts": {
+      "VOXEL_CYCLE": 395,
+      "COMBINE": 395,
+      "SCAN_CALLBACK": 66,
+      "TF_ACCEPT": 65,
+      "LASER_PROJECT": 65,
+      "BUFFER_ENTER": 65,
+      "BUFFER_FILTER": 65,
+      "BUFFER_STORED": 65,
+      "CLEAR": 303,
+      "TF_DROP": 1
+    },
+    "voxel_cycle_max": {
+      "marking_obs": 1,
+      "marking_input": 415,
+      "range_pass": 215,
+      "map_pass": 215,
+      "mark_voxel_calls": 215,
+      "mark_cell_calls": 215,
+      "clearing_obs": 1,
+      "clearing_input": 415,
+      "voxels_after_mark": 71,
+      "lethal_after_mark": 71
+    },
+    "combine_max": {
+      "layer_lethal": 71,
+      "master_after": 71
+    },
+    "local_grids": 165,
+    "nonzero_grids": 113,
+    "max_occupied_cells": 71,
+    "voxel_grids": 395,
+    "marked_voxel_grids": 303,
+    "max_marked_voxels": 71,
+    "tf_edge_lidar_count": 219,
+    "terminal_tf_arrival_lag_median_sim_s": 0.0,
+    "terminal_tf_arrival_lag_max_sim_s": 0.0,
+    "terminal_tf_publish_interval_median_sim_s": 0.116666673000001,
+    "terminal_tf_publish_interval_max_sim_s": 0.3333333509999967,
+    "trace_json_sha256": "b87d660fd133849a57342303010a8670fae3101f671e0f9f573fb3d39cd262b6",
+    "diagnostic_log_counts": {
+      "sums": {
+        "marking_obs": 303,
+        "clearing_obs": 303,
+        "range_pass": 30210,
+        "mark_voxel_calls": 30210,
+        "mark_cell_calls": 30210,
+        "voxels_after_mark": 16927,
+        "projected_points": 20548,
+        "height_accepted_points": 20548
+      },
+      "positive_cycles": {
+        "marking_obs_positive_cycles": 303,
+        "clearing_obs_positive_cycles": 303,
+        "range_pass_positive_cycles": 271,
+        "mark_voxel_calls_positive_cycles": 271,
+        "mark_cell_calls_positive_cycles": 271,
+        "voxels_after_mark_positive_cycles": 303
+      }
+    }
+  }
+}

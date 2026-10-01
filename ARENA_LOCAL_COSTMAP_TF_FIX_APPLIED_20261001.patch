@@ -1,0 +1,13 @@
+diff --git a/ros2isaacsim/isaac_utils/graphs/tf.py b/ros2isaacsim/isaac_utils/graphs/tf.py
+index db8bdb9..dfb8cc9 100644
+--- a/ros2isaacsim/isaac_utils/graphs/tf.py
++++ b/ros2isaacsim/isaac_utils/graphs/tf.py
+@@ -12,7 +12,7 @@ def tf(
+     graph_path: str,
+     prim_path: str,
+     tf_prefix: str,
+-    throttle: int = 300,
++    throttle: int = 10,
+ ) -> bool:
+     """
+     Creates an OmniGraph Action Graph to publish tf subtree of a given prim.

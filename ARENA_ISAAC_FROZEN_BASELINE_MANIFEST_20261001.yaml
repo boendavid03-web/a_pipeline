@@ -1,5 +1,6 @@
 generated_at: '2026-10-01T08:40:50.765111+00:00'
-status: NOT_READY_DEFAULT_ACTION_ABORTED_AND_LOCAL_COSTMAP_UNRESOLVED
+status: NOT_READY_DEFAULT_ACTION_ABORTED_TF_INFRASTRUCTURE_VERIFIED
+frozen_baseline_ready: false
 isaac_sim:
   path: /home/user/isaacsim/5.1.0
   version: 5.1.0-rc.19+release.26219.9c81211b.gl
@@ -285,6 +286,44 @@ frozen_gates:
     - '2'
     - '3'
     observed_global_costmap: 626x481 at 0.05 m, origin (0,0), static layer expanded to full map
+local_costmap_tf_fix_validation:
+  report: /home/user/navigation_project/a_pipeline/ARENA_LOCAL_COSTMAP_TF_FIX_VALIDATION_20261001.md
+  metrics: /home/user/navigation_project/a_pipeline/ARENA_LOCAL_COSTMAP_TF_FIX_METRICS_20261001.json
+  change: 'isaac_utils/graphs/tf.py default throttle: 300 -> 10 only'
+  installed_tf:
+    path: /home/user/arena_isaac5_py311_factory/build_ws/humble/isaac_sim_ros_ws/install/ros2isaacsim/lib/python3.11/site-packages/isaac_utils/graphs/tf.py
+    sha256_before: a1ba698b321c882226ad7b261c65e88ade709418908dea41b7a7e1212482ea5c
+    sha256_after: d48387a07d2376c25dfca6021480d31eb5a5b0b7eeeb15cb8c779c3b8fbb6afb
+  bounded_default:
+    status: TF_AND_LOCAL_COSTMAP_INFRASTRUCTURE_VERIFIED
+    domain: 212
+    scan_callback: 65
+    tf_accepted: 62
+    tf_dropped: 2
+    observation_buffer_input: 62
+    nonzero_voxel_grids: 328
+    nonzero_local_grids: 117
+    max_occupied_cells: 72
+  short_no_human_regression:
+    status: NAVIGATION_CHAIN_SUCCEEDED_AFTER_STARTUP_RETRY
+    domain: 211
+    terminal_action_status: SUCCEEDED
+    terminal_xy_error_m: 0.1242
+    initial_startup_goal_status: ABORTED
+  original_default_three_hunav_regression:
+    status: INFRASTRUCTURE_VERIFIED_ACTION_ABORTED
+    domain: 213
+    scan_callback: 546
+    tf_accepted: 544
+    tf_dropped: 1
+    observation_buffer_input: 544
+    nonzero_voxel_grids: 1548
+    nonzero_local_grids: 677
+    max_occupied_cells: 89
+    terminal_action_status: ABORTED
+    terminal_xy_error_m: 0.1975
+    terminal_yaw_error_rad: 0.3771
+    remaining_blocker: near-goal Failed to make progress and yaw/action outcome
 reversible_restore:
   pre_restore_patch:
     path: /home/user/navigation_project/a_pipeline/ARENA_ISAAC_NAV2_PRE_RESTORE_20261001.patch

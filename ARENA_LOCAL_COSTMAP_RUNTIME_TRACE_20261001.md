@@ -1,5 +1,7 @@
 # Arena local costmap：单次 default 诊断运行轨迹 — 2026-10-01
 
+> **后续状态（同日更新）：** 本文以下内容保留 `throttle=300` 修复前诊断的原始结论。`throttle=10` 已按单行补丁应用，后续 bounded default 实测 62/65 TF 接受、62 次 ObservationBuffer 输入、117/173 帧 local costmap 非零；完整原始 default + 3 HuNav 实测 544/546 TF 接受、677/1,448 帧 local costmap 非零。local costmap TF infrastructure **FIX VERIFIED**。完整导航的主 UUID 仍因 near-goal `Failed to make progress` 而 `ABORTED`，因此 `FROZEN_BASELINE_READY=NO`。完整 before/after、两组回归及原始证据见 [TF 修复验证报告](ARENA_LOCAL_COSTMAP_TF_FIX_VALIDATION_20261001.md)。本文原有“提案尚未应用”和“下一动作”只描述修复前的时间点，现由该报告取代。
+
 ## 唯一结论
 
 **A1 — TF_MESSAGE_FILTER_FAILURE。** 在这次原样 `map_empty/default.json + 3 HuNav`、30 仿真秒诊断中，LaserScan 发布并到达 local costmap 的订阅回调，但没有一帧通过 TF message filter。55/57 帧在约 0.3 仿真秒的 transform 等待后被丢弃；余下两帧在停止时尚未决议。所有 46 帧带 0.08–2.5 m 返回的扫描都在这 55 帧内。第一失败阶段是 **`jackal/lidar_link → jackal/odom` 的实时 TF 供给与 message filter 等待窗口之间**，不是 ObservationBuffer、voxel 高度/量程过滤或 clearing。
