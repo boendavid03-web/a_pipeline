@@ -1,0 +1,11 @@
+--- isaac_utils/graphs/tf.py
++++ isaac_utils/graphs/tf.py
+@@ -12,7 +12,7 @@
+     graph_path: str,
+     prim_path: str,
+     tf_prefix: str,
+-    throttle: int = 300,
++    throttle: int = 10,
+ ) -> bool:
+     """
+     Creates an OmniGraph Action Graph to publish tf subtree of a given prim.
