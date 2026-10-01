@@ -1,0 +1,294 @@
+generated_at: '2026-10-01T08:40:50.765111+00:00'
+status: NOT_READY_DEFAULT_ACTION_ABORTED_AND_LOCAL_COSTMAP_UNRESOLVED
+isaac_sim:
+  path: /home/user/isaacsim/5.1.0
+  version: 5.1.0-rc.19+release.26219.9c81211b.gl
+  version_file_sha256: 3608df6c48e6857e9cdcf9cedb5ddf23d3ce76c46bc87b0f6ab3a5241ef5e5e7
+  python: /home/user/isaacsim/5.1.0/kit/python/bin/python3 (3.11.13)
+  public_zip_path: /home/user/Downloads/isaac-sim-standalone-5.1.0-linux-x86_64.zip
+arena:
+  repo: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/arena-rosnav
+  commit: null
+  reason: nested Arena source is ignored by parent Git and has no .git metadata; parent repository HEAD is not an
+    Arena commit
+  parent_repo_head: 84f5656c4282aa1ef70f9030b954e7966a1e11c7
+simulation_setup:
+  repo: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/simulation-setup
+  commit: null
+  reason: source has no .git metadata; content is pinned below
+  source_nav2_sha256: 672121c221e17cdd1fb4410936e8e0462a81c9af2683b11d85dd3bd7ea65692f
+  live_overlay: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup
+  live_nav2_sha256: 2c7eea093eca3254d4e5c9c4e08ed044389cfd43bd097791345ae005034d2473
+current_adapter:
+  repo: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/isaac
+  commit: a4beefe0203ec8a75d65d0ab70496b5e2c400605
+  dirty_files: "M ros2isaacsim/isaac_utils/services/GetPrimAttributes.py\n M ros2isaacsim/pedestrian/simulator/logic/people/person.py\n\
+    \ M ros2isaacsim/ros2isaacsim/run_isaacsim.py"
+  factory_repo: /home/user/arena_isaac5_py311_factory
+  factory_commit: 50de00358f220d790d17050c6368cfe9a9cb9f51
+  factory_source:
+    path: /home/user/arena_isaac5_py311_factory/humble_ws/src/arena_local/ros2isaacsim/ros2isaacsim/run_isaacsim.py
+    sha256: c07a7f4683399212522a3d8d6c877a665e648826a6476f7ad3d900c246f0bafc
+  isaac_child_installed_module:
+    path: /home/user/arena_isaac5_py311_factory/build_ws/humble/isaac_sim_ros_ws/install/ros2isaacsim/lib/python3.11/site-packages/ros2isaacsim/run_isaacsim.py
+    sha256: b173a069e3603dc33797c8483ae9208b30e9e82b3229e67f2cf898afbdab1809
+task_generator:
+  source: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/arena-rosnav/task_generator
+  commit: null
+  reason: source has no .git metadata; parent Git ignores nested Arena tree
+  dirty_files: null
+  dirty_files_reason: cannot distinguish uncommitted paths without a source Git index
+  source_content_pin:
+    sha256_of_sorted_relative_path_and_file_sha256: bf2e3ef20d5cc1a29bdca1c799a3e3d3de8d67279c51472ef84e2ba6167a8285
+    file_count: 59
+  goal_guard:
+    path: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/arena-rosnav/task_generator/task_generator/manager/robot_manager/robot_manager.py
+    sha256: 2e204448906afe192c9e3640fc337911311c51021015d0cae183a107b2e18c99
+  isaac_client:
+    path: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/arena-rosnav/task_generator/task_generator/simulators/sim/isaac_simulator.py
+    sha256: fafaad8ed7fe5f9ae6aa7122712dcbcf71a143d52bd9f218e0767a7744ef17b0
+  hunav_client:
+    path: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/arena-rosnav/task_generator/task_generator/simulators/human/hunav/hunav.py
+    sha256: 8c221c1b3fa01c1c569700ff8f8be6301a6f11ca0e7a95a25f31b5dfe7d518b8
+hunav:
+  source: /home/user/arena_full_ws/src/deps/hunav/hunav_sim/hunav_agent_manager
+  commit_or_pin:
+    sha256_of_sorted_relative_path_and_file_sha256: 1806d6642869fe686dbafa2f5bbe626b82e41818d0c111a35d260f58c911d69a
+    file_count: 14
+  package_version: 1.0.0 from local package.xml
+  arena_bringup_default_behavior:
+    path: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/install/arena_bringup/share/arena_bringup/configs/hunav_agents/default.yaml
+    sha256: 1b12b19ba0a9b75bf5b2aba2292e04c96e57b919b784d3e9e80ad8104ec38272
+  runtime_overlay: /home/user/arena_full_ws/install_harmonic_host_overlay
+nav2:
+  global_planner:
+    name: NavFn
+    plugin: nav2_navfn_planner/NavfnPlanner
+    live:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/configs/nav2/planners/navfn/planner_config.yaml
+      sha256: c8bf45a3b1904c52bb10e63f73d99fc03ad0d9e84e62f5c6916b030c83efbbae
+    source:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/simulation-setup/configs/nav2/planners/navfn/planner_config.yaml
+      sha256: c8bf45a3b1904c52bb10e63f73d99fc03ad0d9e84e62f5c6916b030c83efbbae
+    same_as_source: true
+  local_controller:
+    name: DWB
+    plugin: dwb_core::DWBLocalPlanner
+    live:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/configs/nav2/controllers/dwb/controller_config.yaml
+      sha256: b170a05157450965bfd2d9c4bd59fc0b0965239906b76bc4d910008b34923204
+    source:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/arena_ws/src/arena/simulation-setup/configs/nav2/controllers/dwb/controller_config.yaml
+      sha256: 445cfcdac0b4835dbe21cd81eac1c15992663fc297da75a2c74a9714e4311200
+    same_parameters_as_source: true
+  controller_frequency_hz: 1.0
+  movement_time_allowance_s: 10.0
+  global_costmap:
+    resolution: 0.05
+    width: 30
+    height: 23
+    origin_x: 0.5
+    origin_y: 0.5
+scene_and_robot_assets:
+  shelf_usd:
+    path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/entities/obstacles/static/shelf/usd/shelf.usd
+    sha256: fbd7d11be1c31de63aef39d968136479e7c0a4520bd24456c8397b2ae768ecfc
+  jackal_control_yaml:
+    path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/entities/robots/jackal/control.yaml
+    sha256: 45b57a7787c5dca2de172f8f8ef1966c9d980c756d31d9a5d8456678f180b970
+  installed_wheel_control_graph:
+    path: /home/user/arena_isaac5_py311_factory/build_ws/humble/isaac_sim_ros_ws/install/ros2isaacsim/lib/python3.11/site-packages/isaac_utils/graphs/control/__init__.py
+    sha256: 634beda0130ce4596dfcbd6f275daf8a2c76c5e0fda767e386b302fedafae028
+scenario_set:
+  world: map_empty
+  map_files:
+    map.pgm:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/map.pgm
+      sha256: d2c03c90eda254d20ddf9078d820d7f55d1839d932a13fb9cf5892398973df66
+    map.png:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/map.png
+      sha256: 3b64a4fa7f55a5fc35e45d490b6cf23f39576fccc0080d7e3a9b1747f36611d1
+    map.world.yaml:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/map.world.yaml
+      sha256: 283af9ba25db62c79578058953423a72c39f5bb86d1505fd56edfb8832fc0cda
+    map.yaml:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/map.yaml
+      sha256: 9e5a6e28303b49c64e1072403e4e40c71fa410b87fc50fc8699ed2115fd119b1
+    obstacles.yaml:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/obstacles.yaml
+      sha256: 6225bfe3095140e5a175d6f9fd4c1b72d7602d4bfcea7f2a08f5b4d6a05524c4
+    test_map.pgm:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/test_map.pgm
+      sha256: 8e245fc694e313b564595c4d63cb50cc08f2375f3ab8711c0cb6ba31af54dc54
+    walls.yaml:
+      path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/worlds/map_empty/map/walls.yaml
+      sha256: a50c3e4f7c6fce855ed7426f349bfb88accde10f8e9441accc512ad63bb3090c
+  files:
+    default.json:
+      live_sha256: 4970601dec3f7e56aaa2df1375d09da2f670d486244022c37af37ed5d816ff43
+      source_sha256: 4970601dec3f7e56aaa2df1375d09da2f670d486244022c37af37ed5d816ff43
+      same_as_source: true
+      robot_start:
+      - 25.3
+      - 1.25
+      - 0.7
+      robot_goal:
+      - 6.0
+      - 21.8
+      - 0.0
+      minimum_global_costmap_edge_margin_m:
+        start: 0.75
+        goal: 1.7
+      robot_radius_0_267m_inside: true
+    1.json:
+      live_sha256: f1e55f8a874e5ad3f7ad5f6f4f36e62e113386a1eafae50e7e5c4f4f6f48b718
+      source_sha256: f1e55f8a874e5ad3f7ad5f6f4f36e62e113386a1eafae50e7e5c4f4f6f48b718
+      same_as_source: true
+      robot_start:
+      - 24.0
+      - 20.0
+      - 0.7
+      robot_goal:
+      - 2.0
+      - 2.0
+      - 0.0
+      minimum_global_costmap_edge_margin_m:
+        start: 3.5
+        goal: 1.5
+      robot_radius_0_267m_inside: true
+    2.json:
+      live_sha256: e422654a6d0bf758afcf8b21f2796b5164a598ab893cd20c37e5b4446f439708
+      source_sha256: e422654a6d0bf758afcf8b21f2796b5164a598ab893cd20c37e5b4446f439708
+      same_as_source: true
+      robot_start:
+      - 29.6
+      - 1.77
+      - -0.00143
+      robot_goal:
+      - 19.4
+      - 22.7
+      - -0.00143
+      minimum_global_costmap_edge_margin_m:
+        start: 0.9
+        goal: 0.8
+      robot_radius_0_267m_inside: true
+    3.json:
+      live_sha256: b5e9b6d1869f0b6087e037237d86d1581ca9675262fbf96f2b58aaf3b82b2b08
+      source_sha256: b5e9b6d1869f0b6087e037237d86d1581ca9675262fbf96f2b58aaf3b82b2b08
+      same_as_source: true
+      robot_start:
+      - 29.6
+      - 1.77
+      - -0.00143
+      robot_goal:
+      - 19.4
+      - 22.7
+      - -0.00143
+      minimum_global_costmap_edge_margin_m:
+        start: 0.9
+        goal: 0.8
+      robot_radius_0_267m_inside: true
+    4.json:
+      live_sha256: 8c74f00592e5bea844e05a02c5191da035ac58df1cab1a5a7e4240ccbb950809
+      source_sha256: 8c74f00592e5bea844e05a02c5191da035ac58df1cab1a5a7e4240ccbb950809
+      same_as_source: true
+      robot_start:
+      - 17.0
+      - 18.0
+      - 0.7
+      robot_goal:
+      - 30.0
+      - 1.25
+      - 0.0
+      minimum_global_costmap_edge_margin_m:
+        start: 5.5
+        goal: 0.5
+      robot_radius_0_267m_inside: true
+    5.json:
+      live_sha256: 4012bfb560478acb3db3cda673a85b9059dd167e1eec2f0fdd2912aae3ce56f5
+      source_sha256: 4012bfb560478acb3db3cda673a85b9059dd167e1eec2f0fdd2912aae3ce56f5
+      same_as_source: true
+      robot_start:
+      - 25.3
+      - 1.25
+      - 0.7
+      robot_goal:
+      - 6.0
+      - 21.8
+      - 0.0
+      minimum_global_costmap_edge_margin_m:
+        start: 0.75
+        goal: 1.7
+      robot_radius_0_267m_inside: true
+  excluded_diagnostic_files:
+  - nav_short_smoke_debug.json
+  - nav_smoke_debug.json
+  - derived social_force runs
+compatibility_patches:
+- host CPython 3.10 vs Isaac CPython 3.11 runtime split
+- Isaac 5.1 URDF import and world.reset compatibility
+- HuNav pose updates and numeric prim path
+- Isaac extra service window for 10 Hz HuNav pose path
+- flat 640 beam LaserScan companion to RTX points
+- shelf USD and collision asset
+- wheel separation multiplier 1.5
+- Task Generator Isaac goal retry guard pending semantics validation
+benchmark_deviations:
+- 'global costmap widened from source 20x20 at (-10,-10) to 30x23 at (0.5,0.5): Isaac map coverage compatibility
+  deviation'
+runtime:
+  wrapper:
+    path: /home/user/arena_isaac5_host_runtime/run_gui.bash
+    sha256: 8769e006c8ba84a1251f22fce0547f4e1466405e051f28bffd06310ef3bb0d6f
+  setup:
+    path: /home/user/arena_isaac5_host_runtime/setup.bash
+    sha256: 5eb8219b60f75fdfb3306546f1b7126a31a2d4e4e7cbec207eac8b7c9af933a0
+  ros_domain_policy: one isolated ROS_DOMAIN_ID <=232 with ROS_LOCALHOST_ONLY=1 per run; do not touch unrelated
+    domains
+  isaac_child_import_path: /home/user/arena_isaac5_py311_factory/build_ws/humble/isaac_sim_ros_ws/install/ros2isaacsim/lib/python3.11/site-packages/ros2isaacsim/run_isaacsim.py
+control_fidelity_evidence:
+  test: same map_empty no-human short scenario; NavFn and DWB unchanged
+  one_hz_metrics:
+    path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_frequency_control_20261001/1hz/control_metrics.json
+    sha256: 72a44bb892bec8fd0faa5ec51d85fd19ec9948ab9984e7ea419357f4d2fcdfe1
+  ten_hz_metrics:
+    path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_frequency_control_20261001/10hz/control_metrics.json
+    sha256: 63a64b08a341bc81d6fc57c76d04ccf33eaa180de9f756043fe1ec54abd98f0a
+  decision: 1 Hz works; official frequency restored
+frozen_gates:
+  short_no_human:
+    status: PASSED
+    bag: isaac_sim/backends/isaac5/generated/frozen_frequency_control_20261001/1hz/raw_rosbag
+    analysis:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_frequency_control_20261001/1hz/analysis.txt
+      sha256: 407c0befa09c8f3826b34e49a11635852632cda9a9fc7297fa0066e97f114ba5
+    control_metrics:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_frequency_control_20261001/1hz/control_metrics.json
+      sha256: 72a44bb892bec8fd0faa5ec51d85fd19ec9948ab9984e7ea419357f4d2fcdfe1
+  default_three_hunav:
+    status: FAILED
+    bag: isaac_sim/backends/isaac5/generated/frozen_default_hunav_20261001/raw_rosbag
+    metrics:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_default_hunav_20261001/frozen_metrics.json
+      sha256: e4a887d5365f8b2dfeda00039821937c72815115f41ce663dcc66511b14d7c0a
+    terminal_control:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_default_hunav_20261001/terminal_control_metrics.json
+      sha256: 782747d56d0dd1403de1ca7a0f15523edf6db5725752f5c8d7fce5b0e04b908d
+    scan_metrics:
+      path: /home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/generated/frozen_default_hunav_20261001/scan_metrics.json
+      sha256: f3212d6e6b6bc8056996c28669a772a0b8ba7c194f4cf9380ef9a5402ed25200
+    action_result: two distinct UUIDs aborted; second terminal XY error 0.112 m, yaw error 0.333 rad > 0.25 rad
+      tolerance
+    local_costmap_max_occupied_cells: 0
+    human_names:
+    - D_test_1
+    - '2'
+    - '3'
+    observed_global_costmap: 626x481 at 0.05 m, origin (0,0), static layer expanded to full map
+reversible_restore:
+  pre_restore_patch:
+    path: /home/user/navigation_project/a_pipeline/ARENA_ISAAC_NAV2_PRE_RESTORE_20261001.patch
+    sha256: 106d664e36aa5d26080df5b4c2c99cda9fa0806e917c30b745dd3fdd9249af61
+  pre_restore_file:
+    path: /home/user/arena_isaac5_host_overlay_ws/src/arena_simulation_setup/configs/nav2/nav2.yaml.pre_frozen_20261001
+    sha256: c7187e22fe8dcd45b142494945e6385081f5727979482370889c6608c328c7d3

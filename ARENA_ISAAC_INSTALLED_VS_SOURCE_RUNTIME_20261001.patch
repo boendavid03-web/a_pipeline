@@ -1,0 +1,167 @@
+--- /home/user/arena_isaac5_py311_factory/humble_ws/src/arena_local/ros2isaacsim/ros2isaacsim/run_isaacsim.py
++++ /home/user/arena_isaac5_py311_factory/build_ws/humble/isaac_sim_ros_ws/install/ros2isaacsim/lib/python3.11/site-packages/ros2isaacsim/run_isaacsim.py
+@@ -8,8 +8,9 @@
+ CONFIG = {"renderer": "Wireframe", "headless": False}
+ #import parent directory
+ from pathlib import Path
+-import os
+ import sys
++import os
++import time
+ simulation_app = SimulationApp(CONFIG)
+ parent_dir = Path(__file__).resolve().parent.parent
+ sys.path.insert(0,str(parent_dir))
+@@ -22,7 +23,7 @@
+ from omni.isaac.core.world import World
+ from omni.isaac.core.utils import prims
+ from omni.isaac.core import SimulationContext
+-from pxr import Sdf, Gf, UsdLux
++from pxr import Sdf, Gf, Usd, UsdLux, UsdPhysics
+ import yaml
+ from omni.isaac.core.utils import extensions, stage
+ from isaac_utils.utils.assets import get_assets_root_path_safe
+@@ -32,7 +33,7 @@
+ from isaacsim.asset.importer.urdf import _urdf
+ import omni.kit.commands as commands
+ from omni.isaac.core.utils.rotations import euler_angles_to_quat
+-from omni.isaac.core.utils.stage import get_current_stage, open_stage
++from omni.isaac.core.utils.stage import add_reference_to_stage, get_current_stage, open_stage
+ import random
+ 
+ EXTENSIONS_PEOPLE = [
+@@ -131,6 +132,81 @@
+ # Setting up world and enable ros2_bridge extentions.
+ # BACKGROUND_STAGE_PATH = "/background"
+ # BACKGROUND_USD_PATH = "/Isaac/Environments/Simple_Warehouse/warehouse_with_forklifts.usd"
++def _load_arena_environment() -> None:
++    environment_usd = os.environ.get("ARENA_WORLD_USD", "").strip()
++    arena_world = os.environ.get("ARENA_WORLD", "").strip()
++    scene_names = {
++        "factory": "factory_full_scene.usda",
++        "ignc": "ignc_scene.usda",
++        "hospital": "hospital_full_scene.usda",
++    }
++    if not environment_usd and arena_world in scene_names:
++        scene_name = scene_names[arena_world]
++        environment_usd = (
++            "/home/user/navigation_project/a_pipeline/isaac_sim/backends/isaac5/"
++            f"generated/arena_worlds/{arena_world}/{scene_name}"
++        )
++        print(f"ARENA_ENVIRONMENT_USD_AUTO={environment_usd}", flush=True)
++    if not environment_usd:
++        return
++    environment_path = Path(environment_usd).expanduser().resolve()
++    if not environment_path.is_file():
++        raise FileNotFoundError(f"ARENA_WORLD_USD does not exist: {environment_path}")
++    add_reference_to_stage(str(environment_path), "/World/Arena")
++    current_stage = omni.usd.get_context().get_stage()
++    models = current_stage.GetPrimAtPath("/World/Arena/Models")
++    if models.IsValid():
++        model_count = len(list(models.GetChildren()))
++        visual_count = sum(
++            prim.GetName().startswith("visual_")
++            for prim in current_stage.Traverse()
++            if str(prim.GetPath()).startswith("/World/Arena/Models/")
++        )
++        collision_count = sum(
++            prim.GetName().startswith("collision_")
++            for prim in current_stage.Traverse()
++            if str(prim.GetPath()).startswith("/World/Arena/Models/")
++        )
++        print(f"ARENA_ENVIRONMENT_USD={environment_path}", flush=True)
++        print(
++            "ARENA_ENVIRONMENT_STAGE "
++            f"models={model_count} visuals={visual_count} collisions={collision_count}",
++            flush=True,
++        )
++        expected = {
++            "factory": (66, 175, 209),
++            "ignc": (1, 1, 1),
++            "hospital": (178, 178, 178),
++        }.get(arena_world)
++        if expected is not None and (model_count, visual_count, collision_count) != expected:
++            raise RuntimeError(f"Arena {arena_world} world composition is incomplete")
++        if not (model_count and visual_count and collision_count):
++            raise RuntimeError("Arena environment composition is empty")
++        return
++    visual = current_stage.GetPrimAtPath("/World/Arena/WorkcellVisual")
++    collision = current_stage.GetPrimAtPath("/World/Arena/WorkcellCollision")
++    mesh_count = sum(
++        prim.GetTypeName() == "Mesh"
++        for prim in current_stage.Traverse()
++        if str(prim.GetPath()).startswith("/World/Arena/WorkcellVisual/")
++    )
++    collision_count = sum(
++        "PhysicsCollisionAPI" in prim.GetAppliedSchemas()
++        for prim in current_stage.Traverse()
++        if str(prim.GetPath()).startswith("/World/Arena/WorkcellCollision/")
++    )
++    print(f"ARENA_ENVIRONMENT_USD={environment_path}", flush=True)
++    print(
++        "ARENA_ENVIRONMENT_STAGE "
++        f"visual_valid={visual.IsValid()} collision_valid={collision.IsValid()} "
++        f"mesh_count={mesh_count} collision_count={collision_count}",
++        flush=True,
++    )
++    if not (visual.IsValid() and collision.IsValid() and mesh_count and collision_count):
++        raise RuntimeError("Arena environment composition is incomplete")
++
++
++_load_arena_environment()
+ world = World()
+ carb.log_info("ARENA_BOOT_MARKER=world_created")
+ print("ARENA_BOOT_MARKER=world_created", flush=True)
+@@ -377,6 +453,21 @@
+ def run():
+     simulation_app.update()
+     simulation_context.play()
++
++
++def _geometry_audit_snapshot():
++    current_stage = omni.usd.get_context().get_stage()
++    counts = []
++    for root_path in ("/World/walls", "/World/obstacles"):
++        root = current_stage.GetPrimAtPath(root_path)
++        children = list(root.GetChildren()) if root.IsValid() else []
++        colliders = sum(
++            prim.HasAPI(UsdPhysics.CollisionAPI)
++            for child in children
++            for prim in Usd.PrimRange(child)
++        )
++        counts.extend((len(children), colliders))
++    return counts
+ # =================================================================================
+ 
+ # ======================================main=======================================
+@@ -386,6 +477,11 @@
+     rclpy.init()
+     controller = create_controller()
+     hunav_service_window = os.environ.get('ARENA_HUMAN') == 'hunav'
++    expected_walls = os.environ.get("ARENA_GEOMETRY_EXPECT_WALLS")
++    expected_obstacles = os.environ.get("ARENA_GEOMETRY_EXPECT_OBSTACLES")
++    audit_enabled = expected_walls is not None and expected_obstacles is not None
++    audit_started = time.monotonic()
++    audit_next = audit_started + 3.0
+     while simulation_app.is_running():
+         try:
+             run()
+@@ -393,6 +489,19 @@
+             if hunav_service_window:
+                 for _ in range(7):
+                     rclpy.spin_once(controller, timeout_sec=0.001)
++            if audit_enabled and time.monotonic() >= audit_next:
++                walls, wall_colliders, obstacles, obstacle_colliders = _geometry_audit_snapshot()
++                complete = walls >= int(expected_walls) and obstacles >= int(expected_obstacles)
++                if complete or time.monotonic() - audit_started >= 100.0:
++                    print(
++                        "ARENA_GEOMETRY_AUDIT "
++                        f"walls={walls}/{expected_walls} wall_colliders={wall_colliders} "
++                        f"obstacles={obstacles}/{expected_obstacles} "
++                        f"obstacle_colliders={obstacle_colliders} complete={complete}",
++                        flush=True,
++                    )
++                    audit_enabled = False
++                audit_next = time.monotonic() + 3.0
+         except KeyboardInterrupt:
+             controller.get_logger().warn('received KeyboardInterrupt, shutting down')
+             break

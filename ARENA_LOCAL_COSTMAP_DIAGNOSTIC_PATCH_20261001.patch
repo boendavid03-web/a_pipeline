@@ -1,0 +1,271 @@
+--- a/nav2_costmap_2d/plugins/obstacle_layer.cpp
++++ b/nav2_costmap_2d/plugins/obstacle_layer.cpp
+@@ -39,6 +39,7 @@
+ #include "nav2_costmap_2d/obstacle_layer.hpp"
+ 
+ #include <algorithm>
++#include <cmath>
+ #include <memory>
+ #include <string>
+ #include <vector>
+@@ -351,6 +352,16 @@
+     return;
+   }
+ 
++  const auto finite_count = std::count_if(message->ranges.begin(), message->ranges.end(),
++      [](float r) {return std::isfinite(r);});
++  const auto near_count = std::count_if(message->ranges.begin(), message->ranges.end(),
++      [](float r) {return std::isfinite(r) && r >= 0.08f && r <= 2.5f;});
++  RCLCPP_WARN(logger_,
++    "ARENA_DIAG_LASER_PROJECT stamp_ns=%ld frame=%s beams=%zu finite=%zu near=%zu cloud_points=%u",
++    static_cast<long>(rclcpp::Time(message->header.stamp).nanoseconds()),
++    message->header.frame_id.c_str(), message->ranges.size(), finite_count, near_count,
++    cloud.width * cloud.height);
++
+   // buffer the point cloud
+   buffer->lock();
+   buffer->bufferCloud(cloud);
+@@ -542,6 +553,15 @@
+     setConvexPolygonCost(transformed_footprint_, nav2_costmap_2d::FREE_SPACE);
+   }
+ 
++  std::size_t diag_layer_lethal = 0;
++  std::size_t diag_master_before = 0;
++  for (int y = min_j; y < max_j; ++y) {
++    for (int x = min_i; x < max_i; ++x) {
++      diag_layer_lethal += getCost(x, y) == LETHAL_OBSTACLE;
++      diag_master_before += master_grid.getCost(x, y) == LETHAL_OBSTACLE;
++    }
++  }
++
+   switch (combination_method_) {
+     case 0:  // Overwrite
+       updateWithOverwrite(master_grid, min_i, min_j, max_i, max_j);
+@@ -552,6 +572,16 @@
+     default:  // Nothing
+       break;
+   }
++  std::size_t diag_master_after = 0;
++  for (int y = min_j; y < max_j; ++y) {
++    for (int x = min_i; x < max_i; ++x) {
++      diag_master_after += master_grid.getCost(x, y) == LETHAL_OBSTACLE;
++    }
++  }
++  RCLCPP_WARN(logger_,
++    "ARENA_DIAG_COMBINE sim_ns=%ld method=%d bounds=%d,%d,%d,%d layer_lethal=%zu master_before=%zu master_after=%zu",
++    static_cast<long>(clock_->now().nanoseconds()), combination_method_,
++    min_i, min_j, max_i, max_j, diag_layer_lethal, diag_master_before, diag_master_after);
+ }
+ 
+ void
+--- a/nav2_costmap_2d/src/observation_buffer.cpp
++++ b/nav2_costmap_2d/src/observation_buffer.cpp
+@@ -82,6 +82,11 @@
+ 
+ void ObservationBuffer::bufferCloud(const sensor_msgs::msg::PointCloud2 & cloud)
+ {
++  const auto diag_stamp_ns = rclcpp::Time(cloud.header.stamp).nanoseconds();
++  RCLCPP_WARN(logger_,
++    "ARENA_DIAG_BUFFER_ENTER stamp_ns=%ld topic=%s frame=%s input_points=%u",
++    static_cast<long>(diag_stamp_ns), topic_name_.c_str(), cloud.header.frame_id.c_str(),
++    cloud.width * cloud.height);
+   geometry_msgs::msg::PointStamped global_origin;
+ 
+   // create a new observation on the list to be populated
+@@ -153,12 +158,16 @@
+     modifier.resize(point_count);
+     observation_cloud.header.stamp = cloud.header.stamp;
+     observation_cloud.header.frame_id = global_frame_cloud.header.frame_id;
++    RCLCPP_WARN(logger_,
++      "ARENA_DIAG_BUFFER_FILTER stamp_ns=%ld topic=%s after_tf=%u after_height=%u",
++      static_cast<long>(diag_stamp_ns), topic_name_.c_str(), cloud_size, point_count);
+   } catch (tf2::TransformException & ex) {
+     // if an exception occurs, we need to remove the empty observation from the list
+     observation_list_.pop_front();
+     RCLCPP_ERROR(
+       logger_,
+-      "TF Exception that should never happen for sensor frame: %s, cloud frame: %s, %s",
++      "ARENA_DIAG_BUFFER_TF_FAIL stamp_ns=%ld sensor frame: %s, cloud frame: %s, %s",
++      static_cast<long>(diag_stamp_ns),
+       sensor_frame_.c_str(),
+       cloud.header.frame_id.c_str(), ex.what());
+     return;
+@@ -169,6 +178,8 @@
+ 
+   // we'll also remove any stale observations from the list
+   purgeStaleObservations();
++  RCLCPP_WARN(logger_, "ARENA_DIAG_BUFFER_STORED stamp_ns=%ld topic=%s buffer_size=%zu",
++    static_cast<long>(diag_stamp_ns), topic_name_.c_str(), observation_list_.size());
+ }
+ 
+ // returns a copy of the observations
+--- a/nav2_costmap_2d/plugins/voxel_layer.cpp
++++ b/nav2_costmap_2d/plugins/voxel_layer.cpp
+@@ -40,6 +40,7 @@
+ 
+ #include <algorithm>
+ #include <cassert>
++#include <cstdint>
+ #include <vector>
+ #include <memory>
+ #include <utility>
+@@ -145,6 +146,8 @@
+   double robot_x, double robot_y, double robot_yaw, double * min_x,
+   double * min_y, double * max_x, double * max_y)
+ {
++  static std::uint64_t diag_cycle = 0;
++  ++diag_cycle;
+   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
+ 
+   if (rolling_window_) {
+@@ -166,11 +169,38 @@
+ 
+   // update the global current status
+   current_ = current;
++
++  const auto diag_counts = [this]() {
++      std::size_t marked_voxels = 0;
++      std::size_t lethal_cells = 0;
++      const auto * voxels = voxel_grid_.getData();
++      for (std::size_t index = 0; index < size_x_ * size_y_; ++index) {
++        marked_voxels += __builtin_popcount(voxels[index] >> 16);
++        lethal_cells += costmap_[index] == LETHAL_OBSTACLE;
++      }
++      return std::make_pair(marked_voxels, lethal_cells);
++    };
++  const auto before_clear = diag_counts();
++  std::size_t clearing_input_points = 0;
++  for (const auto & obs : clearing_observations) {
++    clearing_input_points += obs.cloud_->width * obs.cloud_->height;
++  }
++  std::size_t marking_input_points = 0;
++  std::int64_t latest_scan_ns = 0;
++  for (const auto & obs : observations) {
++    marking_input_points += obs.cloud_->width * obs.cloud_->height;
++    latest_scan_ns = std::max(latest_scan_ns, rclcpp::Time(obs.cloud_->header.stamp).nanoseconds());
++  }
+ 
+   // raytrace freespace
+   for (unsigned int i = 0; i < clearing_observations.size(); ++i) {
+     raytraceFreespace(clearing_observations[i], min_x, min_y, max_x, max_y);
+   }
++  const auto after_clear = diag_counts();
++  std::size_t range_pass = 0;
++  std::size_t map_pass = 0;
++  std::size_t mark_voxel_calls = 0;
++  std::size_t mark_cell_calls = 0;
+ 
+   // place the new obstacles into a priority queue... each with a priority of zero to begin with
+   for (std::vector<Observation>::const_iterator it = observations.begin(); it != observations.end();
+@@ -207,6 +237,7 @@
+       if (sq_dist < sq_obstacle_min_range) {
+         continue;
+       }
++      ++range_pass;
+ 
+       // now we need to compute the map coordinates for the observation
+       unsigned int mx, my, mz;
+@@ -217,9 +248,12 @@
+       } else if (!worldToMap3D(*iter_x, *iter_y, *iter_z, mx, my, mz)) {
+         continue;
+       }
++      ++map_pass;
+ 
+       // mark the cell in the voxel grid and check if we should also mark it in the costmap
++      ++mark_voxel_calls;
+       if (voxel_grid_.markVoxelInMap(mx, my, mz, mark_threshold_)) {
++        ++mark_cell_calls;
+         unsigned int index = getIndex(mx, my);
+ 
+         costmap_[index] = LETHAL_OBSTACLE;
+@@ -229,6 +263,15 @@
+       }
+     }
+   }
++  const auto after_mark = diag_counts();
++  RCLCPP_WARN(logger_,
++    "ARENA_DIAG_VOXEL_CYCLE cycle=%lu sim_ns=%ld scan_ns=%ld marking_obs=%zu marking_input=%zu range_pass=%zu map_pass=%zu mark_voxel_calls=%zu mark_cell_calls=%zu clearing_obs=%zu clearing_input=%zu voxels_before=%zu voxels_after_clear=%zu voxels_after_mark=%zu lethal_before=%zu lethal_after_clear=%zu lethal_after_mark=%zu",
++    static_cast<unsigned long>(diag_cycle), static_cast<long>(clock_->now().nanoseconds()),
++    static_cast<long>(latest_scan_ns), observations.size(), marking_input_points,
++    range_pass, map_pass, mark_voxel_calls, mark_cell_calls,
++    clearing_observations.size(), clearing_input_points,
++    before_clear.first, after_clear.first, after_mark.first,
++    before_clear.second, after_clear.second, after_mark.second);
+ 
+   if (publish_voxel_) {
+     auto grid_msg = std::make_unique<nav2_msgs::msg::VoxelGrid>();
+@@ -261,6 +304,7 @@
+   double * max_x,
+   double * max_y)
+ {
++  std::size_t diag_rays = 0;
+   auto clearing_endpoints_ = std::make_unique<sensor_msgs::msg::PointCloud2>();
+ 
+   if (clearing_observation.cloud_->height == 0 || clearing_observation.cloud_->width == 0) {
+@@ -375,6 +419,7 @@
+ 
+ 
+       // voxel_grid_.markVoxelLine(sensor_x, sensor_y, sensor_z, point_x, point_y, point_z);
++      ++diag_rays;
+       voxel_grid_.clearVoxelLineInMap(
+         sensor_x, sensor_y, sensor_z, point_x, point_y, point_z,
+         costmap_,
+@@ -398,6 +443,10 @@
+       }
+     }
+   }
++
++  RCLCPP_WARN(logger_, "ARENA_DIAG_CLEAR stamp_ns=%ld input_points=%u rays=%zu",
++    static_cast<long>(rclcpp::Time(clearing_observation.cloud_->header.stamp).nanoseconds()),
++    clearing_observation.cloud_->width * clearing_observation.cloud_->height, diag_rays);
+ 
+   if (publish_clearing_points) {
+     clearing_endpoints_->header.frame_id = global_frame_;
+--- a/tf2_ros/message_filter.hpp
++++ b/tf2_ros/message_filter.hpp
+@@ -602,6 +602,16 @@
+    */
+   void incomingMessage(const message_filters::MessageEvent<M const> & evt)
+   {
++    const auto & scan = *evt.getMessage();
++    const auto stamp = message_filters::message_traits::TimeStamp<M>::value(scan);
++    const auto frame = message_filters::message_traits::FrameId<M>::value(scan);
++    const auto wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++    RCLCPP_WARN(node_logging_->get_logger(),
++      "ARENA_DIAG_SCAN_CALLBACK stamp_ns=%ld frame=%s target=%s wall_ns=%ld sim_ns=%ld queue_capacity=%u",
++      static_cast<long>(stamp.nanoseconds()), frame.c_str(), getTargetFramesString().c_str(),
++      static_cast<long>(wall_ns), static_cast<long>(node_clock_->get_clock()->now().nanoseconds()),
++      queue_size_);
+     add(evt);
+   }
+ 
+@@ -686,6 +696,14 @@
+ 
+   void messageReady(const MEvent & evt)
+   {
++    const auto & scan = *evt.getMessage();
++    const auto stamp = message_filters::message_traits::TimeStamp<M>::value(scan);
++    const auto wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++    RCLCPP_WARN(node_logging_->get_logger(),
++      "ARENA_DIAG_TF_ACCEPT stamp_ns=%ld wall_ns=%ld sim_ns=%ld",
++      static_cast<long>(stamp.nanoseconds()), static_cast<long>(wall_ns),
++      static_cast<long>(node_clock_->get_clock()->now().nanoseconds()));
+     // TODO(clalancette): re-enable this once we have underlying support for callback queues
+ #if 0
+     if (callback_queue_) {
+@@ -706,6 +724,13 @@
+     std::string frame_id = stripSlash(mt::FrameId<M>::value(*message));
+     rclcpp::Time stamp = mt::TimeStamp<M>::value(*message);
+     auto clock = node_clock_->get_clock();
++    const auto wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
++      std::chrono::system_clock::now().time_since_epoch()).count();
++    RCLCPP_WARN(node_logging_->get_logger(),
++      "ARENA_DIAG_TF_DROP stamp_ns=%ld frame=%s reason=%s reason_code=%d wall_ns=%ld sim_ns=%ld",
++      static_cast<long>(stamp.nanoseconds()), frame_id.c_str(),
++      get_filter_failure_reason_string(reason).c_str(), static_cast<int>(reason),
++      static_cast<long>(wall_ns), static_cast<long>(clock->now().nanoseconds()));
+     RCLCPP_INFO_THROTTLE(
+       node_logging_->get_logger(),
+       *clock,
