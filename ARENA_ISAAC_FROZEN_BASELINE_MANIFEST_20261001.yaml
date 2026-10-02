@@ -324,6 +324,31 @@ local_costmap_tf_fix_validation:
     terminal_xy_error_m: 0.1975
     terminal_yaw_error_rad: 0.3771
     remaining_blocker: near-goal Failed to make progress and yaw/action outcome
+isolated_tf_throttle_formal_nav2_validation:
+  report: /home/user/navigation_project/a_pipeline/ARENA_TF_THROTTLE_FIX_VALIDATION_20261001.md
+  original_tf_sha256: a1ba698b321c882226ad7b261c65e88ade709418908dea41b7a7e1212482ea5c
+  isolated_tf_path: /home/user/arena_tf_throttle_validation_20261001/runtime/site-packages/isaac_utils/graphs/tf.py
+  isolated_tf_sha256: c8f014b011970a07319ef871b53ebba2ff9b2d8407a3d860b664e569644f97f3
+  isolated_child_sha256: b173a069e3603dc33797c8483ae9208b30e9e82b3229e67f2cf898afbdab1809
+  observed_graph: /World/jackal/tf_publisher
+  observed_on_tick_frame_period: 10
+  diagnostic:
+    run: /home/user/arena_tf_throttle_validation_20261001/diag_predeclared_214
+    domain: 214
+    steady_window_sim_s: [20, 28]
+    steady_scans_accepted_dropped_pending: [35, 0, 0]
+    steady_nonzero_local_grids: 74/74
+    steady_nonzero_voxel_grids: 155/155
+  formal_nav2:
+    version: 1.1.20
+    liblayers_path: /opt/ros/humble/lib/liblayers.so
+    liblayers_sha256: 64d581b8555bd9486fbd5c399791be00f14334b9d8abd5a94cff02958d194e8b
+    short_run: /home/user/arena_tf_throttle_validation_20261001/formal_short_215
+    short_infrastructure: PASS
+    short_navigation: SUCCEEDED_AFTER_STARTUP_RETRY
+    default_run: /home/user/arena_tf_throttle_validation_20261001/formal_default_216
+    default_infrastructure: PASS
+    default_navigation: ABORTED_FAILED_TO_MAKE_PROGRESS
 reversible_restore:
   pre_restore_patch:
     path: /home/user/navigation_project/a_pipeline/ARENA_ISAAC_NAV2_PRE_RESTORE_20261001.patch
