@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "map": "CrowdSim/maps/World1.png",
+  "map_resolution_m": 0.05,
+  "map_origin_xy": [-10.325000381469726, -12.174999809265136],
+  "planning_clearance_m": 0.5,
+  "robot_radius_m": 0.35,
+  "episodes": [
+    {"id": "short_control", "layer": "A", "type": "short point goal", "seed": 3101,
+     "robot": {"start": [-5.0, -3.0], "goal": [-1.0, -3.0]},
+     "human": {"start": [0.0, 5.0], "goal": [0.0, 9.0]}},
+    {"id": "crossing", "layer": "B", "type": "crossing", "seed": 3102,
+     "robot": {"start": [-5.0, -3.0], "goal": [5.0, -3.0]},
+     "human": {"start": [0.0, -7.0], "goal": [0.0, 1.0]}},
+    {"id": "head_on", "layer": "B", "type": "head on", "seed": 3103,
+     "robot": {"start": [-5.0, -3.0], "goal": [5.0, -3.0]},
+     "human": {"start": [5.0, -3.0], "goal": [-5.0, -3.0]}},
+    {"id": "same_direction", "layer": "B", "type": "same direction", "seed": 3104,
+     "robot": {"start": [-5.0, -3.0], "goal": [5.0, -3.0]},
+     "human": {"start": [-3.0, -3.0], "goal": [5.0, -3.0]}}
+  ]
+}

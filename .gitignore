@@ -1,0 +1,68 @@
+# This repository publishes source, configuration, scripts and reports only.
+# Original local evidence and third-party assets remain in place, outside Git.
+
+# Local environment and generated outputs
+/env_isaaclab/
+/output/
+/wandb/
+/build/
+/dist/
+/assets/
+/checkpoints/
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.env.*
+!.env.example
+
+# Local-only provenance records with machine-specific paths
+/ASSET_STATUS.md
+/REPRO_STATUS.md
+/NAVISAACLAB_PPO_BASELINE_MANIFEST_20261001.yaml
+/PROTOMOTIONS.md
+
+# Media and third-party data/assets (kept on disk)
+/media/
+/docs/
+/examples/data/
+/protomotions/data/assets/
+/data/smpl/*
+!/data/smpl/smpl_joint_names.py
+
+# Model, motion, simulator, capture and archive formats
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+*.pkl
+*.pickle
+*.npy
+*.npz
+*.motion
+*.usd
+*.usda
+*.stl
+*.STL
+*.ply
+*.obj
+*.gif
+*.mp4
+*.bag
+*.mcap
+*.jsonl
+*.log
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.7z
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

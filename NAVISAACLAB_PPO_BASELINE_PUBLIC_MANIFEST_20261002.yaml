@@ -1,0 +1,151 @@
+generated_at: '2026-10-01T17:00:16.108594+00:00'
+status: FROZEN_BEFORE_PILOT
+project_root: .
+git_metadata: absent; extracted ZIP; exact pre-acceptance source delta cannot be reconstructed
+runtime:
+  python: external Isaac Lab Python 3.11 environment
+  python_version: 3.11.13
+  torch: 2.7.0+cu128
+  torch_cuda_runtime: '12.8'
+  cuda_available: true
+  isaac_sim_version: 5.1.0-rc.19+release.26219.9c81211b.gl
+  isaac_lab_version: 2.3.2
+  pip_check: No broken requirements found
+files:
+  CrowdSim/config/env.yaml:
+    path: CrowdSim/config/env.yaml
+    bytes: 5433
+    sha256: 5eb3e027555e64582fb043e0411a0d4445e5b12a52ed762afcd0a25511df679b
+  CrowdSim/config/env_smoke.yaml:
+    path: CrowdSim/config/env_smoke.yaml
+    bytes: 5440
+    sha256: f7ec60f511ef3e5bcf886f2115e2c11ad5c9ecc13d2b7e748eeb86b379260cdf
+  CrowdSim/config/env_acceptance_1p1r.yaml:
+    path: CrowdSim/config/env_acceptance_1p1r.yaml
+    bytes: 4177
+    sha256: fc71133095e024d59c49e6c7611774641e01b6f036a9d814d21fa3b6f6f94a01
+  CrowdSim/config/env_ppo_baseline_1p1r.yaml:
+    path: CrowdSim/config/env_ppo_baseline_1p1r.yaml
+    bytes: 638
+    sha256: 0c227aac7c9a0cb16680f5ebd2c611d80baa228bff6925765dfedb1742e74c73
+  CrowdSim/config/fixed_eval_routes_1p1r_20261001.json:
+    path: CrowdSim/config/fixed_eval_routes_1p1r_20261001.json
+    bytes: 1018
+    sha256: 5d662b608ee95af6bb563fee48af752d270bce562bd0822ddee0da4c38270f2b
+  CrowdSim/ppo/train_ppo.py:
+    path: CrowdSim/ppo/train_ppo.py
+    bytes: 38175
+    sha256: 042a5513d59fed7730743f8e2908d606051cb2174942b8e84a8fcccbd1dceece
+  CrowdSim/ppo/ppo_policy.py:
+    path: CrowdSim/ppo/ppo_policy.py
+    bytes: 46845
+    sha256: 9baf0f6607fd8286f0ecf3a1a8f41ec6389b95d6607d71b13cb4aa2bf87098a3
+  CrowdSim/nav_manager.py:
+    path: CrowdSim/nav_manager.py
+    bytes: 131205
+    sha256: e48cfeaa10f748b0f2df70850b82c8c212aedde1b1d74e2880466ac3a893b5bf
+  CrowdSim/control/drive.py:
+    path: CrowdSim/control/drive.py
+    bytes: 18139
+    sha256: e4f7fec0967bf3cdc8709e19ba00a155b9c85e3b1e0fcd3cd46b382508a4f8b9
+  CrowdSim/protomotions_runtime.py:
+    path: CrowdSim/protomotions_runtime.py
+    bytes: 13160
+    sha256: 2f1c973633a1ebcc65760584990a226330a51a9f4e1b9b9d735acfe5fc322029
+  CrowdSim/world/map.py:
+    path: CrowdSim/world/map.py
+    bytes: 33461
+    sha256: dd3f44a96bb4e3c0cbf0176e0ce59742972c0c200948f6c60e2562cb306b15d2
+  CrowdSim/world/planning.py:
+    path: CrowdSim/world/planning.py
+    bytes: 9588
+    sha256: 27c05f3976d07ed9faf20aa0ff84dc8ce8793383bde784997e7aba5257d9c5d4
+  CrowdSim/world/sfm.py:
+    path: CrowdSim/world/sfm.py
+    bytes: 10471
+    sha256: 88f3274e1bfa2361dd92bb827b7b924d0d7c90d88f4a868ba76913bdfeccfd9c
+  CrowdSim/world/builder.py:
+    path: CrowdSim/world/builder.py
+    bytes: 22218
+    sha256: 362e9def3ee6f162ad6e593cda6222aa4dc7b0bd10c0abc3e95329c6fe59733d
+  CrowdSim/tools/eval_policy.py:
+    path: CrowdSim/tools/eval_policy.py
+    bytes: 23163
+    sha256: f000d3503a260476d7cafc4ff5ee948a13c6dc5766e0a8af9a0a0415d36c1968
+  CrowdSim/tools/eval_fixed_1p1r.py:
+    path: CrowdSim/tools/eval_fixed_1p1r.py
+    bytes: 11420
+    sha256: 11b63c097005c1dda81a4fae2722846796e21a1c9321ae9b2d80902ac02217ad
+  CrowdSim/crowd_sim.py:
+    path: CrowdSim/crowd_sim.py
+    bytes: 18286
+    sha256: 0b27cfd102cebb54c8b43cf07f72916a1b9d6302defd30c704ce75e22429dd29
+  CrowdSim/config/scenes/warehouse.yaml:
+    path: CrowdSim/config/scenes/warehouse.yaml
+    bytes: 1860
+    sha256: 6146e4c3e281f8a42c663654796b19cd4bd729f31c264dd41ecbff5c83d6c32e
+  CrowdSim/maps/newmap.yaml:
+    path: CrowdSim/maps/newmap.yaml
+    bytes: 145
+    sha256: 73d7969e32fb06a481c25c99dbbfc9ca482d3422f1e738f037049f2ef29b1ce5
+  CrowdSim/maps/World1.png:
+    path: CrowdSim/maps/World1.png
+    bytes: 2781
+    sha256: 4da90ec0e32a87d7c92c77ed093b9ce930832e60b219333eab3181ead3c1c944
+  scripts/freeze_ppo_baseline.py:
+    path: scripts/freeze_ppo_baseline.py
+    bytes: 5743
+    sha256: 49625dc9f8b2ebaf2cd09aa26432cb84215340bee98e8578ba1453add5c906ef
+    frozen_sha256_before_public_path_update: 3121d0e31a736fd12f9aba6cdba1c1122e9b2d80e017f54f6c08c8cf41804727
+assets:
+  motionlib:
+    path: ../Assets/motion/amass_smpl_validation.pt
+    bytes: 678007942
+    sha256: 651e930368d8a5d5ea026015eeadd5875a9e64ddf1b271fa7cae122ab97d8c68
+  maskedmimic_checkpoint:
+    path: data/pretrained_models/masked_mimic/smpl_57f98a9/last.ckpt
+    bytes: 229160269
+    sha256: 3147039996be020447d50738da9360878ca76561995b1442b8c22730e319231d
+  maskedmimic_resolved:
+    path: data/pretrained_models/masked_mimic/smpl_57f98a9/resolved_configs_inference.pt
+    bytes: 41893
+    sha256: 289732196f450108c95e9fea96349cc2886cf794bab390445f8a705d780fbe51
+resolved_config:
+  path: ../Assets/repro_logs/ppo_baseline_1p1r/resolved_config.json
+  bytes: 6019
+  sha256: d914e8b182e21da2f07d67364f57fab65876161e1c79a89a9fbdb90ad1d2077a
+training_config:
+  path: CrowdSim/config/env_ppo_baseline_1p1r.yaml
+  bytes: 638
+  sha256: 0c227aac7c9a0cb16680f5ebd2c611d80baa228bff6925765dfedb1742e74c73
+evaluation_routes:
+  path: CrowdSim/config/fixed_eval_routes_1p1r_20261001.json
+  bytes: 1018
+  sha256: 5d662b608ee95af6bb563fee48af752d270bce562bd0822ddee0da4c38270f2b
+initial_checkpoint:
+  path: output/crowdsim_robot_ppo_baseline_1p1r_20261001/step0_init/20261001_094724/robot_ppo_latest.pt
+  bytes: 1115715
+  sha256: c49df91933561bff88f2bd74a53103625766e5d95a8fd1c97fad97318608af88
+training_start_step: 0
+training_max_robot_steps: 49920
+requested_checkpoints:
+- 0
+- 10240
+- 25088
+- 49920
+visual_fidelity: SKELETON; env.yaml defaults to SMPL; smplx absent without a project-pinned
+  version
+changes_in_this_turn:
+- CrowdSim/config/env_ppo_baseline_1p1r.yaml added
+- CrowdSim/config/fixed_eval_routes_1p1r_20261001.json added
+- CrowdSim/tools/eval_fixed_1p1r.py added
+- CrowdSim/ppo/train_ppo.py seed and explicit checkpoint-step CLI controls added;
+  PPO algorithm unchanged
+- scripts/freeze_ppo_baseline.py added
+acceptance_snapshot_known_hashes:
+  CrowdSim/config/env.yaml: 5eb3e027555e64582fb043e0411a0d4445e5b12a52ed762afcd0a25511df679b
+  CrowdSim/config/env_smoke.yaml: f7ec60f511ef3e5bcf886f2115e2c11ad5c9ecc13d2b7e748eeb86b379260cdf
+  CrowdSim/config/env_acceptance_1p1r.yaml: fc71133095e024d59c49e6c7611774641e01b6f036a9d814d21fa3b6f6f94a01
+public_view_note: Paths sanitized from frozen local manifest; the freeze script entry
+  records both original and current path-only source hashes. Excluded assets and evidence
+  are not bundled.

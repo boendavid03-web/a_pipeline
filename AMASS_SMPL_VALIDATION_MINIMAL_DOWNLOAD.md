@@ -1,0 +1,385 @@
+# AMASS SMPL validation: exact motion paths
+
+Source: https://github.com/NVlabs/ProtoMotions/blob/main/data/yaml_files/amass_smpl_validation.yaml
+SHA-256 of copied YAML: 82a5a24e8d20ca56098a1784e0682fd617f229623dd8cd22e3090e8bbc91a118
+These are the exact .motion paths in the split. The download contains source .npz files; the official converter produces these .motion outputs.
+
+Total: 345 unique motions across 4 top-level datasets.
+
+| AMASS subset | Referenced motions | Required for complete validation | Download order |
+| --- | ---: | --- | --- |
+| HumanEva | 28 | Yes | 1 |
+| SFU | 35 | Yes | 2 |
+| MPI_mosh | 76 | Yes | 3 |
+| MPI_HDM05 | 206 | Yes | 4 |
+
+The order favors a small first download for verifying archive layout. All four are needed before the complete validation MotionLib can be built. Download the licensed AMASS subdataset archives from the AMASS site. Keep their top-level names as shown above. The conversion input is the raw `.npz` data, and the paths below are the expected converted `.motion` names.
+
+The original YAML was copied byte-for-byte to `data/yaml_files/amass_smpl_validation.yaml`. Official ProtoMotions conversion scripts and helper files from commit `7a8417a9f55b1586b0d6e8f46578c5bc9d7ce1f1` were staged in `data/scripts/` and `data/smpl/smpl_joint_names.py`. No conversion has been run.
+
+After the four archives are downloaded and each referenced recording is checked, the official command from this project root is:
+
+```bash
+python data/scripts/convert_amass_to_motionlib.py /path/to/amass_root ../Assets/motion \
+  --motion-config data/yaml_files/amass_smpl_validation.yaml \
+  --humanoid-type smpl --device cpu
+```
+
+This produces `../Assets/motion/amass_smpl_validation.pt`, the location selected by the current CrowdSim config. Do not run it until the raw data completeness check passes.
+
+## HumanEva (28)
+
+- `HumanEva/S3/Walking_3_poses.motion`
+- `HumanEva/S3/Jog_3_poses.motion`
+- `HumanEva/S3/Static_poses.motion`
+- `HumanEva/S3/Gestures_1_poses.motion`
+- `HumanEva/S3/Jog_1_poses.motion`
+- `HumanEva/S3/Box_1_poses.motion`
+- `HumanEva/S3/Gestures_3_poses.motion`
+- `HumanEva/S3/Box_3_poses.motion`
+- `HumanEva/S3/ThrowCatch_1_poses.motion`
+- `HumanEva/S3/ThrowCatch_3_poses.motion`
+- `HumanEva/S1/Walking_3_poses.motion`
+- `HumanEva/S1/Jog_3_poses.motion`
+- `HumanEva/S1/Static_poses.motion`
+- `HumanEva/S1/Gestures_1_poses.motion`
+- `HumanEva/S1/Jog_1_poses.motion`
+- `HumanEva/S1/Box_1_poses.motion`
+- `HumanEva/S1/Gestures_3_poses.motion`
+- `HumanEva/S1/Box_3_poses.motion`
+- `HumanEva/S1/ThrowCatch_1_poses.motion`
+- `HumanEva/S2/Walking_3_poses.motion`
+- `HumanEva/S2/Jog_3_poses.motion`
+- `HumanEva/S2/Static_poses.motion`
+- `HumanEva/S2/Gestures_1_poses.motion`
+- `HumanEva/S2/Jog_1_poses.motion`
+- `HumanEva/S2/Box_1_poses.motion`
+- `HumanEva/S2/Gestures_3_poses.motion`
+- `HumanEva/S2/Walking_1_poses.motion`
+- `HumanEva/S2/Box_3_poses.motion`
+
+## SFU (35)
+
+- `SFU/0008/0008_Walking002_poses.motion`
+- `SFU/0008/0008_Walking001_poses.motion`
+- `SFU/0008/0008_Skipping001_poses.motion`
+- `SFU/0008/0008_ChaCha001_poses.motion`
+- `SFU/0005/0005_JumpRope001_poses.motion`
+- `SFU/0005/0005_2FeetJump001_poses.motion`
+- `SFU/0005/0005_SideSkip001_poses.motion`
+- `SFU/0005/0005_SlowTrot001_poses.motion`
+- `SFU/0005/0005_Jogging001_poses.motion`
+- `SFU/0005/0005_Stomping001_poses.motion`
+- `SFU/0005/0005_Walking001_poses.motion`
+- `SFU/0005/0005_BackwardsWalk001_poses.motion`
+- `SFU/0017/0017_WushuKicks001_poses.motion`
+- `SFU/0017/0017_RunningOnBench002_poses.motion`
+- `SFU/0017/0017_ParkourRoll001_poses.motion`
+- `SFU/0017/0017_JumpingOnBench001_poses.motion`
+- `SFU/0007/0007_Cartwheel001_poses.motion`
+- `SFU/0007/0007_Balance001_poses.motion`
+- `SFU/0007/0007_Crawling001_poses.motion`
+- `SFU/0007/0007_Walking001_poses.motion`
+- `SFU/0018/0018_Walking001_poses.motion`
+- `SFU/0018/0018_Bridge001_poses.motion`
+- `SFU/0018/0018_XinJiang002_poses.motion`
+- `SFU/0018/0018_DanceTurns002_poses.motion`
+- `SFU/0018/0018_TipToe001_poses.motion`
+- `SFU/0018/0018_DanceTurns001_poses.motion`
+- `SFU/0018/0018_Catwalk001_poses.motion`
+- `SFU/0018/0018_Moonwalk001_poses.motion`
+- `SFU/0018/0018_TraditionalChineseDance001_poses.motion`
+- `SFU/0018/0018_XinJiang003_poses.motion`
+- `SFU/0015/0015_Kirikaeshi001_poses.motion`
+- `SFU/0015/0015_JumpOverObstacle001_poses.motion`
+- `SFU/0015/0015_HopOverObstacle001_poses.motion`
+- `SFU/0015/0015_KendoKata001_poses.motion`
+- `SFU/0015/0015_BasicKendo001_poses.motion`
+
+## MPI_mosh (76)
+
+- `MPI_mosh/50021/army_poses_poses.motion`
+- `MPI_mosh/50021/hips_poses.motion`
+- `MPI_mosh/50021/misc_9_poses.motion`
+- `MPI_mosh/50021/squat_simple_poses.motion`
+- `MPI_mosh/50021/misc_7_poses.motion`
+- `MPI_mosh/00043/stretches_poses.motion`
+- `MPI_mosh/00043/simple_crouch_poses.motion`
+- `MPI_mosh/50027/misc_dancing_hiphop_poses.motion`
+- `MPI_mosh/50027/stretches_poses.motion`
+- `MPI_mosh/50027/light_hopping_stiff_poses.motion`
+- `MPI_mosh/50027/light_hopping_loose_poses.motion`
+- `MPI_mosh/50027/jumping_jacks_poses.motion`
+- `MPI_mosh/50022/hips_poses.motion`
+- `MPI_mosh/50022/stretch_poses_poses.motion`
+- `MPI_mosh/50022/side_to_side_hop_poses.motion`
+- `MPI_mosh/50022/misc_1_poses.motion`
+- `MPI_mosh/50022/simple_crouch_poses.motion`
+- `MPI_mosh/50026/misc_1_poses.motion`
+- `MPI_mosh/50026/jumping_jacks_1_poses.motion`
+- `MPI_mosh/50026/light_hopping_stiff_poses.motion`
+- `MPI_mosh/50026/light_hopping_loose_poses.motion`
+- `MPI_mosh/50026/stretches_1_poses.motion`
+- `MPI_mosh/50025/hips_poses.motion`
+- `MPI_mosh/50025/side_to_side_hopping_1_poses.motion`
+- `MPI_mosh/50025/light_hopping_stiff_poses.motion`
+- `MPI_mosh/50025/light_hopping_loose_poses.motion`
+- `MPI_mosh/50025/simple_crouch_poses.motion`
+- `MPI_mosh/50025/one_leg_loose_poses.motion`
+- `MPI_mosh/00111/misc_poses.motion`
+- `MPI_mosh/00111/stretches_poses.motion`
+- `MPI_mosh/00111/simple_crouch_poses.motion`
+- `MPI_mosh/00059/misc_poses.motion`
+- `MPI_mosh/00059/stretches_poses.motion`
+- `MPI_mosh/00093/misc_poses.motion`
+- `MPI_mosh/00093/irish_dance_poses.motion`
+- `MPI_mosh/00093/stretches_poses.motion`
+- `MPI_mosh/50004/misc_poses.motion`
+- `MPI_mosh/50004/hips_poses.motion`
+- `MPI_mosh/50004/stretches_poses.motion`
+- `MPI_mosh/50004/light_hopping_stiff_poses.motion`
+- `MPI_mosh/50004/simple_crouch_poses.motion`
+- `MPI_mosh/00096/misc_2_poses.motion`
+- `MPI_mosh/00096/stretches_poses.motion`
+- `MPI_mosh/00096/simple_crouch_poses.motion`
+- `MPI_mosh/00031/misc_poses.motion`
+- `MPI_mosh/00031/stretches_poses.motion`
+- `MPI_mosh/00058/jiggles_2_poses.motion`
+- `MPI_mosh/00058/army_poses_poses.motion`
+- `MPI_mosh/00046/misc_dancing_in_the_rain_kick_poses.motion`
+- `MPI_mosh/00046/stretches_poses.motion`
+- `MPI_mosh/00046/misc_2_poses.motion`
+- `MPI_mosh/50020/simple_crouch_3_poses.motion`
+- `MPI_mosh/50020/hips_poses.motion`
+- `MPI_mosh/50020/salsa_1_poses.motion`
+- `MPI_mosh/50020/ankles_poses.motion`
+- `MPI_mosh/50020/shake_hips_poses.motion`
+- `MPI_mosh/50020/neck_poses.motion`
+- `MPI_mosh/50020/shake_shoulders_poses.motion`
+- `MPI_mosh/50020/shoulders_poses.motion`
+- `MPI_mosh/50020/salsa_poses.motion`
+- `MPI_mosh/50002/misc_poses.motion`
+- `MPI_mosh/50002/hips_poses.motion`
+- `MPI_mosh/50002/simple_crouch2_poses.motion`
+- `MPI_mosh/50002/stretches_poses.motion`
+- `MPI_mosh/50002/jumping_jacks_poses.motion`
+- `MPI_mosh/00008/misc_poses.motion`
+- `MPI_mosh/00008/stretches_poses.motion`
+- `MPI_mosh/50007/misc_1_poses.motion`
+- `MPI_mosh/50007/stretches_poses.motion`
+- `MPI_mosh/50007/light_hopping_stiff_poses.motion`
+- `MPI_mosh/50007/light_hopping_loose_poses.motion`
+- `MPI_mosh/50007/jumping_jacks_poses.motion`
+- `MPI_mosh/50009/misc_poses.motion`
+- `MPI_mosh/50009/stretches_poses.motion`
+- `MPI_mosh/50009/simple_crouch_poses.motion`
+- `MPI_mosh/50009/jumping_jacks_poses.motion`
+
+## MPI_HDM05 (206)
+
+- `MPI_HDM05/bk/HDM_bk_02_01_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_04_04_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_03_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_02_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_01_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_03_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_11_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_03_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_02_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_02_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_02_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_04_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_04_01_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_04_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_05_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_03_04_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_04_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_03_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_01_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_02_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_04_01_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_03_04_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_01_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_04_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_03_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_03_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_03_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_01_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_01_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_01_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_02_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_11_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_02_03_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_04_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_04_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_02_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_02_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_02_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_02_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_05_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_01_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_03_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_04_01_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_03_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_03_05_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_01_02_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_02_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_01_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_05_01_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_05_03_03_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_11_02_120_poses.motion`
+- `MPI_HDM05/bk/HDM_bk_03_03_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_02_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_11_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_02_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_01_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_03_04_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_01_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_03_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_03_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_11_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_01_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_02_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_04_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_05_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_02_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_03_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_02_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_01_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_04_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_03_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_01_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_10_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_01_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_01_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_05_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_02_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_02_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_03_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_01_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_03_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_02_04_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_02_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_02_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_01_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_01_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_02_04_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_03_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_03_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_10_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_11_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_03_04_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_04_01_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_02_02_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_04_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_05_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_01_03_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_01_04_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_01_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_06_01_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_04_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_06_01_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_02_03_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_05_03_01_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_02_02_120_poses.motion`
+- `MPI_HDM05/tr/HDM_tr_03_03_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_01_04_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_01_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_05_03_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_01_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_02_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_06_04_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_02_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_05_02_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_05_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_03_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_05_03_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_01_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_03_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_01_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_03_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_05_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_03_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_01_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_02_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_10_06_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_04_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_03_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_03_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_05_02_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_01_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_10_07_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_02_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_08_01_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_03_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_04_01_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_02_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_01_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_03_01_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_02_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_02_02_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_02_01_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_03_01_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_01_04_03_120_poses.motion`
+- `MPI_HDM05/mm/HDM_mm_05_02_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_01_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_02_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_01_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_05_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_03_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_08_01_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_03_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_01_04_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_04_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_02_04_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_02_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_03_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_02_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_02_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_01_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_09_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_04_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_01_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_03_04_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_02_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_01_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_04_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_01_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_03_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_09_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_03_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_03_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_01_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_02_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_01_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_05_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_01_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_03_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_01_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_06_02_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_11_04_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_04_01_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_04_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_05_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_11_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_01_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_03_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_04_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_03_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_02_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_03_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_03_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_04_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_03_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_04_01_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_11_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_03_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_09_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_02_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_01_02_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_04_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_01_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_05_02_01_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_03_03_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_02_02_02_120_poses.motion`
+- `MPI_HDM05/dg/HDM_dg_03_11_03_120_poses.motion`

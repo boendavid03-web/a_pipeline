@@ -1,0 +1,18 @@
+# 1 human + 1 robot pilot.  Include preserves the complete env.yaml
+# navigation, sensor, reward, curriculum and PPO architecture contract.
+_include: env.yaml
+
+humanoid:
+  # The SMPL overlay needs smplx, which is absent from this validated runtime.
+  # This is a declared visual-fidelity deviation; see the baseline report.
+  human_mesh: false
+  checkpoint: data/pretrained_models/masked_mimic/smpl_57f98a9/last.ckpt
+
+navigation:
+  num_humanoids: 1
+  num_robots: 1
+
+training:
+  # 195 complete 256-step rollouts = 49,920 robot steps (strictly below 50k).
+  total_steps: 49920
+  output_dir: output/crowdsim_robot_ppo_baseline_1p1r_20261001
