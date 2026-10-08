@@ -1,0 +1,29 @@
+{
+  "status": "COMPLETE",
+  "checkpoint": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/public_repo_resume_after_arena_20261007T105904Z/training/20261007_045733/robot_ppo_4940800.pt",
+  "checkpoint_sha256": "aa90aa799ddf7cea488da1db5155aa31b2185a1036478fbdd5113ff61a32c6a6",
+  "checkpoint_step": 4940800,
+  "seed": 701,
+  "scenario": "warehouse_10_humanoids_10_robots_full_stage_deterministic_policy",
+  "route_sha256": "45e6204306ba2760f14c8d0b39a56e384042d82a51eb10329a5cb30182ba0361",
+  "map_sha256": "a4beea6f06b4794ccc079446db59822721812308678cb675207b2dc5846ffec3",
+  "requested_episodes": 100,
+  "completed_episodes": 100,
+  "control_steps": 2100,
+  "reached": 75,
+  "collision": 25,
+  "timeout": 0,
+  "stuck": 0,
+  "safe_success": 75,
+  "mean_sim_seconds": 7.943600000000003,
+  "actor_reads": 21000,
+  "empty_depth_reads": 7,
+  "neighbor_active_reads": 16557,
+  "ended_utc": "2026-10-08T05:01:38.602528+00:00",
+  "validity_notes": [
+    "Held-out path seed and full-stage bounds; no PPO update.",
+    "Shared seed fixes initial route set, later resets can diverge by policy outcome.",
+    "Collision is CrowdSim task detector/drive guard; not PhysX contact proof.",
+    "Human policy and robot actor use deterministic means in this evaluation."
+  ]
+}

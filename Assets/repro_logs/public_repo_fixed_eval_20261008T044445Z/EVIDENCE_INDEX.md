@@ -1,0 +1,23 @@
+# NavIsaacLab evaluation evidence index
+
+Read `EVALUATION_AND_DEMO_REPORT.md` first for the result and its limits.
+
+## Checkpoint comparison
+
+`COMPARISON_TWO_SEEDS.json` contains the aggregate results for all three robot PPO checkpoints. Each of the six run directories contains `episodes.jsonl`, `metrics.json`, `CONFIG_EVAL.json`, and `INITIAL_ROUTES.json`:
+
+| Checkpoint step | Seed 701 | Seed 702 |
+|---:|---|---|
+| 4,180,480 | `step_4180480_100/` | `step_4180480_seed702_100/` |
+| 4,940,800 | `step_4940800_100/` | `step_4940800_seed702_100/` |
+| 5,002,240 | `final_100/` | `final_seed702_100/` |
+
+Root-level `*_stdout.log`, `*_stderr.log`, `*_START_UTC.txt`, `*_END_UTC.txt`, and `*_EXIT_CODE.txt` files provide run completion records. `SOURCE_INTEGRITY_FINAL.json` and `SOURCE_INTEGRITY_POST.json` record the source integrity check.
+
+## Demo evidence and procedure
+
+`demo_4180480_gui/` and `demo_replay_20261008T053130Z/` contain the two reported `birdseye.gif` demos and their configs. Their stdout/stderr and exit-code records are alongside them. `RUN_DEMO_REPLAY.sh`, `demo_replay.py`, and the evaluation scripts document the local execution procedure; they depend on the original Isaac Sim workstation, source tree, and local checkpoints, which are not included here.
+
+## Scope
+
+This bundle includes evaluation records and demo visuals, not model weights or the redundant timestamped navigation traces. The reported collision flag is CrowdSim task-detector/drive-guard output; there is no frame-by-frame PhysX contact evidence. No raw camera frames for the zero-depth reads are included.

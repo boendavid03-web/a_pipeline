@@ -1,0 +1,134 @@
+[INFO][AppLauncher]: Using device: cuda:0
+[INFO][AppLauncher]: Loading experience file: /home/user/IsaacLab/apps/isaaclab.python.headless.rendering.kit
+Loading user config located at: '/home/user/isaacsim/5.1.0/kit/data/Kit/Isaac-Sim/5.1/user.config.json'
+[Info] [carb] Logging to file: /home/user/isaacsim/5.1.0/kit/logs/Kit/Isaac-Sim/5.1/kit_20261007_220207.log
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 580.173.02    | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GeForce RTX 5090          | Yes: 0 |     | 32853   MB | 10de      | 0          |
+|     |                                  |        |     |            | 2b85      | a5108fbe.. |
+|     |                                  |        |     |            | 1         |            |
+|=============================================================================================|
+| OS: 22.04.5 LTS (Jammy Jellyfish) ubuntu, Version: 22.04.5, Kernel: 6.8.0-136-generic
+| XServer Vendor: The X.Org Foundation, XServer Version: 12101004 (1.21.1.4)
+| Processor: Intel(R) Core(TM) i9-14900K
+| Bare Metal Cores: 24 | Bare Metal Logical Cores: 48
+| Available Cores:  32 
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 63975 | Free Memory: 43906
+| Total Page/Swap (MB): 2047 | Free Page/Swap: 2030
+|---------------------------------------------------------------------------------------------|
+2026-10-08T05:02:08Z [588ms] [Warning] [gpu.foundation.plugin] CPU performance profile is set to powersave. This profile sets the CPU to the lowest frequency reducing performance.
+2026-10-08T05:02:08Z [590ms] [Warning] [gpu.foundation.plugin] IOMMU is enabled.
+2026-10-08T05:02:09Z [1,989ms] [Warning] [omni.log] Source: omni.hydra was already registered.
+2026-10-08T05:02:09Z [2,181ms] [Warning] [carb] Acquiring non optional plugin interface which is not listed as dependency: [omni::physx::IPhysxBenchmarks v1.0] (plugin: <default plugin>), by client: omni.physics.physx.plugin. Add it to CARB_PLUGIN_IMPL_DEPS() macro of a client.
+2026-10-08T05:02:09Z [2,186ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+2026-10-08T05:02:10Z [2,596ms] [Warning] [pxr.Semantics] pxr.Semantics is deprecated - please use Semantics instead
+2026-10-08T05:02:10Z [2,664ms] [Warning] [omni.graph.core.plugin] Found duplicate of category 'Replicator' - was 'Annotators', adding 'Fabric Reader'
+2026-10-08T05:02:10Z [2,664ms] [Warning] [omni.graph.core.plugin] Category 'Replicator' not accepted on node type 'omni.replicator.core.FabricReader' in extension 'omni.replicator.core'
+2026-10-08T05:02:10Z [2,665ms] [Warning] [omni.replicator.core.scripts.extension] No material configuration file, adding configuration to material settings directly.
+2026-10-08T05:02:12Z [4,909ms] [Warning] [omni.fabric.plugin] Warning: attribute viewportHandle not found for bucket id 7
+
+[CrowdSim] Runtime clock override: physics=100Hz decimation=4 control=25Hz dt=0.040000s
+[CrowdSim] ProtoMotions projectiles disabled (num_projectiles=0).
+Initial heightfield size: 2800x3100 = 8680000 vertices
+Optimizing mesh by merging flat regions...
+Optimized mesh vertex count: 56
+Creating empty SceneLib (no scenes)
+Loading motions from packaged file which is faster
+Loading motion library from /home/user/workspace/NavIsaaclab2.0/Assets/motion/amass_smpl_validation.pt
+
+[36m======================================================================================[0m
+[36m[1m[INFO][IsaacLab]: Logging to file: /tmp/isaaclab/logs/isaaclab_2026-10-07_22-02-14.log[0m
+[36m======================================================================================[0m
+
+[33m22:02:14 [simulation_context.py] WARNING: The `enable_external_forces_every_iteration` parameter in the PhysxCfg is set to False. If you are experiencing noisy velocities, consider enabling this flag. You may need to slightly increase the number of velocity iterations (setting it to 1 or 2 rather than 0), together with this flag, to improve the accuracy of velocity updates.[0m
+[INFO]: Setup complete...
+2026-10-08T05:02:24Z [16,990ms] [Warning] [rtx.postprocessing.plugin] DLSS increasing input dimensions: Render resolution of (371, 278) is below minimal input resolution of 300.
+[SMPLMesh] Created 10 distinct appearances (texture_pool=0, random_assignment=true, shape_std=0.55, seed=42, floor_offset=[-0.059, +0.066]m)
+[INFO]: CrowdSim human mesh overlay enabled.
+Loading model from checkpoint: /home/user/workspace/NavIsaaclab2.0/NavIsaaclab2.0-main/data/pretrained_models/masked_mimic/smpl_57f98a9/last.ckpt
+[CrowdSim] A* planner map rebuilt after scene object update.
+[CrowdSim] Camera prims verified at /World/envs/env_.*/Car/chassis_link/front_cam: 10/10 (mount pose from sensors.camera.pos/rot).
+[CrowdSim] Robot camera: raw=640x480, horizontal_fov=90.0deg, RGB input=224x224, depth input=224x224.
+  [CrowdSim] Deactivated: /World/Scene/Shelf_2
+  [CrowdSim] Deactivated: /World/Scene/Shelf_1
+  [CrowdSim] Deactivated: /World/Scene/Shelf_0
+  [CrowdSim] Deactivated: /World/Scene/PalletBin_02
+  [CrowdSim] Deactivated: /World/Scene/PalletBin_01
+[CrowdSim] Deactivated 5/15999 prims with names starting with ['Shelf', 'PalletBin']
+[CrowdSim] Drive wheels: left=[(1, 'joint_wheel_left')], right=[(2, 'joint_wheel_right')]
+[CrowdSim] Humanoid motion_clip_done disabled (motion loops forever).
+[CrowdSim] Navigation enabled: 10 humanoid(s), 10 robot(s), car_rl_policy=True.
+[CrowdSim] Navigation update rate: 25 Hz (env_dt=0.040000s, every 1 env step(s)).
+[CrowdSim] Humanoid navigation targets enabled: controller=sfm, format=Pelvis translation + Pelvis rotation.
+[CrowdSim] Navigation path log: /home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/public_repo_fixed_eval_20261008T044445Z/step_4180480_100/navigation/paths_latest.json
+[CrowdSim] SMPL human mesh overlay enabled.
+  [CrowdSim] box_00: shape=box pos=(-8.7,-11.1,0.0) size=(0.5,0.4,0.7) rgb=(0.92,0.17,0.17) static=True
+  [CrowdSim] box_01: shape=box pos=(-3.0,-10.6,0.0) size=(0.6,0.6,0.9) rgb=(0.92,0.32,0.17) static=True
+  [CrowdSim] box_02: shape=box pos=(3.0,-10.9,0.0) size=(0.4,0.5,0.8) rgb=(0.92,0.48,0.17) static=True
+  [CrowdSim] box_03: shape=box pos=(-8.9,-7.6,0.0) size=(0.6,0.6,0.6) rgb=(0.92,0.63,0.17) static=True
+  [CrowdSim] box_04: shape=box pos=(-2.9,-7.4,0.0) size=(0.5,0.5,0.8) rgb=(0.92,0.79,0.17) static=True
+  [CrowdSim] box_05: shape=box pos=(3.0,-7.3,0.0) size=(0.6,0.7,1.1) rgb=(0.89,0.92,0.17) static=True
+  [CrowdSim] box_06: shape=box pos=(-8.8,-4.5,0.0) size=(0.6,0.5,1.1) rgb=(0.74,0.92,0.17) static=True
+  [CrowdSim] box_07: shape=box pos=(-2.9,-4.6,0.0) size=(0.5,0.7,0.9) rgb=(0.58,0.92,0.17) static=True
+  [CrowdSim] cylinder_08: shape=cylinder pos=(3.3,-4.8,0.0) size=(0.5,0.5,1.5) rgb=(0.43,0.92,0.17) static=True
+  [CrowdSim] cylinder_09: shape=cylinder pos=(-8.7,-2.0,0.0) size=(0.4,0.4,0.6) rgb=(0.27,0.92,0.17) static=True
+  [CrowdSim] box_10: shape=box pos=(-2.6,-1.7,0.0) size=(0.4,0.6,0.9) rgb=(0.17,0.92,0.22) static=True
+  [CrowdSim] box_11: shape=box pos=(3.1,-1.3,0.0) size=(0.5,0.5,0.9) rgb=(0.17,0.92,0.37) static=True
+  [CrowdSim] box_12: shape=box pos=(-8.7,1.7,0.0) size=(0.5,0.7,0.9) rgb=(0.17,0.92,0.53) static=True
+  [CrowdSim] box_13: shape=box pos=(-2.9,1.6,0.0) size=(0.6,0.4,0.8) rgb=(0.17,0.92,0.69) static=True
+  [CrowdSim] box_14: shape=box pos=(2.8,1.0,0.0) size=(0.7,0.4,0.7) rgb=(0.17,0.92,0.84) static=True
+  [CrowdSim] cylinder_15: shape=cylinder pos=(-9.0,4.3,0.0) size=(0.4,0.4,0.7) rgb=(0.17,0.84,0.92) static=True
+  [CrowdSim] box_16: shape=box pos=(-2.7,4.4,0.0) size=(0.5,0.5,1.1) rgb=(0.17,0.69,0.92) static=True
+  [CrowdSim] box_17: shape=box pos=(3.1,4.6,0.0) size=(0.5,0.7,0.9) rgb=(0.17,0.53,0.92) static=True
+  [CrowdSim] box_18: shape=box pos=(-9.1,7.3,0.0) size=(0.7,0.7,0.7) rgb=(0.17,0.37,0.92) static=True
+  [CrowdSim] cylinder_19: shape=cylinder pos=(-2.6,7.6,0.0) size=(0.4,0.4,0.9) rgb=(0.17,0.22,0.92) static=True
+  [CrowdSim] box_20: shape=box pos=(3.2,7.6,0.0) size=(0.4,0.6,1.1) rgb=(0.27,0.17,0.92) static=True
+  [CrowdSim] box_21: shape=box pos=(-8.8,10.0,0.0) size=(0.5,0.6,0.9) rgb=(0.43,0.17,0.92) static=True
+  [CrowdSim] box_22: shape=box pos=(-3.0,10.2,0.0) size=(0.4,0.6,0.9) rgb=(0.58,0.17,0.92) static=True
+  [CrowdSim] cylinder_23: shape=cylinder pos=(3.0,10.2,0.0) size=(0.6,0.6,1.2) rgb=(0.74,0.17,0.92) static=True
+  [CrowdSim] box_24: shape=box pos=(-9.1,13.6,0.0) size=(0.4,0.4,0.9) rgb=(0.89,0.17,0.92) static=True
+  [CrowdSim] box_25: shape=box pos=(-2.8,13.6,0.0) size=(0.4,0.5,0.8) rgb=(0.92,0.17,0.79) static=True
+  [CrowdSim] box_26: shape=box pos=(3.2,13.0,0.0) size=(0.6,0.7,0.9) rgb=(0.92,0.17,0.63) static=True
+  [CrowdSim] box_27: shape=box pos=(-9.2,16.2,0.0) size=(0.6,0.5,0.9) rgb=(0.92,0.17,0.48) static=True
+  [CrowdSim] cylinder_28: shape=cylinder pos=(-2.6,16.1,0.0) size=(0.4,0.4,1.3) rgb=(0.92,0.17,0.32) static=True
+[CrowdSim] Spawned 29 scene objects under /World/SceneObjects
+[CrowdSim] Scene ready.
+EVAL_READY checkpoint_step=4180480 route_sha256=45e6204306ba2760f14c8d0b39a56e384042d82a51eb10329a5cb30182ba0361
+EVAL_PROGRESS steps=100 episodes=2 safe_success=0 collision=2
+EVAL_PROGRESS steps=200 episodes=7 safe_success=4 collision=3
+EVAL_PROGRESS steps=300 episodes=12 safe_success=9 collision=3
+EVAL_PROGRESS steps=400 episodes=16 safe_success=11 collision=5
+EVAL_PROGRESS steps=500 episodes=18 safe_success=13 collision=5
+EVAL_PROGRESS steps=600 episodes=24 safe_success=19 collision=5
+EVAL_PROGRESS steps=700 episodes=30 safe_success=23 collision=7
+EVAL_PROGRESS steps=800 episodes=33 safe_success=24 collision=9
+EVAL_PROGRESS steps=900 episodes=39 safe_success=29 collision=10
+EVAL_PROGRESS steps=1000 episodes=43 safe_success=32 collision=11
+EVAL_PROGRESS steps=1100 episodes=48 safe_success=36 collision=11
+EVAL_PROGRESS steps=1200 episodes=50 safe_success=38 collision=11
+EVAL_PROGRESS steps=1300 episodes=55 safe_success=43 collision=11
+EVAL_PROGRESS steps=1400 episodes=58 safe_success=46 collision=11
+EVAL_PROGRESS steps=1500 episodes=64 safe_success=51 collision=12
+EVAL_PROGRESS steps=1600 episodes=67 safe_success=54 collision=12
+EVAL_PROGRESS steps=1700 episodes=71 safe_success=58 collision=12
+EVAL_PROGRESS steps=1800 episodes=77 safe_success=62 collision=14
+EVAL_PROGRESS steps=1900 episodes=81 safe_success=64 collision=16
+EVAL_PROGRESS steps=2000 episodes=87 safe_success=70 collision=16
+EVAL_PROGRESS steps=2100 episodes=90 safe_success=73 collision=16
+EVAL_PROGRESS steps=2200 episodes=96 safe_success=79 collision=16
+EVAL_PROGRESS steps=2300 episodes=98 safe_success=81 collision=16
+EVAL_RESULT {"status": "COMPLETE", "checkpoint": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/public_repo_resume_prepared_20261007T094706Z/training/20261007_024859/robot_ppo_4180480.pt", "checkpoint_sha256": "60bf5199690bcfb32b696a3fd9364b497ddd2a03974feb9bda5711162259cecc", "checkpoint_step": 4180480, "seed": 701, "scenario": "warehouse_10_humanoids_10_robots_full_stage_deterministic_policy", "route_sha256": "45e6204306ba2760f14c8d0b39a56e384042d82a51eb10329a5cb30182ba0361", "map_sha256": "a4beea6f06b4794ccc079446db59822721812308678cb675207b2dc5846ffec3", "requested_episodes": 100, "completed_episodes": 100, "control_steps": 2305, "reached": 83, "collision": 16, "timeout": 0, "stuck": 1, "safe_success": 83, "mean_sim_seconds": 8.804800000000002, "actor_reads": 23050, "empty_depth_reads": 2, "neighbor_active_reads": 18741, "ended_utc": "2026-10-08T05:08:12.617254+00:00", "validity_notes": ["Held-out path seed and full-stage bounds; no PPO update.", "Shared seed fixes initial route set, later resets can diverge by policy outcome.", "Collision is CrowdSim task detector/drive guard; not PhysX contact proof.", "Human policy and robot actor use deterministic means in this evaluation."]}
+[shutdown] begin
+[shutdown] navigation logs closed
+[shutdown] disable stop callback
+[shutdown] clear callbacks
+[shutdown] clear SimulationContext
+[shutdown] close_started_unix=1791436093.115152
+[shutdown] close SimulationApp begin

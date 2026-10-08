@@ -1,0 +1,67 @@
+{
+  "status": "TWO_SEED_WAREHOUSE_SCREEN_COMPLETE_WITH_DEPTH_COVERAGE_LIMIT",
+  "selection_rule": "Largest safe-success count across two held-out seeds is the provisional demo candidate, not a proven global optimum.",
+  "notes": [
+    "Routes match within a seed only at initialization; policy-dependent resets can diverge.",
+    "Wilson bounds treat 200 episodes as independent and may understate within-robot/seed dependence.",
+    "All-zero processed depth reads are included in every numerator and denominator.",
+    "Collision flags are CrowdSim detector/drive-guard outputs, not measured PhysX contact.",
+    "Both seeds use the same warehouse, privileged local map, and simulator neighbor state."
+  ],
+  "results": [
+    {
+      "checkpoint_step": 4180480,
+      "checkpoint_sha256": "60bf5199690bcfb32b696a3fd9364b497ddd2a03974feb9bda5711162259cecc",
+      "seed701_safe_success": 83,
+      "seed702_safe_success": 88,
+      "episodes": 200,
+      "safe_success": 171,
+      "safe_success_wilson95_independence_assumption": [
+        0.7995,
+        0.8971
+      ],
+      "collision": 28,
+      "timeout": 0,
+      "stuck": 1,
+      "empty_depth_reads": 11,
+      "episodes_with_empty_depth": 9,
+      "failed_episodes_with_empty_depth": 0
+    },
+    {
+      "checkpoint_step": 4940800,
+      "checkpoint_sha256": "aa90aa799ddf7cea488da1db5155aa31b2185a1036478fbdd5113ff61a32c6a6",
+      "seed701_safe_success": 75,
+      "seed702_safe_success": 70,
+      "episodes": 200,
+      "safe_success": 145,
+      "safe_success_wilson95_independence_assumption": [
+        0.6593,
+        0.7822
+      ],
+      "collision": 55,
+      "timeout": 0,
+      "stuck": 0,
+      "empty_depth_reads": 11,
+      "episodes_with_empty_depth": 10,
+      "failed_episodes_with_empty_depth": 2
+    },
+    {
+      "checkpoint_step": 5002240,
+      "checkpoint_sha256": "0f6621ec6cc8c69a56c0ca992ea4e8c00bc291e28edc76a09879698328024c80",
+      "seed701_safe_success": 72,
+      "seed702_safe_success": 70,
+      "episodes": 200,
+      "safe_success": 142,
+      "safe_success_wilson95_independence_assumption": [
+        0.6436,
+        0.7685
+      ],
+      "collision": 58,
+      "timeout": 0,
+      "stuck": 0,
+      "empty_depth_reads": 16,
+      "episodes_with_empty_depth": 11,
+      "failed_episodes_with_empty_depth": 5
+    }
+  ]
+}
