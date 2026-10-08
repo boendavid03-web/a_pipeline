@@ -1,0 +1,83 @@
+{
+  "validity": "SCREENING_ONLY_DEPTH_COVERAGE_ANOMALIES",
+  "notes": [
+    "Held-out seed 701 and identical initial routes/map; later reset routes can differ.",
+    "Wilson intervals assume independent episodes and may understate dependence across robots.",
+    "All-zero processed depth reads are retained; no samples are dropped.",
+    "CrowdSim collision flags are not direct PhysX contact measurements."
+  ],
+  "results": [
+    {
+      "label": "step_4180480_100",
+      "checkpoint_step": 4180480,
+      "checkpoint_sha256": "60bf5199690bcfb32b696a3fd9364b497ddd2a03974feb9bda5711162259cecc",
+      "route_sha256": "45e6204306ba2760f14c8d0b39a56e384042d82a51eb10329a5cb30182ba0361",
+      "map_sha256": "a4beea6f06b4794ccc079446db59822721812308678cb675207b2dc5846ffec3",
+      "seed": 701,
+      "control_steps": 2305,
+      "episodes": 100,
+      "safe_success": 83,
+      "safe_success_wilson95": [
+        0.7445,
+        0.8911
+      ],
+      "reached": 83,
+      "collision": 16,
+      "timeout": 0,
+      "stuck": 1,
+      "mean_sim_seconds": 8.805,
+      "empty_depth_reads": 2,
+      "episodes_with_empty_depth": 2,
+      "failed_episodes_with_empty_depth": 0,
+      "terminal_reached_collision_overlap": 0
+    },
+    {
+      "label": "step_4940800_100",
+      "checkpoint_step": 4940800,
+      "checkpoint_sha256": "aa90aa799ddf7cea488da1db5155aa31b2185a1036478fbdd5113ff61a32c6a6",
+      "route_sha256": "45e6204306ba2760f14c8d0b39a56e384042d82a51eb10329a5cb30182ba0361",
+      "map_sha256": "a4beea6f06b4794ccc079446db59822721812308678cb675207b2dc5846ffec3",
+      "seed": 701,
+      "control_steps": 2100,
+      "episodes": 100,
+      "safe_success": 75,
+      "safe_success_wilson95": [
+        0.657,
+        0.8245
+      ],
+      "reached": 75,
+      "collision": 25,
+      "timeout": 0,
+      "stuck": 0,
+      "mean_sim_seconds": 7.944,
+      "empty_depth_reads": 7,
+      "episodes_with_empty_depth": 6,
+      "failed_episodes_with_empty_depth": 1,
+      "terminal_reached_collision_overlap": 0
+    },
+    {
+      "label": "final_100",
+      "checkpoint_step": 5002240,
+      "checkpoint_sha256": "0f6621ec6cc8c69a56c0ca992ea4e8c00bc291e28edc76a09879698328024c80",
+      "route_sha256": "45e6204306ba2760f14c8d0b39a56e384042d82a51eb10329a5cb30182ba0361",
+      "map_sha256": "a4beea6f06b4794ccc079446db59822721812308678cb675207b2dc5846ffec3",
+      "seed": 701,
+      "control_steps": 2218,
+      "episodes": 100,
+      "safe_success": 72,
+      "safe_success_wilson95": [
+        0.6251,
+        0.7986
+      ],
+      "reached": 72,
+      "collision": 28,
+      "timeout": 0,
+      "stuck": 0,
+      "mean_sim_seconds": 8.319,
+      "empty_depth_reads": 7,
+      "episodes_with_empty_depth": 4,
+      "failed_episodes_with_empty_depth": 3,
+      "terminal_reached_collision_overlap": 0
+    }
+  ]
+}
