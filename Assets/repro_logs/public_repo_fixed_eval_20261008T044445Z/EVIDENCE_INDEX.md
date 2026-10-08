@@ -16,7 +16,7 @@ Root-level `*_stdout.log`, `*_stderr.log`, `*_START_UTC.txt`, `*_END_UTC.txt`, a
 
 ## Demo evidence and procedure
 
-`demo_4180480_gui/` and `demo_replay_20261008T053130Z/` contain the two reported `birdseye.gif` demos and their configs. Their stdout/stderr and exit-code records are alongside them. `RUN_DEMO_REPLAY.sh`, `demo_replay.py`, and the evaluation scripts document the local execution procedure; they depend on the original Isaac Sim workstation, source tree, and local checkpoints, which are not included here.
+`demo_4180480_gui/` and `demo_replay_20261008T053130Z/` contain the first two `birdseye.gif` demos and their configs. `demo_replay_20261008T064331Z/` is a later replay: its exit code is 0, its completion marker records 10 robot episodes, and it produced a 69-frame GIF. The three runs' stdout/stderr and exit records are alongside them. `RUN_DEMO_REPLAY.sh`, `demo_replay.py`, `demo_4180480.py`, and the evaluation scripts document the local execution procedure; they depend on the original Isaac Sim workstation, source tree, and local checkpoints, which are not included here.
 
 ## Scope
 
