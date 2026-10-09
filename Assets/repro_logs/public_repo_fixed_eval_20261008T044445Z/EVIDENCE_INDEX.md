@@ -1,6 +1,14 @@
-# NavIsaacLab evaluation evidence index
+# NavIsaacLab evaluation and runtime evidence index
 
 Read `EVALUATION_AND_DEMO_REPORT.md` first for the result and its limits.
+
+## Motion replay and targeted candidate check (2026-10-09)
+
+`../navisaaclab_teleop_velocity_20261009T042935Z/REPORT.md` records the A-fixed 192-step Nova Carter command-versus-motion baseline. Straight-line speeds of 0.2, 0.5, and 1.0 m/s passed every per-step gate; the robot-7 replay had 2 linear and 3 angular violations, and turn segments also had per-step angular violations. `telemetry.csv`, `telemetry.jsonl`, `SUMMARY.json`, run identity, and plots preserve the measurements. This is kinematic evidence; no PhysX contact sensor or impulse data was collected.
+
+`../navisaaclab_motion_localfix_20261009T050247Z/REPORT.md` and `COMPARISON.json` document a same-command, same-reset 192-step comparison of one local orientation candidate against that baseline. The candidate was rejected and A-fixed retained: baseline had 2 linear / 16 angular over-limit samples (18 distinct steps), while the candidate had 6 / 36 (38 distinct steps). The candidate improved selected historical steps but regressed overall, especially turns. `telemetry.csv`, `telemetry.jsonl`, `PHYSICS_EVIDENCE.jsonl`, `SUMMARY.json`, `PATCH_DECISION.json`, `CANDIDATE.patch`, run identity, and plots contain the supporting records. Contact objects, force, and impulse remain unavailable; this does not establish a unique physical cause or physical safety.
+
+The candidate patch is retained for review only and was not applied to the A-fixed source. Neither run is a full action-range, long-duration, PPO, cross-scene, or physical-safety acceptance result.
 
 ## Checkpoint comparison
 
