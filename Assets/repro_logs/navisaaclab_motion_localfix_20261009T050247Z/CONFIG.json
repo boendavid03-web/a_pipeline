@@ -1,0 +1,551 @@
+{
+  "scene": {
+    "prim_path": "/World/Scene",
+    "z_offset": 0.0,
+    "scene_usd": "/home/user/isaacsim_assets/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse_multiple_shelves.usd",
+    "scene_map": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_tilt_motion_20261008T173940Z/source/CrowdSim/maps/newmap.yaml",
+    "static_obstacles": true,
+    "remove_prims": [
+      "Shelf",
+      "PalletBin"
+    ],
+    "objects": {
+      "box_0": [
+        -8.7,
+        -11.1,
+        0.0,
+        0.5,
+        0.4,
+        0.7,
+        "box"
+      ],
+      "box_2": [
+        -3.0,
+        -10.6,
+        0.0,
+        0.6,
+        0.6,
+        0.9,
+        "box"
+      ],
+      "box_4": [
+        3.0,
+        -10.9,
+        0.0,
+        0.4,
+        0.5,
+        0.8,
+        "box"
+      ],
+      "box_6": [
+        -8.9,
+        -7.6,
+        0.0,
+        0.6,
+        0.6,
+        0.6,
+        "box"
+      ],
+      "box_8": [
+        -2.9,
+        -7.4,
+        0.0,
+        0.5,
+        0.5,
+        0.8,
+        "box"
+      ],
+      "box_10": [
+        3.0,
+        -7.3,
+        0.0,
+        0.6,
+        0.7,
+        1.1,
+        "box"
+      ],
+      "box_12": [
+        -8.8,
+        -4.5,
+        0.0,
+        0.6,
+        0.5,
+        1.1,
+        "box"
+      ],
+      "box_14": [
+        -2.9,
+        -4.6,
+        0.0,
+        0.5,
+        0.7,
+        0.9,
+        "box"
+      ],
+      "cyl_16": [
+        3.3,
+        -4.8,
+        0.0,
+        0.5,
+        0.5,
+        1.5,
+        "cylinder"
+      ],
+      "cyl_18": [
+        -8.7,
+        -2.0,
+        0.0,
+        0.4,
+        0.4,
+        0.6,
+        "cylinder"
+      ],
+      "box_20": [
+        -2.6,
+        -1.7,
+        0.0,
+        0.4,
+        0.6,
+        0.9,
+        "box"
+      ],
+      "box_22": [
+        3.1,
+        -1.3,
+        0.0,
+        0.5,
+        0.5,
+        0.9,
+        "box"
+      ],
+      "box_24": [
+        -8.7,
+        1.7,
+        0.0,
+        0.5,
+        0.7,
+        0.9,
+        "box"
+      ],
+      "box_26": [
+        -2.9,
+        1.6,
+        0.0,
+        0.6,
+        0.4,
+        0.8,
+        "box"
+      ],
+      "box_28": [
+        2.8,
+        1.0,
+        0.0,
+        0.7,
+        0.4,
+        0.7,
+        "box"
+      ],
+      "cyl_30": [
+        -9.0,
+        4.3,
+        0.0,
+        0.4,
+        0.4,
+        0.7,
+        "cylinder"
+      ],
+      "box_32": [
+        -2.7,
+        4.4,
+        0.0,
+        0.5,
+        0.5,
+        1.1,
+        "box"
+      ],
+      "box_34": [
+        3.1,
+        4.6,
+        0.0,
+        0.5,
+        0.7,
+        0.9,
+        "box"
+      ],
+      "box_36": [
+        -9.1,
+        7.3,
+        0.0,
+        0.7,
+        0.7,
+        0.7,
+        "box"
+      ],
+      "cyl_38": [
+        -2.6,
+        7.6,
+        0.0,
+        0.4,
+        0.4,
+        0.9,
+        "cylinder"
+      ],
+      "box_40": [
+        3.2,
+        7.6,
+        0.0,
+        0.4,
+        0.6,
+        1.1,
+        "box"
+      ],
+      "box_42": [
+        -8.8,
+        10.0,
+        0.0,
+        0.5,
+        0.6,
+        0.9,
+        "box"
+      ],
+      "box_44": [
+        -3.0,
+        10.2,
+        0.0,
+        0.4,
+        0.6,
+        0.9,
+        "box"
+      ],
+      "cyl_46": [
+        3.0,
+        10.2,
+        0.0,
+        0.6,
+        0.6,
+        1.2,
+        "cylinder"
+      ],
+      "box_48": [
+        -9.1,
+        13.6,
+        0.0,
+        0.4,
+        0.4,
+        0.9,
+        "box"
+      ],
+      "box_50": [
+        -2.8,
+        13.6,
+        0.0,
+        0.4,
+        0.5,
+        0.8,
+        "box"
+      ],
+      "box_52": [
+        3.2,
+        13.0,
+        0.0,
+        0.6,
+        0.7,
+        0.9,
+        "box"
+      ],
+      "box_54": [
+        -9.2,
+        16.2,
+        0.0,
+        0.6,
+        0.5,
+        0.9,
+        "box"
+      ],
+      "cyl_56": [
+        -2.6,
+        16.1,
+        0.0,
+        0.4,
+        0.4,
+        1.3,
+        "cylinder"
+      ]
+    }
+  },
+  "humanoid": {
+    "human_mesh": false,
+    "hide_humanoid": true,
+    "checkpoint": "/home/user/workspace/NavIsaaclab2.0/NavIsaaclab2.0-main/data/pretrained_models/masked_mimic/smpl_57f98a9/last.ckpt",
+    "motion_file": "/home/user/workspace/NavIsaaclab2.0/Assets/motion/amass_smpl_validation.pt",
+    "min_heading_speed": 0.05,
+    "state_recording": {
+      "enabled": true,
+      "record_fps": 10,
+      "record_dir": "output/crowdsim_humanoid_state",
+      "record_envs": "0",
+      "auto_record": false,
+      "key": "H"
+    }
+  },
+  "car": {
+    "usd": "/home/user/isaacsim_assets/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd",
+    "prim_name": "Car",
+    "z": 0.0,
+    "rl_policy": true,
+    "policy_checkpoint": "output/crowdsim_robot_ppo/latest/robot_ppo_latest.pt"
+  },
+  "sensors": {
+    "camera": {
+      "enabled": true,
+      "height": 480,
+      "width": 640,
+      "horizontal_fov": 90.0,
+      "mount_prim_path": "chassis_link",
+      "pos": [
+        0.25,
+        0.0,
+        0.6
+      ],
+      "rot": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ],
+      "convention": "ros",
+      "record_fps": 10.0,
+      "record_dir": "output/crowdsim_camera",
+      "record_envs": "0",
+      "auto_record": false
+    },
+    "lidar": {
+      "enabled": false,
+      "debug_vis": false,
+      "horizontal_res": 1.0,
+      "mesh_prims": [
+        "/World/Scene"
+      ]
+    }
+  },
+  "navigation": {
+    "num_humanoids": 0,
+    "num_robots": 1,
+    "path": {
+      "seed": 703,
+      "planning_step_size": 0.5,
+      "planning_clearance": 0.5,
+      "min_start_goal_distance": 7.0,
+      "max_start_goal_distance": 10.0,
+      "min_spawn_spacing": 1.5
+    },
+    "goal_tolerance": 0.75,
+    "waypoint_tolerance": 0.5,
+    "collision_distance": 0.7,
+    "local": {
+      "target_timestep": 8.333333,
+      "max_speed": 1.0,
+      "agent_radius": 0.35,
+      "safe_distance": 1.2,
+      "neighbor_radius": 4.0,
+      "interaction_radius": 5.0,
+      "velocity_smoothing": 0.8,
+      "max_acceleration": 4.0,
+      "max_yaw_rate": 3.0,
+      "prediction_horizon": 3.5,
+      "ttc_threshold": 3.0,
+      "ttc_gain": 28.0
+    },
+    "update_hz": 25.0,
+    "log_interval": 30,
+    "rl": {
+      "deterministic": true,
+      "num_neighbors": 4,
+      "map_size": 24,
+      "map_extent": 8.0,
+      "max_linear_velocity": 1.0,
+      "max_angular_velocity": 1.0,
+      "initial_heading_min_offset_degrees": 30.0,
+      "initial_heading_max_offset_degrees": 120.0,
+      "goal_observation_max_distance": 10.0,
+      "goal_curriculum": {
+        "enabled": false,
+        "window_size": 200,
+        "min_episodes": 100,
+        "update_interval_episodes": 50,
+        "promote_success_rate": 0.75,
+        "demote_success_rate": 0.45,
+        "initial_stage": 0,
+        "stages": {
+          "short_straight": {
+            "distance": [
+              2.0,
+              4.0
+            ],
+            "heading_degrees": [
+              0.0,
+              15.0
+            ]
+          },
+          "short_turn": {
+            "distance": [
+              3.0,
+              5.0
+            ],
+            "heading_degrees": [
+              10.0,
+              45.0
+            ]
+          },
+          "medium_turn": {
+            "distance": [
+              4.0,
+              7.0
+            ],
+            "heading_degrees": [
+              20.0,
+              75.0
+            ]
+          },
+          "long_turn": {
+            "distance": [
+              5.5,
+              8.5
+            ],
+            "heading_degrees": [
+              30.0,
+              105.0
+            ]
+          },
+          "full": {
+            "distance": [
+              7.0,
+              10.0
+            ],
+            "heading_degrees": [
+              30.0,
+              120.0
+            ]
+          }
+        }
+      },
+      "depth_enabled": true,
+      "depth_size": 224,
+      "depth_max_range": 5.0,
+      "reward": {
+        "progress_reward_scale": 5.0,
+        "velocity_direction_reward_scale": 0.3,
+        "angular_velocity_scale": 0.15,
+        "angular_change_scale": 0.2,
+        "linear_change_scale": 0.05,
+        "proximity_penalty_start": 0.0,
+        "proximity_penalty_threshold": 1.5,
+        "proximity_danger_threshold": 0.5,
+        "proximity_danger_penalty": -3.0,
+        "static_proximity_threshold": 0.8,
+        "static_proximity_danger_threshold": 0.25,
+        "static_proximity_danger_penalty": -0.5,
+        "goal_reward": 50.0,
+        "collision_penalty": -50.0,
+        "timeout_penalty": -50.0,
+        "stuck_penalty": -30.0,
+        "stuck_window": 250,
+        "stuck_threshold": 0.1,
+        "time_penalty": -0.01,
+        "max_episode_steps": 1000
+      }
+    },
+    "recording": {
+      "enabled": false,
+      "output_dir": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_motion_localfix_20261009T050247Z/navigation"
+    }
+  },
+  "markers": {
+    "enabled": true
+  },
+  "viewer": {
+    "camera_mode": "free",
+    "camera_eye": [
+      8.0,
+      -8.0,
+      15.0
+    ],
+    "camera_target": [
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "network": {
+    "vector_hidden_dims": [
+      128,
+      128
+    ],
+    "actor_hidden_dims": [
+      256,
+      128,
+      32
+    ],
+    "critic_hidden_dims": [
+      256,
+      128,
+      32
+    ],
+    "map_encoder": {
+      "channels": [
+        8,
+        16,
+        8
+      ],
+      "kernel_sizes": [
+        3,
+        3,
+        3
+      ],
+      "strides": [
+        2,
+        2,
+        1
+      ],
+      "paddings": [
+        1,
+        1,
+        1
+      ]
+    },
+    "depth_encoder": {
+      "channels": [
+        16,
+        32
+      ],
+      "kernel_sizes": [
+        3,
+        3
+      ],
+      "strides": [
+        2,
+        2
+      ],
+      "paddings": [
+        1,
+        1
+      ],
+      "feature_dim": 64
+    }
+  },
+  "training": {
+    "total_steps": 5000000,
+    "rollout_steps": 256,
+    "ppo_epochs": 4,
+    "minibatch_size": 256,
+    "lr": 0.0003,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_ratio": 0.2,
+    "value_coef": 0.5,
+    "entropy_coef": 0.005,
+    "max_grad_norm": 1.0,
+    "save_interval": 20000,
+    "output_dir": "output/crowdsim_robot_ppo"
+  }
+}

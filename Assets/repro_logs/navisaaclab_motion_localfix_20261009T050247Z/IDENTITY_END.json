@@ -1,0 +1,31 @@
+{
+  "source": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_motion_localfix_20261009T050247Z/source",
+  "source_file_count": 883,
+  "source_changes_vs_A_fixed": [
+    {
+      "path": "CrowdSim/control/drive.py",
+      "candidate_sha256": "a92fbb1e66e3a5534c96803cd7f814b1613af0c1000b55d82b36546d5a05c1b2",
+      "baseline_sha256": "c1152a2746eb2390d85b371239e10a7cfb58bbeeed4d161a5dd391edf693be1c"
+    }
+  ],
+  "runtime_exit_code": 0,
+  "ended_utc": "2026-10-09T05:07:19Z",
+  "loaded_source_path_from_run": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_motion_localfix_20261009T050247Z/source",
+  "runtime_identity_start_sha256": "1479cd6c8142e4abbf5c0a6547740f5e117e8968d0be195e2dd87380b0593a18",
+  "robot_usd": {
+    "path": "/home/user/isaacsim_assets/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd",
+    "sha256": "03f25402bd9877c899f60c23cb3b578027219841463947d3ebdbe788a0c80d01"
+  },
+  "warehouse_usd": {
+    "path": "/home/user/isaacsim_assets/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse_multiple_shelves.usd",
+    "sha256": "eb27e4bad446bba981b81c27529a284dfb55a30adc01eaadb80bb0fe997a0dc0"
+  },
+  "map_yaml": {
+    "path": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_tilt_motion_20261008T173940Z/source/CrowdSim/maps/newmap.yaml",
+    "sha256": "73d7969e32fb06a481c25c99dbbfc9ca482d3422f1e738f037049f2ef29b1ce5"
+  },
+  "history_actions": {
+    "path": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_motion_range_20261009T013250Z/REPLAY_ACTIONS.json",
+    "sha256": "3d9036541bfd0958cc809df4c80e30239c4531449ebc60cb9a503f801c7e399c"
+  }
+}

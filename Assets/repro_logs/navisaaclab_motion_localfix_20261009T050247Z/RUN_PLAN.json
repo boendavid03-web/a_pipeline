@@ -1,0 +1,16 @@
+{
+  "source_copy": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_motion_localfix_20261009T050247Z/source",
+  "baseline_source": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_tilt_motion_20261008T173940Z/source",
+  "source_differences": [
+    "CrowdSim/control/drive.py"
+  ],
+  "candidate": "Preserve current root roll/pitch while applying world-z yaw delta",
+  "protocol_source": "/home/user/workspace/NavIsaaclab2.0/Assets/repro_logs/navisaaclab_teleop_velocity_20261009T042935Z/telemetry_probe.py + PRESET_SCRIPT.json",
+  "mode": "GUI",
+  "seed": 703,
+  "max_control_steps": 192,
+  "watchdog_s": 1200,
+  "isaac_starts_used": 1,
+  "prepared_utc": "2026-10-09T05:04:48Z",
+  "launch_utc": "2026-10-09T05:05:28.861539Z"
+}

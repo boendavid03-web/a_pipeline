@@ -1,0 +1,10 @@
+{
+  "decision": "REJECTED",
+  "project_status": "BLOCKED",
+  "candidate_scope": "One local change in CrowdSim/control/drive.py::_apply_kinematic, based on this run's A-fixed source copy.",
+  "reason": "The candidate failed the required per-step acceptance and regressed total failures: linear over-limit 2->6, angular 16->36, unique control steps 18->38. History step 15 improved, but step 13 linear error worsened and turn segments regressed.",
+  "baseline_action": "Retain the prior A-fixed baseline unchanged as the stable source.",
+  "patch_application": "Not applied to baseline. Offline dry-run against A-fixed copy passed.",
+  "isaac_starts_used": 1,
+  "ppo_training": false
+}

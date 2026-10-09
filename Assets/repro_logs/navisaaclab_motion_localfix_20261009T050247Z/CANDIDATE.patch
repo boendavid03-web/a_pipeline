@@ -1,0 +1,43 @@
+--- a/CrowdSim/control/drive.py
++++ b/CrowdSim/control/drive.py
+@@ -245,7 +245,6 @@
+         self._motion_start_xy = self.positions_xy().copy()
+         self._motion_start_yaw = yaws.copy()
+         yaw_mid = yaws + 0.5 * angular * dt
+-        next_yaws = yaws + angular * dt
+         n_r = self.config.num_robots
+         # Only the first n_r envs hold active robots; the rest are frozen
+         # filler slots that must keep their parked pose (don't move them).
+@@ -293,9 +292,30 @@
+ 
+         poses[:, 0] = torch.as_tensor(next_x, dtype=torch.float32, device=self.device)
+         poses[:, 1] = torch.as_tensor(next_y, dtype=torch.float32, device=self.device)
+-        next_quat = self._yaw_to_quat(
+-            torch.as_tensor(next_yaws, dtype=torch.float32, device=self.device)
++        # Apply the requested world-frame yaw increment to the full current
++        # orientation. Replacing it with a yaw-only quaternion every active
++        # step flattens the chassis roll/pitch before PhysX resolves the
++        # existing ground/contact constraints. Left multiplication by a
++        # world-Z rotation changes yaw while preserving the current roll/pitch.
++        yaw_delta = torch.as_tensor(
++            angular * dt, dtype=torch.float32, device=self.device
+         )
++        half_delta = 0.5 * yaw_delta
++        cos_half = torch.cos(half_delta)
++        sin_half = torch.sin(half_delta)
++        current_quat = poses[:, 3:7]
++        next_quat = torch.stack(
++            (
++                cos_half * current_quat[:, 0] - sin_half * current_quat[:, 3],
++                cos_half * current_quat[:, 1] - sin_half * current_quat[:, 2],
++                cos_half * current_quat[:, 2] + sin_half * current_quat[:, 1],
++                cos_half * current_quat[:, 3] + sin_half * current_quat[:, 0],
++            ),
++            dim=1,
++        )
++        next_quat = next_quat / torch.linalg.vector_norm(
++            next_quat, dim=1, keepdim=True
++        ).clamp_min(1e-8)
+         # A zero effective command should leave the current orientation
+         # untouched. Flattening the contact-established roll/pitch on every
+         # idle step injects a small new floor-contact impulse. Active motion

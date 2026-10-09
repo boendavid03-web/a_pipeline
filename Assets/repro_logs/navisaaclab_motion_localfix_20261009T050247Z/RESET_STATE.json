@@ -1,0 +1,90 @@
+{
+  "label": "after_history_reset_before_control_step_150",
+  "root_pose_data_wxyz": {
+    "x": 8.274999618530273,
+    "y": 13.52500057220459,
+    "z": 0.0,
+    "roll": 0.0,
+    "pitch": 0.0,
+    "yaw": -2.9034469223176154,
+    "quat_wxyz": [
+      0.11879169195890427,
+      0.0,
+      0.0,
+      -0.9929192066192627
+    ]
+  },
+  "root_transform_physx_raw_xyz_xyzw": [
+    8.274999618530273,
+    13.52500057220459,
+    -1.4901161193847656e-08,
+    -1.1243994450793604e-11,
+    1.0514132620098593e-10,
+    -0.9929192662239075,
+    0.11879170686006546
+  ],
+  "root_velocity_physx_linear_xyz_angular_xyz_mps_radps": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "joint_names_dof_order": [
+    "joint_caster_base",
+    "joint_wheel_left",
+    "joint_wheel_right",
+    "joint_swing_left",
+    "joint_swing_right",
+    "joint_caster_left",
+    "joint_caster_right"
+  ],
+  "joint_positions_rad": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "joint_velocities_radps": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "joint_velocity_targets_radps": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "joint_stiffness_runtime": [
+    5729.578125,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "joint_damping_runtime": [
+    572.9578247070312,
+    0.0,
+    0.0,
+    0.0005729577969759703,
+    0.0005729577969759703,
+    0.0,
+    0.0
+  ],
+  "contact_sensor_names": [],
+  "contact_evidence": "UNAVAILABLE"
+}
