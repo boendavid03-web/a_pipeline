@@ -1,0 +1,44 @@
+{
+  "project": "Arena5 + Isaac Sim 6.0.0 Jackal",
+  "snapshot_date": "2026-10-09",
+  "source_ledger_timestamp_utc": "2026-10-08T02:00:00Z",
+  "scope": {
+    "world": "map_empty",
+    "scenario": "quicktest",
+    "robot": "Jackal",
+    "pedestrians": 0,
+    "seed": 42,
+    "ros_domain_id": 189,
+    "external_goal_tolerance_m": 0.25
+  },
+  "arena_original_18_methods": {
+    "pass": 3,
+    "fail": 13,
+    "blocked": 2,
+    "not_tested": 0,
+    "pass_methods": ["HATEB", "CD-SARL", "NavRep"],
+    "blocked_methods": ["CrowdNav", "SoNIC"]
+  },
+  "nav2_combinations_separate": {
+    "NavFn + RPP": "PASS in the listed quicktest, table-leg, and S-bend runs",
+    "NavFn + MPPI": "PASS in the listed quicktest, table-leg, S-bend, and GUI runs",
+    "NavFn + DWB": "FAIL for fixed-configuration repeatability; 1/5 headless runs passed"
+  },
+  "evidence_boundary": {
+    "arena_2d_footprint_checks": "reported per run",
+    "physx_contact_safety": "not established",
+    "pedestrian_interaction": "not tested in this stage",
+    "cross_scene_generalization": "not established",
+    "raw_run_artifacts_in_this_branch": false
+  },
+  "known_blockers": [
+    "CrowdNav: exact trained SARL checkpoint unavailable",
+    "SoNIC: original policy identity unresolved",
+    "CADRL follow-up: resource preflight denied launch; no navigation result was produced"
+  ],
+  "primary_documents": [
+    "README.md",
+    "METHOD_MATRIX.md",
+    "EVIDENCE_INDEX.md"
+  ]
+}
