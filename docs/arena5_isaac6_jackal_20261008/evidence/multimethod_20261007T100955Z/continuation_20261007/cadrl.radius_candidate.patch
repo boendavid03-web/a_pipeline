@@ -1,0 +1,22 @@
+--- [LOCAL_PATH]	2026-10-07 11:34:13.695206851 -0700
++++ [LOCAL_PATH]	2026-10-07 11:34:17.232271975 -0700
+@@ -70,8 +70,7 @@
+ _KP_YAW: float = 2.0               # upstream update_action: twist.angular.z = 2*yaw_error
+ _CLUSTER_GAP: float = 0.3           # consecutive returns farther apart than this start a new cluster
+ _CLUSTER_MIN_BEAMS: int = 2
+-_CLUSTER_RADIUS_MIN: float = 0.15
+-_CLUSTER_RADIUS_MAX: float = 1.0
++_CLUSTER_RADIUS_INFLATION: float = 1.5
+ 
+ # Upstream network.Actions().actions (11 discrete [speed_fraction, heading_change]).
+ _pi = np.pi
+@@ -131,7 +130,8 @@
+             continue
+         cx, cy = float(xs[idx].mean()), float(ys[idx].mean())
+         extent = float(np.hypot(xs[idx] - cx, ys[idx] - cy).max())
+-        out.append((cx, cy, float(np.clip(extent, _CLUSTER_RADIUS_MIN, _CLUSTER_RADIUS_MAX))))
++        # cadrl_ros cbClusters uses max(PED_RADIUS, 1.5 * cluster extent).
++        out.append((cx, cy, float(max(_PED_RADIUS, _CLUSTER_RADIUS_INFLATION * extent))))
+     return out
+ 
+ 

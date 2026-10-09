@@ -1,0 +1,15 @@
+diff --git a/arena_robots/config/nav2/controllers/dwb/controller_config.yaml b/arena_robots/config/nav2/controllers/dwb/controller_config.yaml
+index d65ab6b..9a11f0d 100644
+--- a/arena_robots/config/nav2/controllers/dwb/controller_config.yaml
++++ b/arena_robots/config/nav2/controllers/dwb/controller_config.yaml
+@@ -29,8 +29,8 @@ controller_plugins_dict:
+     trans_stopped_velocity: 0.25
+     short_circuit_trajectory_evaluation: True
+     stateful: True
+-    critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+-    BaseObstacle.scale: 0.02
++    critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
++    ObstacleFootprint.scale: 0.02
+     PathAlign.scale: 32.0
+     PathAlign.forward_point_distance: 0.1
+     GoalAlign.scale: 24.0

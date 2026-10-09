@@ -1,0 +1,13 @@
+diff --git a/arena_robots/config/nav2/controllers/mppi/controller_config.yaml b/arena_robots/config/nav2/controllers/mppi/controller_config.yaml
+index 2ffadd7..516718c 100644
+--- a/arena_robots/config/nav2/controllers/mppi/controller_config.yaml
++++ b/arena_robots/config/nav2/controllers/mppi/controller_config.yaml
+@@ -4,7 +4,7 @@ controller_plugins_dict:
+  FollowPath:
+    plugin: "nav2_mppi_controller::MPPIController"
+    time_steps: 56
+-   model_dt: 0.25
++   model_dt: 0.1
+    batch_size: 2000
+    vx_std: 0.2
+    vy_std: 0.2

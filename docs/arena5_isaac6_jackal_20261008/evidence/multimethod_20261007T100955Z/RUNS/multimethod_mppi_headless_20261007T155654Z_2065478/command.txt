@@ -1,0 +1,1 @@
+[LOCAL_PATH] --method mppi --world map_empty --scenario table_leg_static --headless

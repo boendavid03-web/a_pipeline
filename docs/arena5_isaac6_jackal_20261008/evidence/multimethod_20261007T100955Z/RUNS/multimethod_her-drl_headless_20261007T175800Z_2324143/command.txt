@@ -1,0 +1,1 @@
+[LOCAL_PATH] --method her-drl --world map_empty --scenario quicktest --headless

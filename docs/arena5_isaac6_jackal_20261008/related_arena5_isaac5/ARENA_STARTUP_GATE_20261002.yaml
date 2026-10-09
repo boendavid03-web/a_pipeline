@@ -1,0 +1,83 @@
+generated_at: '2026-10-02'
+scope: Arena Isaac Sim 5.1 compatibility adapter startup readiness and NavigateToPose ownership
+historical_manifest: ARENA_ISAAC_FROZEN_BASELINE_MANIFEST_20261001.yaml
+STARTUP_PATCH_IMPLEMENTED: 'YES'
+SHORT_SINGLE_GOAL: 'YES'
+SHORT_RESULT: SUCCEEDED
+DEFAULT_SINGLE_GOAL: 'YES'
+DEFAULT_RESULT: ABORTED_VALID_BASELINE_RESULT
+UUID_OWNERSHIP: 'YES'
+STALE_CALLBACK_ISOLATION: MOCK_PASSED
+AUTO_RETRY_REMOVED: 'YES'
+auto_retry_scope: Isaac NavigateToPose only; non-Isaac topic behavior retained.
+TF_COSTMAP_REGRESSION: PASSED_IN_SHORT_AND_DEFAULT
+NAV2_CONFIG_UNCHANGED: 'YES'
+INFRASTRUCTURE_BASELINE_READY: 'YES'
+READY_FOR_ARENA_1_TO_5: 'YES'
+OFFICIAL_ADAPTER_MIGRATION_NOW: 'NO'
+OFFICIAL_ADAPTER_MIGRATION_LATER: AFTER_ORIGINAL_ARENA_1_TO_5_DWB_BASELINE_SEPARATE_EVALUATION
+NEXT_SINGLE_ACTION: Run original Arena 1.json DWB baseline; continue 2.json through 5.json only after each original scene gate.
+limitations:
+  - Reset during a running action and stale callback isolation were validated with deterministic mocks, not a live multi-episode reset.
+  - Original Arena 1.json through 5.json have not been run in this gate.
+  - The 2026-10-01 historical manifest retains its original NOT_READY result; this file records the later startup gate.
+  - Non-Isaac topic/status behavior passed a mock regression; no non-Isaac simulator was launched in this gate.
+source:
+  authoritative_task_generator: [LOCAL_PATH]
+  robot_manager_sha256_before: 2e204448906afe192c9e3640fc337911311c51021015d0cae183a107b2e18c99
+  robot_manager_sha256_after: 1b57d1ee62c0a647ebdb1271784cb51ccab8d44a24c347a842f3fc5a7a2969a3
+  python_file_count: 59
+  sha256_of_sorted_relative_path_nul_file_sha256_newline: 779b9a911563f8201dc8842deafecb07e23ad08b71c755d34106ae04d92a622f
+  reversible_patch: ARENA_STARTUP_PATCH_20261002.patch
+  reversible_patch_sha256: 46082ee21bf7f9c30d3ad8bf269a4b6025ee61600797856d81ffa6a64bd3a72e
+  reverse_apply_check: PASSED
+runtime:
+  isaac_sim: [LOCAL_PATH]
+  compatibility_adapter_commit: a4beefe0203ec8a75d65d0ab70496b5e2c400605
+  authoritative_nav2_config: [LOCAL_PATH]
+  nav2_config_sha256: 2c7eea093eca3254d4e5c9c4e08ed044389cfd43bd097791345ae005034d2473
+  tf_throttle_10_isolated_sha256: c8f014b011970a07319ef871b53ebba2ff9b2d8407a3d860b664e569644f97f3
+  nav2_version: 1.1.20
+  planner: NavFn
+  controller: DWB
+  controller_frequency_hz: 1.0
+  required_movement_radius_m: 0.5
+  movement_time_allowance_s: 10.0
+  xy_tolerance_m: 0.25
+  yaw_tolerance_rad: 0.25
+  host_entry: [LOCAL_PATH]
+  isaac_python_3_11_install: [LOCAL_PATH]
+tests:
+  deterministic_mock: 9/9 PASSED
+  source_syntax: PASSED
+  short:
+    domain: 219
+    run_dir: [LOCAL_PATH]
+    startup_analysis: scripts/validation/arena_startup/short_final_analysis_20261002.json
+    high_level_uuid: 0b77b461d861487592e1cc6cbb517bcb
+    high_level_statuses: [EXECUTING, SUCCEEDED]
+    goal_pose_messages: 0
+    first_real_tf_before_goal_send: true
+    robot_inside_global_costmap: true
+    terminal_xy_error_m: 0.128313
+    local_costmap_nonzero_grids: 343/414
+    voxel_nonzero_grids: 385/477
+    scan_beams: 640
+  original_default_three_hunav:
+    domain: 220
+    run_dir: [LOCAL_PATH]
+    scenario_sha256: 4970601dec3f7e56aaa2df1375d09da2f670d486244022c37af37ed5d816ff43
+    hunav_default_behavior_sha256: 1b12b19ba0a9b75bf5b2aba2292e04c96e57b919b784d3e9e80ad8104ec38272
+    agents: [D_test_1, '2', '3']
+    startup_analysis: scripts/validation/arena_startup/default_final_analysis_20261002.json
+    high_level_uuid: 044365d02be64f42929982cc42a756c9
+    high_level_statuses: [EXECUTING, ABORTED]
+    goal_pose_messages: 0
+    first_real_tf_before_goal_send: true
+    robot_inside_global_costmap: true
+    terminal_xy_error_m: 0.101746
+    terminal_yaw_error_rad: 0.378003
+    abort_reason: Failed to make progress
+    local_costmap_nonzero_grids: 791/1548
+    voxel_nonzero_grids: 1699/3244
+    scan_beams: 640

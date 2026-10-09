@@ -1,0 +1,194 @@
+diff --git a/arena_isaac/arena_isaac/services/SpawnPrims.py b/arena_isaac/arena_isaac/services/SpawnPrims.py
+index 574b397..43b42c5 100644
+--- a/arena_isaac/arena_isaac/services/SpawnPrims.py
++++ b/arena_isaac/arena_isaac/services/SpawnPrims.py
+@@ -1,6 +1,7 @@
+ import numpy as np
+ from isaacsim_msgs.msg import Prim
+ from isaacsim_msgs.srv import SpawnPrims
++from pxr import Usd, UsdGeom, UsdPhysics
+ 
+ from isaac_utils.utils import geom, prim
+ from isaac_utils.utils.path import world_path
+@@ -10,6 +11,25 @@ from .utils import Service, on_exception
+ DEFAULT_LIGHT = '/World/Light_1'
+ 
+ 
++def ensure_static_obstacle_colliders(root: Usd.Prim) -> None:
++    """Supply static mesh collision only for collider-free env obstacle assets.
++
++    Preserve authored collision (including intentionally disabled collision),
++    and leave decorative wall assets and imported whole worlds unchanged.
++    """
++    parent = root.GetParent()
++    env_name = parent.GetParent().GetName()
++    if parent.GetName() != 'Obstacles' or not env_name.startswith('env_') or not env_name[4:].isdigit():
++        return
++    subtree = list(Usd.PrimRange(root))
++    if any(p.HasAPI(UsdPhysics.CollisionAPI) for p in subtree):
++        return
++    for mesh in subtree:
++        if mesh.IsA(UsdGeom.Mesh):
++            UsdPhysics.CollisionAPI.Apply(mesh).CreateCollisionEnabledAttr(True)
++            UsdPhysics.MeshCollisionAPI.Apply(mesh).CreateApproximationAttr('none')
++
++
+ @on_exception(False)
+ def prim_importer(prim_msg: Prim) -> bool:
+     name = prim_msg.name
+@@ -21,9 +41,11 @@ def prim_importer(prim_msg: Prim) -> bool:
+         usd_path=usd_path,
+         scale=np.array([prim_msg.scale.x, prim_msg.scale.y, prim_msg.scale.z]),
+     )
+-    if spawned and prim.sanitize_asset(spawned):
+-        # asset brings its own lights, drop the fallback dome
+-        prim.deactivate_prim(DEFAULT_LIGHT)
++    if spawned:
++        if prim.sanitize_asset(spawned):
++            # asset brings its own lights, drop the fallback dome
++            prim.deactivate_prim(DEFAULT_LIGHT)
++        ensure_static_obstacle_colliders(spawned)
+ 
+     return True
+ 
+diff --git a/arena_isaac/arena_isaac/services/SpawnUrdf.py b/arena_isaac/arena_isaac/services/SpawnUrdf.py
+index 6d60bad..3ab04bd 100644
+--- a/arena_isaac/arena_isaac/services/SpawnUrdf.py
++++ b/arena_isaac/arena_isaac/services/SpawnUrdf.py
+@@ -348,10 +348,12 @@ def spawn_urdf(request: SpawnUrdf.Request) -> str:
+ 
+     if request.joint_states_topic:
+         joint_states_graph_path = os.path.join(prim_path, 'joint_states_publisher')
++        _, _, _, joint_names = control._joints_from_urdf(request.urdf_path)
+         if not joint_states.joint_states(
+             joint_states_graph_path,
+             prim_path=articulation_path,
+             joint_states_topic=request.joint_states_topic,
++            joint_names=joint_names or None,
+         ):
+             carb.log_error("Failed to create joint_states graph")
+         else:
+diff --git a/arena_isaac/isaac_utils/graphs/control/__init__.py b/arena_isaac/isaac_utils/graphs/control/__init__.py
+index 9b4350d..02ee71e 100644
+--- a/arena_isaac/isaac_utils/graphs/control/__init__.py
++++ b/arena_isaac/isaac_utils/graphs/control/__init__.py
+@@ -43,8 +43,8 @@ def _set_drive(joint_prim: Usd.Prim, stiffness: float, damping: float, max_force
+                 drive.CreateMaxForceAttr(max_force)
+ 
+ 
+-def _joints_from_urdf(urdf_path: str) -> tuple[list[str], list[str], dict[str, float]]:
+-    """Return (velocity_joints, position_joints, effort_limits) declared in the
++def _joints_from_urdf(urdf_path: str) -> tuple[list[str], list[str], dict[str, float], list[str]]:
++    """Return command joints, effort limits, and state order declared in the
+     URDF. Command interfaces come from any <ros2_control> block; the bridge
+     graph reflects whatever the URDF says is a ros2_control command interface,
+     regardless of which controller class claims it; this lets any controller
+@@ -54,6 +54,7 @@ def _joints_from_urdf(urdf_path: str) -> tuple[list[str], list[str], dict[str, f
+     velocity: list[str] = []
+     position: list[str] = []
+     efforts: dict[str, float] = {}
++    state_order: list[str] = []
+     root = ET.parse(urdf_path).getroot()
+     for joint in root.iter('joint'):
+         joint_name = joint.get('name')
+@@ -65,13 +66,15 @@ def _joints_from_urdf(urdf_path: str) -> tuple[list[str], list[str], dict[str, f
+             joint_name = joint.get('name')
+             if not joint_name:
+                 continue
++            if list(joint.iter('state_interface')) and joint_name not in state_order:
++                state_order.append(joint_name)
+             for cmd in joint.iter('command_interface'):
+                 kind = cmd.get('name')
+                 if kind == 'velocity':
+                     velocity.append(joint_name)
+                 elif kind == 'position':
+                     position.append(joint_name)
+-    return velocity, position, efforts
++    return velocity, position, efforts, state_order
+ 
+ 
+ class Control:
+@@ -104,7 +107,7 @@ class Control:
+         return self._dispatch_bridge()
+ 
+     def _dispatch_bridge(self) -> bool:
+-        joints_velocity, joints_position, effort_limits = _joints_from_urdf(self.urdf_path)
++        joints_velocity, joints_position, effort_limits, joint_names = _joints_from_urdf(self.urdf_path)
+         if not joints_velocity and not joints_position:
+             carb.log_error(f"topic_bridge: no ros2_control joints found in URDF '{self.urdf_path}'")
+             return False
+@@ -144,6 +147,7 @@ class Control:
+             prim_path=self.target_prim_path,
+             joints_velocity=joints_velocity,
+             joints_position=joints_position,
++            joint_names=joint_names,
+             velocity_commands_topic=self.velocity_commands_topic,
+             position_commands_topic=self.position_commands_topic,
+             states_topic=self.states_topic,
+diff --git a/arena_isaac/isaac_utils/graphs/control/topic_bridge.py b/arena_isaac/isaac_utils/graphs/control/topic_bridge.py
+index 31e8bb2..832fac0 100644
+--- a/arena_isaac/isaac_utils/graphs/control/topic_bridge.py
++++ b/arena_isaac/isaac_utils/graphs/control/topic_bridge.py
+@@ -13,6 +13,7 @@ def topic_bridge(
+     prim_path: str,
+     joints_velocity: list[str],
+     joints_position: list[str],
++    joint_names: list[str],
+     velocity_commands_topic: str,
+     position_commands_topic: str,
+     states_topic: str,
+@@ -42,6 +43,11 @@ def topic_bridge(
+ 
+     get_target_prim.attribute('paths', [prim_path])
+     ros2_publish_joint_state.attribute('topicName', states_topic)
++    # Isaac Sim 6.0 returns the joint values in articulation order but leaves
++    # IsaacReadJointState.jointNames empty for imported URDF articulations.
++    # Supply the matching order from ros2_control's URDF block so the external
++    # TopicBasedSystem can map feedback onto its named state interfaces.
++    ros2_publish_joint_state.attribute('jointNames', joint_names)
+ 
+     on_playback_tick.connect('tick', get_target_prim, 'execIn')
+     on_playback_tick.connect('tick', read_joint_state, 'execIn')
+@@ -50,7 +56,6 @@ def topic_bridge(
+     isaac_read_simulation_time.connect('simulationTime', ros2_publish_joint_state, 'timeStamp')
+     get_target_prim.connect('prims', read_joint_state, 'prim')
+     for attr in (
+-        'jointNames',
+         'jointPositions',
+         'jointVelocities',
+         'jointEfforts',
+diff --git a/arena_isaac/isaac_utils/graphs/joint_states.py b/arena_isaac/isaac_utils/graphs/joint_states.py
+index 19b2a1b..a569d59 100644
+--- a/arena_isaac/isaac_utils/graphs/joint_states.py
++++ b/arena_isaac/isaac_utils/graphs/joint_states.py
+@@ -5,7 +5,7 @@ import omni.graph.core as og
+ from isaac_utils.graphs import Graph, register_rebuilder
+ 
+ 
+-def joint_states(graph_path: str, prim_path: str, joint_states_topic: str) -> bool:
++def joint_states(graph_path: str, prim_path: str, joint_states_topic: str, joint_names: list[str] | None = None) -> bool:
+     """
+     Creates an OmniGraph Action Graph to publish nav2 - type odometry information for a given prim
+     using ROS2.
+@@ -36,12 +36,13 @@ def joint_states(graph_path: str, prim_path: str, joint_states_topic: str) -> bo
+     read_sim_time.attribute('resetOnStop', False)
+     read_joint_state.attribute('prim', prim_path)
+     publish_joint_state.attribute('topicName', joint_states_topic)
++    if joint_names is not None:
++        publish_joint_state.attribute('jointNames', joint_names)
+ 
+     # Connect nodes
+     on_playback_tick.connect('tick', read_joint_state, 'execIn')
+     read_joint_state.connect('execOut', publish_joint_state, 'execIn')
+     for attr in (
+-        'jointNames',
+         'jointPositions',
+         'jointVelocities',
+         'jointEfforts',
+@@ -52,5 +53,5 @@ def joint_states(graph_path: str, prim_path: str, joint_states_topic: str) -> bo
+     read_sim_time.connect('simulationTime', publish_joint_state, 'timeStamp')
+ 
+     graph.load_extensions()
+-    register_rebuilder(graph_path, functools.partial(joint_states, graph_path, prim_path, joint_states_topic))
++    register_rebuilder(graph_path, functools.partial(joint_states, graph_path, prim_path, joint_states_topic, joint_names))
+     return graph.execute(og.Controller())

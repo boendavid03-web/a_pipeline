@@ -1,0 +1,380 @@
+amcl:
+  ros__parameters:
+    use_sim_time: True
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+    base_frame_id: ${frame:-}${base_frame:-base_link}
+    beam_skip_distance: 0.5
+    beam_skip_error_threshold: 0.9
+    beam_skip_threshold: 0.3
+    do_beamskip: false
+    global_frame_id: "map"
+    lambda_short: 0.1
+    laser_likelihood_max_dist: 2.0
+    laser_max_range: 100.0
+    laser_min_range: -1.0
+    laser_model_type: "likelihood_field"
+    max_beams: 60
+    max_particles: 2000
+    min_particles: 500
+    odom_frame_id: ${frame:-}${odom_frame:-odom}
+    pf_err: 0.05
+    pf_z: 0.99
+    recovery_alpha_fast: 0.0
+    recovery_alpha_slow: 0.0
+    resample_interval: 1
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    save_pose_rate: 0.5
+    sigma_hit: 0.2
+    tf_broadcast: true
+    transform_tolerance: 1.0
+    update_min_a: 0.2
+    update_min_d: 0.25
+    z_hit: 0.5
+    z_max: 0.05
+    z_rand: 0.5
+    z_short: 0.05
+    scan_topic: scan
+bt_navigator:
+  ros__parameters:
+    use_sim_time: True
+    global_frame: map
+    robot_base_frame: ${frame:-}${base_frame:-base_link}
+    odom_topic: ${odom_frame:-odom}
+    bt_loop_duration: 100
+    action_server_timeout: 20
+    wait_for_service_timeout: 1000
+    default_server_timeout: 60000
+
+    default_nav_to_pose_bt_xml: ${default_nav_to_pose_bt_xml}
+    default_nav_through_poses_bt_xml: ${default_nav_through_poses_bt_xml}
+
+bt_navigator_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True
+
+controller_server:
+  ros__parameters:
+    use_sim_time: True
+    controller_frequency: 10.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugin: "goal_checker"
+    always_reset_odom: true
+    require_costmap_update_before_planning: true
+    
+    # Progress checker parameters
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.2
+      movement_time_allowance: 20.0
+    
+    # Goal checker parameters
+    goal_checker:
+      plugin: ${goal_checker_plugin_class}
+      xy_goal_tolerance: 0.25
+      yaw_goal_tolerance: 0.25
+      stateful: True
+
+    controller_plugins: ${controller_plugins}
+    '${**controller_plugins_dict}': ''
+
+controller_server_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True
+
+docking_server:
+  ros__parameters:
+    controller_frequency: 50.0
+    initial_perception_timeout: 5.0
+    wait_charge_timeout: 5.0
+    dock_approach_timeout: 30.0
+    undock_linear_tolerance: 0.05
+    undock_angular_tolerance: 0.1
+    max_retries: 3
+    base_frame: ${frame:-}${base_frame:-base_link}
+    fixed_frame: ${frame:-}${odom_frame:-odom}
+    dock_backwards: false
+    dock_prestaging_tolerance: 0.5
+
+    # Types of docks
+    dock_plugins: ['simple_charging_dock']
+    simple_charging_dock:
+      plugin: 'opennav_docking::SimpleChargingDock'
+      docking_threshold: 0.05
+      staging_x_offset: -0.7
+      use_external_detection_pose: true
+      use_battery_status: false # true
+      use_stall_detection: false # true
+
+      external_detection_timeout: 1.0
+      external_detection_translation_x: -0.18
+      external_detection_translation_y: 0.0
+      external_detection_rotation_roll: -1.57
+      external_detection_rotation_pitch: -1.57
+      external_detection_rotation_yaw: 0.0
+      filter_coef: 0.1
+
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 10.0
+      publish_frequency: 10.0
+      global_frame: ${frame:-}${odom_frame:-odom}
+      robot_base_frame: ${frame:-}${base_frame:-base_link}
+      use_sim_time: True
+      transform_tolerance: 0.3
+      initial_transform_timeout: 1.0e9
+      rolling_window: true
+      width: 15
+      height: 15
+      resolution: 0.1
+      footprint: ${footprint}
+      footprint_padding: ${footprint_padding:-0.01}
+      plugins: ["voxel_layer", "inflation_layer"]
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.35
+      voxel_layer:
+        plugin: "nav2_costmap_2d::VoxelLayer"
+        enabled: True
+        publish_voxel_map: True
+        origin_z: 0.0
+        z_resolution: 0.05
+        z_voxels: 16
+        max_obstacle_height: 2.0
+        mark_threshold: 0
+        observation_sources: ${observation_sources_string}
+        "${**observation_sources_dict}": ''
+      static_layer:
+        map_subscribe_transient_local: True
+        map_topic: ${task_generator_node}/map
+      always_send_full_costmap: True
+  local_costmap_client:
+    ros__parameters:
+      use_sim_time: True
+  local_costmap_rclcpp_node:
+    ros__parameters:
+      use_sim_time: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: map
+      robot_base_frame: ${frame:-}${base_frame:-base_link}
+      use_sim_time: True
+      transform_tolerance: 0.3
+      initial_transform_timeout: 1.0e9
+      footprint: ${footprint}
+      footprint_padding: ${footprint_padding:-0.01}
+      resolution: 0.05
+      track_unknown_space: true
+      rolling_window: false
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer", "mask_overlay_layer"]
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+        map_topic: ${task_generator_node}/map
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        combination_method: 1
+        observation_sources: ${observation_sources_string}
+        "${**observation_sources_dict_global}": ''
+      mask_overlay_layer:
+        plugin: "nav2_mask_overlay_layer::MaskOverlayLayer"
+        enabled: True
+        combination_method: 0
+        mask_topic: ${env_namespace}/door_mask
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.35
+      always_send_full_costmap: True
+  global_costmap_client:
+    ros__parameters:
+      use_sim_time: True
+  global_costmap_rclcpp_node:
+    ros__parameters:
+      use_sim_time: True
+
+lifecycle_manager_navigation:
+  ros__parameters:
+    use_sim_time: True
+    autostart: True
+    bond_timeout: 0.0
+
+map_server:
+  ros__parameters:
+    use_sim_time: True
+    yaml_filename: ''
+    topic_name: "/map"
+    frame_id: "map"
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 20.0
+    expected_update_rate: 1.0
+    use_sim_time: True
+    planner_plugins: ${planner_plugins}
+    '${**planner_plugins_dict}': ''
+
+
+planner_server_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True
+
+behavior_server:
+  ros__parameters:
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    global_frame: ${frame:-}${odom_frame:-odom}
+    local_frame: ${frame:-}${odom_frame:-odom}
+    robot_base_frame: ${frame:-}${base_frame:-base_link}
+    transform_timeout: 0.5
+    use_sim_time: true
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+
+collision_monitor:
+  ros__parameters:
+    enabled: true
+
+    observation_sources: ${collision_sources}
+    ${**collision_sources_dict}: ''
+    polygons: ${polygons}
+    ${**polygons_dict}: ''
+
+
+    # 1) TF frames
+    base_frame_id: ${frame:-}${base_frame:-base_link}
+    odom_frame_id: ${frame:-}${odom_frame:-odom}
+
+    # 2) Velocity topics
+    # Full chain: controller_server → "cmd_vel_nav" → velocity_smoother → "cmd_vel_smoothed" → collision_monitor → "cmd_vel"
+    cmd_vel_in_topic:  "cmd_vel_smoothed"
+    cmd_vel_out_topic: "${cmd_vel_out_topic:-cmd_vel}"
+
+    # 3) Timers & lifecycles
+    use_sim_time:         true
+    source_timeout:       0.0
+    stop_pub_timeout:     0.0
+    transform_tolerance:  0.2
+    base_shift_correction: true
+
+
+    # # 4) QoS overrides 
+    # allow_parameter_qos_overrides: true
+    # qos_overrides:
+    #   /tf_static:
+    #     subscription:
+    #       durability: transient_local
+    #       reliability: reliable
+    #       history: keep_last
+    #       depth: 1
+    #   /tf:
+    #     subscription:
+    #       durability: volatile
+    #       reliability: best_effort
+    #       history: keep_last
+    #       depth: 100
+      
+
+
+
+
+
+
+# ### ekf config file ###
+# ekf_node:
+#     ros__parameters:
+# # The frequency, in Hz, at which the filter will output a position estimate. Note that the filter will not begin
+# # computation until it receives at least one message from one of the inputs. It will then run continuously at the
+# # frequency specified here, regardless of whether it receives more measurements. Defaults to 30 if unspecified.
+#         frequency: 30.0
+
+# # ekf_localization_node and ukf_localization_node both use a 3D omnidirectional motion model. If this parameter is
+# # set to true, no 3D information will be used in your state estimate. Use this if you are operating in a planar
+# # environment and want to ignore the effect of small variations in the ground plane that might otherwise be detected
+# # by, for example, an IMU. Defaults to false if unspecified.
+#         two_d_mode: false
+
+# # Whether to publish the acceleration state. Defaults to false if unspecified.
+#         publish_acceleration: true
+
+# # Whether to broadcast the transformation over the /tf topic. Defaults to true if unspecified.
+#         publish_tf: true
+
+# # 1. Set the map_frame, odom_frame, and base_link frames to the appropriate frame names for your system.
+# #     1a. If your system does not have a map_frame, just remove it, and make sure "world_frame" is set to the value of odom_frame.
+# # 2. If you are fusing continuous position data such as wheel encoder odometry, visual odometry, or IMU data, set "world_frame"
+# #    to your odom_frame value. This is the default behavior for robot_localization's state estimation nodes.
+# # 3. If you are fusing global absolute position data that is subject to discrete jumps (e.g., GPS or position updates from landmark
+# #    observations) then:
+# #     3a. Set your "world_frame" to your map_frame value
+# #     3b. MAKE SURE something else is generating the odom->base_link transform. Note that this can even be another state estimation node
+# #         from robot_localization! However, that instance should *not* fuse the global data.
+#         map_frame: map              # Defaults to "map" if unspecified
+#         odom_frame: ${frame:-}${odom_frame:-odom}          # Defaults to "odom" if unspecified
+#         base_link_frame: ${frame:-}${base_frame:-base_link}  # Defaults to "base_link" if unspecified
+#         world_frame: ${frame:-}${odom_frame:-odom}          # Defaults to the value of odom_frame if unspecified
+
+#         odom0: ${frame:-}${odom_frame:-odom}
+#         odom0_config: [false, false, false,
+#                       false, false, false,
+#                       true, true, false,
+#                       false, false, true,
+#                       false, false, false]
+
+#         imu0: ${frame:-}/imu/data
+#         imu0_config: [false, false, false,
+#                       false, false, false,
+#                       false, false, false,
+#                       false, false, true,
+#                       false, false, false]
+velocity_smoother:
+  ros__parameters:
+    # planner envelope from caps/mobile.yaml, nav2's default would cap linear at 0.5 m/s
+    use_sim_time: true
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity:
+      - ${max_linear_vel:-0.5}
+      - 0.0
+      - ${max_angular_vel:-1.5}
+    min_velocity:
+      - ${min_linear_vel:--0.5}
+      - 0.0
+      - ${min_angular_vel:--1.5}
+    max_accel:
+      - ${linear_acc:-2.5}
+      - 0.0
+      - ${angular_acc:-3.2}
+    max_decel:
+      - ${linear_decel:--2.5}
+      - 0.0
+      - ${angular_decel:--3.2}
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0

@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: arena_planners
+Version: 0.0.0
+Summary: DRL planner bridge SDK (subprocess-side: protocol, transport, sdk).
+Requires-Dist: pyzmq>=25
+Requires-Dist: msgpack>=1.0
+Requires-Dist: msgpack-numpy>=0.4.8
+Requires-Dist: numpy
+Requires-Dist: pyyaml
+Provides-Extra: test
+Requires-Dist: pytest>=7; extra == "test"

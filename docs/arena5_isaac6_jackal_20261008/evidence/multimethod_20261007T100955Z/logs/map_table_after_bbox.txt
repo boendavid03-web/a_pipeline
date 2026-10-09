@@ -1,0 +1,9 @@
+/arena/env_0/task_generator_node/jackal/global_costmap/costmap size 651 472 origin 4.7 4.7
+(12, 10) 100
+(11, 10) 99
+(13, 10) 99
+/arena/env_0/task_generator_node/map size 651 472 origin 4.7 4.7
+(12, 10) 100
+(11, 10) 0
+(13, 10) 0
+received 2

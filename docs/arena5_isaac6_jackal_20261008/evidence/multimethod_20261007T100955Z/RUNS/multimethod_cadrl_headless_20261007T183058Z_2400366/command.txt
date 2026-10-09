@@ -1,0 +1,1 @@
+[LOCAL_PATH] --method cadrl --world map_empty --scenario quicktest --headless

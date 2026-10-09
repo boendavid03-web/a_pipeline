@@ -1,0 +1,13 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "goal_local_xy": [
+    10.0,
+    5.0
+  ],
+  "seed": 42,
+  "status": "FAIL",
+  "error": "TimeoutError('Autonomous navigation did not reach a terminal result within the bounded task window')"
+}

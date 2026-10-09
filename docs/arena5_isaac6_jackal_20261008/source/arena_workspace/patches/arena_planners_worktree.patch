@@ -1,0 +1,65 @@
+diff --git a/arena_planners/arena_planners/bridge/edge_node.py b/arena_planners/arena_planners/bridge/edge_node.py
+index b65bc51..43f5f9b 100644
+--- a/arena_planners/arena_planners/bridge/edge_node.py
++++ b/arena_planners/arena_planners/bridge/edge_node.py
+@@ -530,9 +530,15 @@ class PlannerEdgeNode(ArenaMixinNode):
+             self._mark_dead(str(exc))
+             raise _PlannerDiedError(str(exc)) from exc
+ 
++    def stop_driving(self) -> None:
++        """Gate late policy actions and stop before waiting on the planner."""
++        self._driving = False
++        if self._cmd_vel_pub is not None:
++            self._cmd_vel_pub.publish(geometry_msgs.msg.Twist())
++
+     async def request_cancel(self) -> None:
+         """Send Cancel and await CancelAck."""
+-        self._driving = False
++        self.stop_driving()
+         self._send_control(Cancel())
+         frame = await self._drain_until(CancelAck)
+         if not isinstance(frame, CancelAck):
+diff --git a/arena_planners/pyproject.toml b/arena_planners/pyproject.toml
+index 919b547..8c779c2 100644
+--- a/arena_planners/pyproject.toml
++++ b/arena_planners/pyproject.toml
+@@ -14,6 +14,9 @@ dependencies = [
+     "pyyaml",
+ ]
+ 
++[project.scripts]
++cohan_peds_bridge = "arena_planners.cohan_peds_bridge:main"
++
+ [project.optional-dependencies]
+ test = ["pytest>=7"]
+ 
+diff --git a/planners/cd-sarl b/planners/cd-sarl
+--- a/planners/cd-sarl
++++ b/planners/cd-sarl
+@@ -1 +1 @@
+-Subproject commit 851d9f54a4c930b130cf7b71bbabed61c67244e1
++Subproject commit 851d9f54a4c930b130cf7b71bbabed61c67244e1-dirty
+diff --git a/planners/her-drl b/planners/her-drl
+--- a/planners/her-drl
++++ b/planners/her-drl
+@@ -1 +1 @@
+-Subproject commit e22c7fd2c10dbb479f026e536bb8a364f1c4d5a3
++Subproject commit e22c7fd2c10dbb479f026e536bb8a364f1c4d5a3-dirty
+diff --git a/planners/navrep b/planners/navrep
+--- a/planners/navrep
++++ b/planners/navrep
+@@ -1 +1 @@
+-Subproject commit 1e78eb34f411a0c2b74a3deaeed4eb0723c7aa66
++Subproject commit 1e78eb34f411a0c2b74a3deaeed4eb0723c7aa66-dirty
+diff --git a/planners/rlrvo b/planners/rlrvo
+--- a/planners/rlrvo
++++ b/planners/rlrvo
+@@ -1 +1 @@
+-Subproject commit 166d68b01507b3196db779bdf41fbf15cac57874
++Subproject commit 166d68b01507b3196db779bdf41fbf15cac57874-dirty
+diff --git a/planners/sicnav b/planners/sicnav
+--- a/planners/sicnav
++++ b/planners/sicnav
+@@ -1 +1 @@
+-Subproject commit 856b4f073438207b3879e2ce8645bc6aef6ede12
++Subproject commit 856b4f073438207b3879e2ce8645bc6aef6ede12-dirty

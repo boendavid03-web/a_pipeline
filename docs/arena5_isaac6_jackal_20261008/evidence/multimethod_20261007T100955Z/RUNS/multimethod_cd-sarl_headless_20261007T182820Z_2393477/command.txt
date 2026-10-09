@@ -1,0 +1,1 @@
+[LOCAL_PATH] --method cd-sarl --world map_empty --scenario quicktest --headless

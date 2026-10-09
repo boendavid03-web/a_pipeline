@@ -1,0 +1,49 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "terminal_status": 4,
+  "episode_state": 2,
+  "episode_info": "finished after 10.4s",
+  "sim_elapsed_s": 10.4,
+  "wall_elapsed_s": 10.964,
+  "tf_samples": 123,
+  "travel_m_excluding_reset_jumps": 4.817,
+  "start_map_xy": [
+    10.0,
+    10.0
+  ],
+  "end_map_xy": [
+    14.805,
+    9.996
+  ],
+  "reference_map_xy": [
+    5.0,
+    5.0
+  ],
+  "goal_map_xy": [
+    15.0,
+    10.0
+  ],
+  "final_goal_error_m": 0.195,
+  "post_goal_sim_s": 7.8,
+  "post_goal_cmd_samples": 27,
+  "post_goal_tf_samples": 49,
+  "post_goal_wheel_target_samples": 203,
+  "post_goal_odom_samples": 218,
+  "post_goal_max_cmd_component": 0.0,
+  "post_goal_max_wheel_target": 0.0,
+  "post_goal_max_odom_twist": 0.0008158500006626684,
+  "post_goal_tf_drift_m": 0.0057,
+  "last_cmd_before_terminal": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "cmd_count": 76,
+  "moving_cmd_count": 39,
+  "scan_count": 181,
+  "plan_count": 38,
+  "status": "AUTONOMOUS_NAV_TASK_PASS"
+}

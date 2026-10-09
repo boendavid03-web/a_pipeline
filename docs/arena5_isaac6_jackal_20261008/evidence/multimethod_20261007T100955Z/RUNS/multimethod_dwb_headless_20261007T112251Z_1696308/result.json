@@ -1,0 +1,66 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "goal_local_xy": [
+    10.0,
+    5.0
+  ],
+  "seed": 42,
+  "terminal_status": 4,
+  "episode_state": 2,
+  "episode_info": "finished after 87.5s",
+  "sim_elapsed_s": 109.05,
+  "wall_elapsed_s": 96.776,
+  "tf_samples": 681,
+  "travel_m_excluding_reset_jumps": 11.684,
+  "start_map_xy": [
+    10.0,
+    10.0
+  ],
+  "end_map_xy": [
+    14.761,
+    10.075
+  ],
+  "reference_map_xy": [
+    5.0,
+    5.0
+  ],
+  "goal_map_xy": [
+    15.0,
+    10.0
+  ],
+  "final_goal_error_m": 0.251,
+  "table_center_map_xy": [
+    12.0,
+    10.0
+  ],
+  "min_tf_distance_to_table_center_m": 1.171,
+  "trajectory_y_range_m": [
+    9.406,
+    12.882
+  ],
+  "collision_event_count_2d": 0,
+  "collision_event_ids_2d": [],
+  "post_goal_sim_s": 7.4,
+  "post_goal_cmd_samples": 0,
+  "post_goal_tf_samples": 48,
+  "post_goal_wheel_target_samples": 208,
+  "post_goal_odom_samples": 208,
+  "post_goal_max_cmd_component": null,
+  "post_goal_max_wheel_target": 0.0,
+  "post_goal_max_odom_twist": 0.0007791000009658797,
+  "post_goal_tf_drift_m": 0.005,
+  "last_cmd_before_terminal": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "cmd_count": 1436,
+  "moving_cmd_count": 1421,
+  "scan_count": 949,
+  "plan_count": 188,
+  "status": "FAIL",
+  "error": "AssertionError('Final robot pose exceeds the configured 0.25 m goal tolerance')"
+}

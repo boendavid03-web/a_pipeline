@@ -1,0 +1,420 @@
+--- a/isaac_sim/arena_ws/src/arena/arena-rosnav/task_generator/task_generator/manager/robot_manager/robot_manager.py
++++ b/isaac_sim/arena_ws/src/arena/arena-rosnav/task_generator/task_generator/manager/robot_manager/robot_manager.py
+@@ -1,4 +1,6 @@
+ import os
++import math
++import time
+ import typing
+ 
+ import action_msgs.msg
+@@ -10,9 +12,14 @@
+ import lifecycle_msgs.msg
+ import nav_msgs.msg as nav_msgs
+ import rclpy
++from rclpy.action import ActionClient
+ import rclpy.client
+ import rclpy.publisher
+ import rclpy.timer
++from rclpy.time import Time
++from nav2_msgs.action import NavigateToPose
++from lifecycle_msgs.srv import GetState
++from tf2_ros import Buffer, TransformException, TransformListener
+ from arena_rclpy_mixins.shared import Namespace
+ from nav2_msgs.srv import ClearCostmapAroundRobot
+ 
+@@ -99,6 +106,11 @@
+         self._robot.extra.setdefault('namespace', self.namespace)
+         self._pose = self._start_pos
+         self._goal_timer = None
++        self._isaac_goal_timer = None
++
++    @property
++    def _uses_isaac_action(self) -> bool:
++        return self.node.conf.Arena.SIM.value == Constants.SimSimulator.ISAAC
+ 
+     def _odom_base_transform(self):
+         self.node.do_launch(
+@@ -131,13 +143,14 @@
+         self._robot.pose.position.z += self._config.model_params.z_offset
+         self._robot = self._environment_manager.spawn_robot(self._robot)
+ 
+-        _gen_goal_topic = self.namespace("goal_pose")
+-
+-        self._goal_pub = self.node.create_publisher(
+-            geometry_msgs.PoseStamped,
+-            _gen_goal_topic,
+-            10,
+-        )
++        if self._uses_isaac_action:
++            self._set_up_isaac_goal_owner()
++        else:
++            self._goal_pub = self.node.create_publisher(
++                geometry_msgs.PoseStamped,
++                self.namespace("goal_pose"),
++                10,
++            )
+ 
+         self.node.create_subscription(
+             nav_msgs.Odometry,
+@@ -146,12 +159,13 @@
+             10
+         )
+ 
+-        self.node.create_subscription(
+-            action_msgs.msg.GoalStatusArray,
+-            self.namespace('navigate_to_pose', '_action', 'status'),
+-            self._goal_status_callback,
+-            1
+-        )
++        if not self._uses_isaac_action:
++            self.node.create_subscription(
++                action_msgs.msg.GoalStatusArray,
++                self.namespace('navigate_to_pose', '_action', 'status'),
++                self._goal_status_callback,
++                1
++            )
+ 
+         self._launch_robot()
+         self._odom_base_transform()
+@@ -160,6 +174,250 @@
+             'robot_radius',
+             0.25
+         )
++
++    def _set_up_isaac_goal_owner(self):
++        """Isaac owns one high-level action, never the goal_pose relay."""
++        self._isaac_generation = 0
++        self._isaac_goal_sent = False
++        self._isaac_pending_send = None
++        self._isaac_active_handle = None
++        self._isaac_active_uuid = None
++        self._isaac_retiring = {}
++        self._isaac_goal_pos = None
++        self._isaac_reset_wall = time.monotonic()
++        self._isaac_last_wait_log = 0.0
++        self._isaac_expected_start = None
++        self._isaac_reset_odom_stamp = None
++        self._isaac_reset_tf_stamp = None
++        self._isaac_last_odom_stamp = None
++        self._isaac_last_odom_arrival = None
++        self._isaac_costmap = None
++        self._isaac_costmap_arrival = None
++        self._isaac_tf_buffer = Buffer()
++        self._isaac_tf_listener = TransformListener(
++            self._isaac_tf_buffer, self.node, spin_thread=False)
++        self._isaac_action_client = ActionClient(
++            self.node, NavigateToPose, self.namespace('navigate_to_pose'))
++        self._isaac_lifecycle_names = ('bt_navigator', 'planner_server', 'controller_server')
++        self._isaac_lifecycle_clients = {
++            name: self.node.create_client(
++                GetState, self.namespace(name, 'get_state'),
++                callback_group=self.node.default_callback_group)
++            for name in self._isaac_lifecycle_names
++        }
++        self._isaac_lifecycle_futures = {}
++        self._isaac_lifecycle_active = {}
++        self.node.create_subscription(
++            nav_msgs.OccupancyGrid,
++            self.namespace('global_costmap', 'costmap'),
++            self._isaac_costmap_callback,
++            10,
++        )
++        self._isaac_goal_timer = self.node.create_timer(0.2, self._isaac_goal_tick)
++
++    @staticmethod
++    def _stamp_ns(stamp):
++        return int(stamp.sec) * 1_000_000_000 + int(stamp.nanosec)
++
++    def _isaac_robot_transform(self):
++        base_frame = str(self.frame(self._config.model_params.base_frame)).lstrip('/')
++        try:
++            return self._isaac_tf_buffer.lookup_transform('map', base_frame, Time())
++        except TransformException:
++            return None
++
++    def _isaac_costmap_callback(self, data: nav_msgs.OccupancyGrid):
++        self._isaac_costmap = data
++        self._isaac_costmap_arrival = time.monotonic()
++
++    def _isaac_query_lifecycle(self):
++        for name, client in self._isaac_lifecycle_clients.items():
++            if self._isaac_lifecycle_active.get(name) or name in self._isaac_lifecycle_futures:
++                continue
++            if not client.service_is_ready():
++                continue
++            future = client.call_async(GetState.Request())
++            self._isaac_lifecycle_futures[name] = future
++            generation = self._isaac_generation
++            future.add_done_callback(
++                lambda completed, name=name, generation=generation:
++                self._isaac_lifecycle_response(name, generation, completed))
++
++    def _isaac_lifecycle_response(self, name, generation, future):
++        if (generation != self._isaac_generation
++                or self._isaac_lifecycle_futures.get(name) is not future):
++            return
++        self._isaac_lifecycle_futures.pop(name, None)
++        try:
++            self._isaac_lifecycle_active[name] = (
++                future.result().current_state.id
++                == lifecycle_msgs.msg.State.PRIMARY_STATE_ACTIVE)
++        except Exception as exc:
++            self._isaac_lifecycle_active[name] = False
++            self._logger.warn(f'Nav2 {name} lifecycle query failed: {exc}')
++
++    def _isaac_pose_ready(self):
++        if self._isaac_last_odom_arrival is None or self._isaac_last_odom_arrival < self._isaac_reset_wall:
++            return False
++        if self._isaac_last_odom_stamp is None or self._isaac_last_odom_stamp <= 0:
++            return False
++        if (self._isaac_reset_odom_stamp is not None
++                and self._isaac_last_odom_stamp <= self._isaac_reset_odom_stamp):
++            return False
++        transform = self._isaac_robot_transform()
++        if transform is None:
++            return False
++        tf_stamp = self._stamp_ns(transform.header.stamp)
++        if tf_stamp <= 0:
++            return False
++        if self._isaac_reset_tf_stamp is not None and tf_stamp <= self._isaac_reset_tf_stamp:
++            return False
++        # TF is published at a lower rate than odom; reject a truly stale chain.
++        if self._isaac_last_odom_stamp - tf_stamp > 500_000_000:
++            return False
++        x = transform.transform.translation.x
++        y = transform.transform.translation.y
++        if not all(math.isfinite(v) for v in (
++                x, y, self._pose.position.x, self._pose.position.y)):
++            return False
++        if math.hypot(x - self._pose.position.x, y - self._pose.position.y) > 0.5:
++            return False
++        if self._isaac_expected_start is not None:
++            if math.hypot(x - self._isaac_expected_start.position.x,
++                          y - self._isaac_expected_start.position.y) > 0.5:
++                return False
++        return True
++
++    def _isaac_inside_global_costmap(self):
++        costmap = self._isaac_costmap
++        transform = self._isaac_robot_transform()
++        if (costmap is None or transform is None
++                or self._isaac_costmap_arrival is None
++                or self._isaac_costmap_arrival < self._isaac_reset_wall
++                or costmap.header.frame_id.lstrip('/') != 'map'):
++            return False
++        info = costmap.info
++        if not info.width or not info.height or not math.isfinite(info.resolution) or info.resolution <= 0:
++            return False
++        x = transform.transform.translation.x
++        y = transform.transform.translation.y
++        xmin, ymin = info.origin.position.x, info.origin.position.y
++        margin = self._robot_radius
++        return (xmin + margin <= x < xmin + info.width * info.resolution - margin
++                and ymin + margin <= y < ymin + info.height * info.resolution - margin)
++
++    def _isaac_goal_tick(self):
++        if self._isaac_goal_pos is None or self._isaac_goal_sent:
++            return
++        if self._isaac_pending_send is not None or self._isaac_active_handle is not None or self._isaac_retiring:
++            self._isaac_wait_log('prior action has not terminated')
++            return
++        self._isaac_query_lifecycle()
++        if not all(self._isaac_lifecycle_active.get(name, False)
++                   for name in self._isaac_lifecycle_names):
++            self._isaac_wait_log('Nav2 lifecycle inactive')
++            return
++        if not self._isaac_action_client.server_is_ready():
++            self._isaac_wait_log('NavigateToPose server unavailable')
++            return
++        if not self._isaac_pose_ready():
++            self._isaac_wait_log('waiting for fresh real robot odom and map TF')
++            return
++        if not self._isaac_inside_global_costmap():
++            self._isaac_wait_log('robot not inside current global costmap')
++            return
++        self._isaac_send_goal()
++
++    def _isaac_wait_log(self, reason):
++        now = time.monotonic()
++        if now - self._isaac_last_wait_log >= 10.0:
++            self._isaac_last_wait_log = now
++            self._logger.warn(
++                f'ISAAC_GOAL_WAIT generation={self._isaac_generation}: {reason}')
++
++    def _isaac_send_goal(self):
++        generation = self._isaac_generation
++        request = NavigateToPose.Goal()
++        request.pose.header.frame_id = 'map'
++        request.pose.header.stamp = self.node.get_clock().now().to_msg()
++        request.pose.pose = self._isaac_goal_pos.to_msg()
++        self._isaac_goal_sent = True
++        self._logger.warn(
++            f'ISAAC_GOAL_SEND generation={generation} '
++            f'odom_xy=({self._pose.position.x:.3f},{self._pose.position.y:.3f}) '
++            f'odom_stamp_ns={self._isaac_last_odom_stamp} '
++            f'goal_xy=({self._isaac_goal_pos.position.x:.3f},'
++            f'{self._isaac_goal_pos.position.y:.3f})')
++        try:
++            future = self._isaac_action_client.send_goal_async(request)
++        except Exception as exc:
++            self._logger.error(f'Isaac goal send failed generation={generation}: {exc}')
++            return  # sent stays true: no unclassified automatic retry
++        self._isaac_pending_send = future
++        future.add_done_callback(
++            lambda completed: self._isaac_goal_response(generation, completed))
++
++    @staticmethod
++    def _isaac_uuid(goal_handle):
++        return bytes(goal_handle.goal_id.uuid).hex()
++
++    def _isaac_goal_response(self, generation, future):
++        if self._isaac_pending_send is future:
++            self._isaac_pending_send = None
++        try:
++            handle = future.result()
++        except Exception as exc:
++            self._logger.error(f'Isaac goal response failed generation={generation}: {exc}')
++            return
++        if not handle.accepted:
++            self._logger.error(f'Isaac goal rejected generation={generation}')
++            return
++        uuid = self._isaac_uuid(handle)
++        result_future = handle.get_result_async()
++        result_future.add_done_callback(
++            lambda completed: self._isaac_goal_result(generation, uuid, completed))
++        if generation != self._isaac_generation:
++            self._isaac_retire_goal(uuid, handle)
++            return
++        self._isaac_active_handle = handle
++        self._isaac_active_uuid = uuid
++        self._goal_action_running = True
++        self._logger.warn(f'ISAAC_GOAL_ACCEPTED generation={generation} uuid={uuid}')
++
++    def _isaac_retire_goal(self, uuid, handle):
++        self._isaac_retiring[uuid] = handle
++        self._logger.info(f'Isaac goal cancel old uuid={uuid}')
++        try:
++            future = handle.cancel_goal_async()
++            future.add_done_callback(
++                lambda completed: self._isaac_cancel_response(uuid, completed))
++        except Exception as exc:
++            self._logger.error(f'Isaac goal cancel request failed uuid={uuid}: {exc}')
++
++    def _isaac_cancel_response(self, uuid, future):
++        try:
++            response = future.result()
++            if not response.goals_canceling:
++                self._logger.warn(f'Isaac goal cancel not accepted uuid={uuid}; awaiting terminal result')
++        except Exception as exc:
++            self._logger.error(f'Isaac goal cancel response failed uuid={uuid}: {exc}')
++
++    def _isaac_goal_result(self, generation, uuid, future):
++        self._isaac_retiring.pop(uuid, None)
++        if generation != self._isaac_generation or uuid != self._isaac_active_uuid:
++            self._logger.info(f'Ignoring stale Isaac goal result generation={generation} uuid={uuid}')
++            return
++        self._isaac_active_handle = None
++        self._isaac_active_uuid = None
++        self._goal_action_running = False
++        try:
++            status = future.result().status
++        except Exception as exc:
++            self._logger.error(f'Isaac goal result failed generation={generation} uuid={uuid}: {exc}')
++            return
++        self._is_goal_reached = status == action_msgs.msg.GoalStatus.STATUS_SUCCEEDED
++        self._logger.warn(
++            f'ISAAC_GOAL_TERMINAL generation={generation} uuid={uuid} status={status}')
+ 
+     @property
+     def safe_distance(self) -> float:
+@@ -231,10 +489,14 @@
+         start_pos: typing.Optional[Pose],
+         goal_pos: typing.Optional[Pose],
+     ):
++        if self._uses_isaac_action:
++            self._isaac_begin_episode()
+         self._is_goal_reached = False
+         self._goal_action_running = False
+         if start_pos is not None:
+             self._start_pos = self._environment_manager.realize(start_pos)
++            if self._uses_isaac_action:
++                self._isaac_expected_start = self._start_pos
+             self.move_robot_to_pos(start_pos)
+ 
+             if self._robot.record_data_dir:
+@@ -253,6 +515,27 @@
+                         self.goal_pos.orientation]
+                 )
+         return self._pose, self._goal_pos
++
++    def _isaac_begin_episode(self):
++        self._isaac_generation += 1
++        self._isaac_goal_sent = False
++        self._isaac_goal_pos = None
++        self._isaac_expected_start = None
++        self._isaac_reset_wall = time.monotonic()
++        self._isaac_reset_odom_stamp = self._isaac_last_odom_stamp
++        transform = self._isaac_robot_transform()
++        self._isaac_reset_tf_stamp = (
++            self._stamp_ns(transform.header.stamp) if transform is not None else None)
++        self._isaac_costmap = None
++        self._isaac_costmap_arrival = None
++        self._isaac_lifecycle_active.clear()
++        self._isaac_lifecycle_futures.clear()
++        if self._isaac_active_handle is not None:
++            handle = self._isaac_active_handle
++            uuid = self._isaac_active_uuid
++            self._isaac_active_handle = None
++            self._isaac_active_uuid = None
++            self._isaac_retire_goal(uuid, handle)
+ 
+     def _publish_goal_callback(self):
+         from geometry_msgs.msg import PoseStamped
+@@ -273,12 +556,6 @@
+                 self._goal_timer = None
+             return
+ 
+-        # Startup planning can fail before the costmaps are ready. Retry that
+-        # goal, but leave an accepted Isaac navigation action uninterrupted.
+-        if (self.node.conf.Arena.SIM.value == Constants.SimSimulator.ISAAC
+-                and self._goal_action_running):
+-            return
+-
+         goal_msg = PoseStamped()
+         goal_msg.header.frame_id = "map"
+         goal_msg.header.stamp = self.node.get_clock().now().to_msg()
+@@ -286,6 +563,13 @@
+         self._goal_pub.publish(goal_msg)
+ 
+     def _publish_goal(self, goal: Pose):
++        if self._uses_isaac_action:
++            self._isaac_goal_pos = goal
++            self._goal_pos = goal
++            self._logger.info(
++                f'Isaac goal queued for readiness generation={self._isaac_generation}; '
++                f'x={goal.position.x}, y={goal.position.y}')
++            return
+         # only way to circumvent amcl absolutely trolling us is to create this loop
+         from geometry_msgs.msg import PoseStamped
+         self._logger.info(
+@@ -371,6 +655,9 @@
+             ),
+             Orientation.from_msg(quat)
+         )
++        if self._uses_isaac_action:
++            self._isaac_last_odom_stamp = self._stamp_ns(data.header.stamp)
++            self._isaac_last_odom_arrival = time.monotonic()
+ 
+     def _goal_status_callback(self, data: action_msgs.msg.GoalStatusArray):
+         last_goal = next(reversed(data.status_list), None)
+@@ -393,5 +680,10 @@
+         if self._goal_timer is not None:
+             self._goal_timer.cancel()
+             self._goal_timer.destroy()
++        if self._isaac_goal_timer is not None:
++            self._isaac_goal_timer.cancel()
++            self._isaac_goal_timer.destroy()
++            if self._isaac_active_handle is not None:
++                self._isaac_retire_goal(self._isaac_active_uuid, self._isaac_active_handle)
+         self._entity_manager.remove_robot(self.name)
+         # TODO kill node in navigation stack

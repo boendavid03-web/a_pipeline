@@ -1,0 +1,9 @@
+diff --git a/arena_simulation_setup/worlds/map_empty/0/world.yaml b/arena_simulation_setup/worlds/map_empty/0/world.yaml
+index 8823db3b..2fa64b20 100644
+--- a/arena_simulation_setup/worlds/map_empty/0/world.yaml
++++ b/arena_simulation_setup/worlds/map_empty/0/world.yaml
+@@ -71,3 +71,4 @@ zones:
+       - name: table_0
+         model: table # showcase local
+         pose: [7,5,0]
++        bbox: [[-0.88, 0.88], [-1.23, 1.23], [0.0, 0.75]]

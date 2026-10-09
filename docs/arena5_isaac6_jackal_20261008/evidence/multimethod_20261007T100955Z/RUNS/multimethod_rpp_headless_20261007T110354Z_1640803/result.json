@@ -1,0 +1,62 @@
+{
+  "world": "map_empty",
+  "scenario": "table_leg_static",
+  "robot": "jackal",
+  "human_count": 0,
+  "goal_local_xy": [
+    10.0,
+    5.7
+  ],
+  "seed": 42,
+  "terminal_status": 6,
+  "episode_state": 5,
+  "episode_info": "FileNotFoundError(\"ScenarioIdentifier(name='[LOCAL_PATH]') not found among\\n\\tSimplePathResolver<ScenarioIdentifier>(path=/opt/arena_ws/install/arena_simulation_setup/share/arena_simulation_setup/worlds/map_empty/scenarios)\\n\\tFallbackResolver(PosixPath('/opt/arena_ws/install/arena_simulation_setup/share/arena_simulation_setup/worlds/map_empty/scenarios'))\")",
+  "sim_elapsed_s": 0.017,
+  "wall_elapsed_s": 0.023,
+  "tf_samples": 53,
+  "travel_m_excluding_reset_jumps": 0.005,
+  "start_map_xy": [
+    -0.011,
+    0.0
+  ],
+  "end_map_xy": [
+    -0.015,
+    0.001
+  ],
+  "reference_map_xy": [
+    5.0,
+    5.0
+  ],
+  "goal_map_xy": [
+    15.0,
+    10.7
+  ],
+  "final_goal_error_m": 18.437,
+  "table_center_map_xy": [
+    12.0,
+    10.0
+  ],
+  "min_tf_distance_to_table_center_m": 15.629,
+  "trajectory_y_range_m": [
+    0.0,
+    0.001
+  ],
+  "collision_event_count_2d": 0,
+  "collision_event_ids_2d": [],
+  "post_goal_sim_s": 7.6,
+  "post_goal_cmd_samples": 0,
+  "post_goal_tf_samples": 49,
+  "post_goal_wheel_target_samples": 214,
+  "post_goal_odom_samples": 214,
+  "post_goal_max_cmd_component": null,
+  "post_goal_max_wheel_target": 0.0,
+  "post_goal_max_odom_twist": 0.0016959982973189854,
+  "post_goal_tf_drift_m": 0.0041,
+  "last_cmd_before_terminal": null,
+  "cmd_count": 0,
+  "moving_cmd_count": 0,
+  "scan_count": 0,
+  "plan_count": 0,
+  "status": "FAIL",
+  "error": "AssertionError('Robot task did not succeed')"
+}

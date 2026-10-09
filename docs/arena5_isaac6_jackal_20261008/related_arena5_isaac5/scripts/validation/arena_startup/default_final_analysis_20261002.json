@@ -1,0 +1,62 @@
+{
+  "bag": "[LOCAL_PATH]",
+  "scenario": "[LOCAL_PATH]",
+  "goal_pose_topic_messages": 0,
+  "high_level_uuid_count": 1,
+  "statuses": {
+    "044365d02be64f42929982cc42a756c9": [
+      [
+        1790931646.4837546,
+        2
+      ],
+      [
+        1790931906.1844096,
+        6
+      ]
+    ]
+  },
+  "first_high_level_status_wall": 1790931646.4837546,
+  "first_high_level_status_sim": 9.433333825,
+  "first_real_odom_wall": 1790931639.804387,
+  "first_real_tf_wall": 1790931639.8041742,
+  "last_odom_before_first_status": [
+    1790931646.4462183,
+    9.433333825,
+    25.300010681152344,
+    1.250006198883057
+  ],
+  "last_tf_before_first_status": [
+    1790931646.4461577,
+    9.433333825,
+    25.300010681152344,
+    1.250006198883057
+  ],
+  "last_global_costmap_before_first_status": [
+    1790931641.4142063,
+    0.0,
+    0.0,
+    31.300000466406345,
+    24.050000358372927
+  ],
+  "robot_inside_global_costmap_at_first_status": true,
+  "nav2_activation_before_first_status": [
+    [
+      1790931634.7054536,
+      "controller_server",
+      "activating",
+      "active"
+    ],
+    [
+      1790931635.6655953,
+      "planner_server",
+      "activating",
+      "active"
+    ],
+    [
+      1790931635.8767784,
+      "bt_navigator",
+      "activating",
+      "active"
+    ]
+  ]
+}

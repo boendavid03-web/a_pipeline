@@ -1,0 +1,5 @@
+size 150 150 origin -7.400000000745059 -7.400000000745059
+(12, 10) outside
+(11, 10) outside
+(13, 10) outside
+received 1

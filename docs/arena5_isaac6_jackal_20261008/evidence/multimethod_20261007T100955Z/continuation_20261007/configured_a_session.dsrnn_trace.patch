@@ -1,0 +1,20 @@
+--- [LOCAL_PATH]	2026-10-07 11:19:25.070259862 -0700
++++ [LOCAL_PATH]	2026-10-07 11:19:25.080259382 -0700
+@@ -43,6 +43,17 @@
+   marker='        self._clamp_to_limits(msg)\n        self._cmd_vel_pub.publish(msg)';assert text.count(marker)==1
+   observation='        self._clamp_to_limits(msg)\n        if __import__("os").environ.get("ROS_DOMAIN_ID") == "189":\n            import json as _a3_json, time as _a3_time\n            with open('+repr(trace_container+'/edge_publish.jsonl')+', "a") as _a3_log:\n                _a3_log.write(_a3_json.dumps({"pid": __import__("os").getpid(), "file": __file__, "wall": _a3_time.monotonic(), "seq": action.seq, "action_type": action.action_type, "action": action.action, "robot_pose": features.get("robot_pose"), "robot_state": features.get("robot_state"), "step_dt_s": 1.0 / float(self._rate.value), "cmd": {part: {axis: getattr(getattr(msg, part), axis) for axis in ("x", "y", "z")} for part in ("linear", "angular")}}, default=lambda value: value.tolist() if hasattr(value, "tolist") else str(value)) + "\\n")\n        self._cmd_vel_pub.publish(msg)'
+   modified[edge]=text.replace(marker,observation).encode()
++  if method=='dsrnn' and __import__('os').environ.get('A_RUNTIME_DSRNN_PATH_OBSERVER')=='1':
++   helper=trace_host/'dsrnn_path_observer.py';helper.write_bytes((HERE/'dsrnn_path_observer.py').read_bytes())
++   text=modified[edge].decode()
++   setup_marker='        assert self._data_push is not None'
++   assert text.count(setup_marker)==1
++   setup_addition='\n        import importlib.util as _a_path_importlib\n        _a_path_spec = _a_path_importlib.spec_from_file_location("a_dsrnn_path_observer", '+repr(trace_container+'/dsrnn_path_observer.py')+')\n        _a_path_module = _a_path_importlib.module_from_spec(_a_path_spec)\n        _a_path_spec.loader.exec_module(_a_path_module)\n        _a_path_recorder = _a_path_module.Recorder('+repr(trace_container+'/path_subgoal_costmap.jsonl')+')\n'
++   text=text.replace(setup_marker,setup_marker+setup_addition)
++   tick_marker='                        features = self._filter_wire_features(self._obs_manager.collect())'
++   assert text.count(tick_marker)==1
++   tick_addition='                        _a_raw_features = self._obs_manager.collect()\n                        _a_path_recorder.record(self._seq + 1, t.sec + t.nanosec * 1e-9, _a_raw_features)\n                        features = self._filter_wire_features(_a_raw_features)'
++   modified[edge]=text.replace(tick_marker,tick_addition).encode()
+  if count=='1':
+   helper=trace_host/'consumer_observer.py';helper.write_bytes((BASE/'reports/continuation/tools/consumer_observer.py').read_bytes())
+   if __import__('os').environ.get('A_RUNTIME_NEIGHBOR_OBSERVER')=='1':

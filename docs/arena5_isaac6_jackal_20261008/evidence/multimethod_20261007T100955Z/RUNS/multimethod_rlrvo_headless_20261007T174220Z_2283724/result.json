@@ -1,0 +1,70 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "goal_local_xy": [
+    10.0,
+    5.0
+  ],
+  "seed": 42,
+  "sim_limit_s": 120.0,
+  "wall_limit_s": 210.0,
+  "terminal_status": 4,
+  "episode_state": 2,
+  "episode_info": "finished after 36.6s",
+  "sim_elapsed_s": 36.583,
+  "wall_elapsed_s": 39.18,
+  "tf_samples": 306,
+  "travel_m_excluding_reset_jumps": 7.388,
+  "start_map_xy": [
+    10.0,
+    10.0
+  ],
+  "end_map_xy": [
+    14.953,
+    10.172
+  ],
+  "reference_map_xy": [
+    5.0,
+    5.0
+  ],
+  "goal_map_xy": [
+    15.0,
+    10.0
+  ],
+  "final_goal_error_m": 0.178,
+  "table_center_map_xy": [
+    12.0,
+    10.0
+  ],
+  "min_tf_distance_to_table_center_m": 1.098,
+  "trajectory_y_range_m": [
+    10.0,
+    11.662
+  ],
+  "collision_event_count_2d": 40,
+  "collision_event_ids_2d": [
+    "world_table_0"
+  ],
+  "post_goal_sim_s": 7.483,
+  "post_goal_cmd_samples": 70,
+  "post_goal_tf_samples": 49,
+  "post_goal_wheel_target_samples": 211,
+  "post_goal_odom_samples": 211,
+  "post_goal_max_cmd_component": 0.0,
+  "post_goal_max_wheel_target": 0.0,
+  "post_goal_max_odom_twist": 0.0007423500010289481,
+  "post_goal_tf_drift_m": 0.0049,
+  "last_cmd_before_terminal": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "cmd_count": 446,
+  "moving_cmd_count": 364,
+  "scan_count": 440,
+  "plan_count": 91,
+  "status": "FAIL",
+  "error": "AssertionError('Arena 2D footprint collision events occurred')"
+}

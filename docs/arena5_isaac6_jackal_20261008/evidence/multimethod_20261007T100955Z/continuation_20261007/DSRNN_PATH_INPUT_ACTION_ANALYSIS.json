@@ -1,0 +1,601 @@
+{
+  "case": "multimethod_dsrnn_headless_20261007T181954Z_2376297",
+  "result": {
+    "world": "map_empty",
+    "scenario": "quicktest",
+    "robot": "jackal",
+    "human_count": 0,
+    "goal_local_xy": [
+      10.0,
+      5.0
+    ],
+    "seed": 42,
+    "sim_limit_s": 120.0,
+    "wall_limit_s": 210.0,
+    "terminal_status": 4,
+    "episode_state": 2,
+    "episode_info": "finished after 11.2s",
+    "sim_elapsed_s": 11.217,
+    "wall_elapsed_s": 11.921,
+    "tf_samples": 129,
+    "travel_m_excluding_reset_jumps": 4.848,
+    "start_map_xy": [
+      10.0,
+      10.0
+    ],
+    "end_map_xy": [
+      14.836,
+      10.022
+    ],
+    "reference_map_xy": [
+      5.0,
+      5.0
+    ],
+    "goal_map_xy": [
+      15.0,
+      10.0
+    ],
+    "final_goal_error_m": 0.165,
+    "table_center_map_xy": [
+      12.0,
+      10.0
+    ],
+    "min_tf_distance_to_table_center_m": 0.021,
+    "trajectory_y_range_m": [
+      9.999,
+      10.024
+    ],
+    "collision_event_count_2d": 46,
+    "collision_event_ids_2d": [
+      "world_table_0"
+    ],
+    "post_goal_sim_s": 7.783,
+    "post_goal_cmd_samples": 27,
+    "post_goal_tf_samples": 49,
+    "post_goal_wheel_target_samples": 206,
+    "post_goal_odom_samples": 218,
+    "post_goal_max_cmd_component": 0.0,
+    "post_goal_max_wheel_target": 0.0,
+    "post_goal_max_odom_twist": 0.0008232000007382296,
+    "post_goal_tf_drift_m": 0.0058,
+    "last_cmd_before_terminal": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "cmd_count": 71,
+    "moving_cmd_count": 40,
+    "scan_count": 189,
+    "plan_count": 30,
+    "status": "FAIL",
+    "error": "AssertionError('Arena 2D footprint collision events occurred')"
+  },
+  "trace_dir": "[LOCAL_PATH]",
+  "path_rows": 116,
+  "path_rows_with_plan": 72,
+  "neural_inputs": 72,
+  "neural_inputs_all_finite": true,
+  "masks_first_last": [
+    [
+      [
+        0.0
+      ]
+    ],
+    [
+      [
+        1.0
+      ]
+    ]
+  ],
+  "model_loads": [
+    {
+      "path": "/opt/arena_ws/src/Arena/arena_planners/planners/dsrnn/model/55554.pt",
+      "sha256": "e8b5ee59e289ebe87d98314ff701fe3893882b7e133a64ba5b68d1631a49120f"
+    }
+  ],
+  "policy_step_rows": 72,
+  "edge_action_rows": 42,
+  "collision_first_wall": 104469.292705141,
+  "collision_first_seq": 56,
+  "collision_first_pose_nearest": [
+    10.999903678894043,
+    10.004817962646484,
+    0.010148485191166401
+  ],
+  "key_rows": [
+    {
+      "seq": 46,
+      "sim": 20.616666667,
+      "robot_pose": [
+        10.005638122558594,
+        10.000086784362793,
+        -0.0037822097074240446
+      ],
+      "subgoal": [
+        11.022927284240723,
+        11.600893020629883,
+        1.0046924352645874
+      ],
+      "plan_points": 260,
+      "plan_y_minmax": [
+        10.0,
+        11.669707298278809
+      ],
+      "robot_cost": null,
+      "subgoal_cost": null,
+      "chord_blocked_count": null,
+      "action": [
+        0.2,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.2,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.4
+        }
+      }
+    },
+    {
+      "seq": 47,
+      "sim": 20.883333333,
+      "robot_pose": [
+        10.034934997558594,
+        9.999966621398926,
+        -0.00889691524207592
+      ],
+      "subgoal": [
+        10.858564376831055,
+        11.512453079223633,
+        1.0721445083618164
+      ],
+      "plan_points": 260,
+      "plan_y_minmax": [
+        10.0,
+        11.669707298278809
+      ],
+      "robot_cost": 0,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 0,
+      "action": [
+        0.30000000000000004,
+        0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.30000000000000004,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.4
+        }
+      }
+    },
+    {
+      "seq": 50,
+      "sim": 21.683333333,
+      "robot_pose": [
+        10.269137382507324,
+        9.999246597290039,
+        0.0
+      ],
+      "subgoal": [
+        10.893401145935059,
+        11.566558837890625,
+        1.1917544603347778
+      ],
+      "plan_points": 259,
+      "plan_y_minmax": [
+        10.0,
+        11.668025970458984
+      ],
+      "robot_cost": 0,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 0,
+      "action": [
+        0.6,
+        0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.33333333333333337
+        }
+      }
+    },
+    {
+      "seq": 52,
+      "sim": 22.216666667,
+      "robot_pose": [
+        10.50839900970459,
+        10.000425338745117,
+        0.006098633166402578
+      ],
+      "subgoal": [
+        10.976056098937988,
+        11.60407543182373,
+        1.287044882774353
+      ],
+      "plan_points": 248,
+      "plan_y_minmax": [
+        10.0,
+        11.646064758300781
+      ],
+      "robot_cost": 0,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 0,
+      "action": [
+        0.7999999999999999,
+        0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.49999999999999994,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.25
+        }
+      }
+    },
+    {
+      "seq": 54,
+      "sim": 22.75,
+      "robot_pose": [
+        10.752934455871582,
+        10.002500534057617,
+        0.008048856630921364
+      ],
+      "subgoal": [
+        10.995152473449707,
+        11.573010444641113,
+        1.4177731275558472
+      ],
+      "plan_points": 253,
+      "plan_y_minmax": [
+        10.0,
+        11.66953182220459
+      ],
+      "robot_cost": 56,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 0,
+      "action": [
+        0.9999999999999999,
+        0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.20000000000000007
+        }
+      }
+    },
+    {
+      "seq": 55,
+      "sim": 23.016666667,
+      "robot_pose": [
+        10.876134872436523,
+        10.003649711608887,
+        0.009026000276207924
+      ],
+      "subgoal": [
+        10.814972877502441,
+        11.444972038269043,
+        1.6132055521011353
+      ],
+      "plan_points": 253,
+      "plan_y_minmax": [
+        10.0,
+        11.66953182220459
+      ],
+      "robot_cost": 75,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 0,
+      "action": [
+        1.0,
+        0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.2
+        }
+      }
+    },
+    {
+      "seq": 56,
+      "sim": 23.283333333,
+      "robot_pose": [
+        10.999903678894043,
+        10.004817962646484,
+        0.010148485191166401
+      ],
+      "subgoal": [
+        10.681794166564941,
+        10.05231761932373,
+        2.9933691024780273
+      ],
+      "plan_points": 257,
+      "plan_y_minmax": [
+        9.988587379455566,
+        11.646064758300781
+      ],
+      "robot_cost": 99,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 4,
+      "action": [
+        1.0,
+        -0.28044751286506653
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.14022375643253326
+        }
+      }
+    },
+    {
+      "seq": 57,
+      "sim": 23.55,
+      "robot_pose": [
+        11.124338150024414,
+        10.006108283996582,
+        0.009762801229953766
+      ],
+      "subgoal": [
+        10.681794166564941,
+        10.05231761932373,
+        3.0375521183013916
+      ],
+      "plan_points": 257,
+      "plan_y_minmax": [
+        9.988587379455566,
+        11.646064758300781
+      ],
+      "robot_cost": 100,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 8,
+      "action": [
+        1.0,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.2
+        }
+      }
+    },
+    {
+      "seq": 60,
+      "sim": 24.35,
+      "robot_pose": [
+        11.497883796691895,
+        10.009298324584961,
+        0.007466673385351896
+      ],
+      "subgoal": [
+        10.681794166564941,
+        10.05231761932373,
+        3.0889275074005127
+      ],
+      "plan_points": 257,
+      "plan_y_minmax": [
+        9.988587379455566,
+        11.646064758300781
+      ],
+      "robot_cost": 100,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 14,
+      "action": [
+        1.0,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.2
+        }
+      }
+    },
+    {
+      "seq": 66,
+      "sim": 25.95,
+      "robot_pose": [
+        12.24300765991211,
+        10.015623092651367,
+        0.008689600974321365
+      ],
+      "subgoal": [
+        10.681794166564941,
+        10.05231761932373,
+        3.1180930137634277
+      ],
+      "plan_points": 257,
+      "plan_y_minmax": [
+        9.988587379455566,
+        11.646064758300781
+      ],
+      "robot_cost": 100,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 17,
+      "action": [
+        1.0,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.2
+        }
+      }
+    },
+    {
+      "seq": 69,
+      "sim": 26.75,
+      "robot_pose": [
+        12.619026184082031,
+        10.01884651184082,
+        0.00923330057412386
+      ],
+      "subgoal": [
+        13.823202133178711,
+        10.970294952392578,
+        0.6686899662017822
+      ],
+      "plan_points": 257,
+      "plan_y_minmax": [
+        9.988587379455566,
+        11.646064758300781
+      ],
+      "robot_cost": 100,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 8,
+      "action": [
+        1.0,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.2
+        }
+      }
+    },
+    {
+      "seq": 72,
+      "sim": 27.55,
+      "robot_pose": [
+        12.992908477783203,
+        10.021430969238281,
+        0.005907357204705477
+      ],
+      "subgoal": [
+        14.03548526763916,
+        10.791749000549316,
+        0.636333167552948
+      ],
+      "plan_points": 257,
+      "plan_y_minmax": [
+        9.988587379455566,
+        11.646064758300781
+      ],
+      "robot_cost": 99,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 2,
+      "action": [
+        1.0,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.2
+        }
+      }
+    },
+    {
+      "seq": 76,
+      "sim": 28.616666667,
+      "robot_pose": [
+        13.4921236038208,
+        10.02333927154541,
+        0.0028431701939553022
+      ],
+      "subgoal": [
+        15.0,
+        10.0,
+        -0.015477003529667854
+      ],
+      "plan_points": 66,
+      "plan_y_minmax": [
+        10.0,
+        10.0
+      ],
+      "robot_cost": 0,
+      "subgoal_cost": 0,
+      "chord_blocked_count": 0,
+      "action": [
+        1.0,
+        -0.4
+      ],
+      "cmd": {
+        "linear": {
+          "x": 0.5,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "angular": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.2
+        }
+      }
+    }
+  ]
+}

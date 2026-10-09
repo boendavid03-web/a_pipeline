@@ -1,0 +1,11 @@
+--- [LOCAL_PATH]	2026-10-07 11:19:25.072259766 -0700
++++ [LOCAL_PATH]	2026-10-07 11:19:25.080259382 -0700
+@@ -31,7 +31,7 @@
+                 obj=call.f_locals.get('self');name=type(obj).__name__
+                 if name in {'SRNN','_SARLValueNetwork'}:forwards[name]=forwards.get(name,0)+1
+             if event=='call' and call.f_code.co_name=='act' and type(call.f_locals.get('self')).__name__=='Policy' and '/dsrnn/' in call.f_code.co_filename:
+-                emit('actual_neural_input',seq=frame.seq,sim=frame.t_sec+frame.t_nanosec*1e-9,file=call.f_code.co_filename,inputs={k:v.detach().cpu().tolist() for k,v in call.f_locals['inputs'].items()})
++                emit('actual_neural_input',seq=frame.seq,sim=frame.t_sec+frame.t_nanosec*1e-9,file=call.f_code.co_filename,inputs={k:v.detach().cpu().tolist() for k,v in call.f_locals['inputs'].items()},rnn_hxs={k:v.detach().cpu().tolist() for k,v in call.f_locals.get('rnn_hxs',{}).items()},masks=call.f_locals['masks'].detach().cpu().tolist() if 'masks' in call.f_locals else None)
+             if event=='call' and call.f_code.co_name=='predict' and type(call.f_locals.get('self')).__name__=='SARLPolicy':
+                 state=call.f_locals.get('state')
+                 if state is not None:emit('actual_policy_state',seq=frame.seq,sim=frame.t_sec+frame.t_nanosec*1e-9,file=call.f_code.co_filename,robot=vars(state.self_state),humans=[vars(h) for h in state.human_states])

@@ -1,0 +1,148 @@
+diff --git a/arena_robots/arena_robots/task_server_handlers/goto_pose/nav2.py b/arena_robots/arena_robots/task_server_handlers/goto_pose/nav2.py
+index 6e4215f..bad4124 100644
+--- a/arena_robots/arena_robots/task_server_handlers/goto_pose/nav2.py
++++ b/arena_robots/arena_robots/task_server_handlers/goto_pose/nav2.py
+@@ -8,7 +8,7 @@ from geometry_msgs.msg import PoseStamped, Twist
+ from nav2_msgs.action import NavigateToPose
+ from rcl_interfaces.msg import ParameterType
+ from rcl_interfaces.srv import GetParameters
+-from rclpy.action import ActionClient
++from rclpy.action import ActionClient, CancelResponse
+ 
+ from arena_robots.lockstep_beat import LockstepBeat
+ from arena_robots.task_server_handlers import TaskHandler, _executor_sleep
+@@ -36,8 +36,15 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
+         self._native_client = ActionClient(node, NavigateToPose, bringup.native_action_name)
+         self._beat = LockstepBeat(node, "nav")
+         self._beat_period: float | None = None
++        self._native_goals: dict[bytes, object] = {}
+         node.create_subscription(Twist, str(bringup.namespace("cmd_vel")), lambda _msg: self._beat.pulse(), 10)
+ 
++    def on_cancel(self, goal_handle: object) -> CancelResponse:
++        native_goal = self._native_goals.get(bytes(goal_handle.goal_id.uuid))
++        if native_goal is not None:
++            native_goal.cancel_goal_async()
++        return CancelResponse.ACCEPT
++
+     async def _controller_period(self) -> float:
+         """One controller tick in sim seconds, read once from controller_server."""
+         if self._beat_period is not None:
+@@ -105,7 +112,15 @@ class GotoPoseHandlerNav2(TaskHandler[GotoPose.Goal, GotoPose.Feedback, GotoPose
+                 await _executor_sleep(self._node, _NAV2_RETRY_BACKOFF_SEC)
+                 continue
+ 
+-            wrapped = await nav2_goal_handle.get_result_async()
++            key = bytes(goal_handle.goal_id.uuid)
++            self._native_goals[key] = nav2_goal_handle
++            try:
++                # Cancellation may arrive while send_goal_async is pending.
++                if goal_handle.is_cancel_requested or not goal_handle.is_active:
++                    nav2_goal_handle.cancel_goal_async()
++                wrapped = await nav2_goal_handle.get_result_async()
++            finally:
++                self._native_goals.pop(key, None)
+ 
+             arena_status, arena_reason = _translate_nav2_status(wrapped.status)
+             if not goal_handle.is_active:
+diff --git a/arena_robots/config/nav2/controllers/dwb/controller_config.yaml b/arena_robots/config/nav2/controllers/dwb/controller_config.yaml
+index d65ab6b..9a11f0d 100644
+--- a/arena_robots/config/nav2/controllers/dwb/controller_config.yaml
++++ b/arena_robots/config/nav2/controllers/dwb/controller_config.yaml
+@@ -29,8 +29,8 @@ controller_plugins_dict:
+     trans_stopped_velocity: 0.25
+     short_circuit_trajectory_evaluation: True
+     stateful: True
+-    critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+-    BaseObstacle.scale: 0.02
++    critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
++    ObstacleFootprint.scale: 0.02
+     PathAlign.scale: 32.0
+     PathAlign.forward_point_distance: 0.1
+     GoalAlign.scale: 24.0
+diff --git a/arena_robots/config/nav2/controllers/mppi/controller_config.yaml b/arena_robots/config/nav2/controllers/mppi/controller_config.yaml
+index 2ffadd7..516718c 100644
+--- a/arena_robots/config/nav2/controllers/mppi/controller_config.yaml
++++ b/arena_robots/config/nav2/controllers/mppi/controller_config.yaml
+@@ -4,7 +4,7 @@ controller_plugins_dict:
+  FollowPath:
+    plugin: "nav2_mppi_controller::MPPIController"
+    time_steps: 56
+-   model_dt: 0.25
++   model_dt: 0.1
+    batch_size: 2000
+    vx_std: 0.2
+    vy_std: 0.2
+diff --git a/arena_robots/config/nav2/nav2.yaml b/arena_robots/config/nav2/nav2.yaml
+index f56b35f..ed7f8b4 100644
+--- a/arena_robots/config/nav2/nav2.yaml
++++ b/arena_robots/config/nav2/nav2.yaml
+@@ -137,7 +137,7 @@ local_costmap:
+       resolution: 0.1
+       footprint: ${footprint}
+       footprint_padding: ${footprint_padding:-0.01}
+-      plugins: ["voxel_layer", "inflation_layer"]
++      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+       inflation_layer:
+         plugin: "nav2_costmap_2d::InflationLayer"
+         cost_scaling_factor: 3.0
+@@ -154,6 +154,7 @@ local_costmap:
+         observation_sources: ${observation_sources_string}
+         "${**observation_sources_dict}": ''
+       static_layer:
++        plugin: "nav2_costmap_2d::StaticLayer"
+         map_subscribe_transient_local: True
+         map_topic: ${task_generator_node}/map
+       always_send_full_costmap: True
+diff --git a/arena_robots/robots/jackal/control.yaml b/arena_robots/robots/jackal/control.yaml
+index 1928850..a415d68 100644
+--- a/arena_robots/robots/jackal/control.yaml
++++ b/arena_robots/robots/jackal/control.yaml
+@@ -26,6 +26,8 @@ jackal_velocity_controller:
+     publish_rate: 50.0
+     odom_frame_id: odom
+     base_frame_id: base_link
++    # Arena prefixes these frame IDs when rendering the controller config.
++    tf_frame_prefix_enable: false
+     pose_covariance_diagonal : [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.03]
+     twist_covariance_diagonal: [0.001, 0.001, 0.03, 1000000.0, 1000000.0, 0.03]
+ 
+diff --git a/arena_robots/tests/ros/test_goto_pose_nav2.py b/arena_robots/tests/ros/test_goto_pose_nav2.py
+index 17c93c8..a12e106 100644
+--- a/arena_robots/tests/ros/test_goto_pose_nav2.py
++++ b/arena_robots/tests/ros/test_goto_pose_nav2.py
+@@ -314,3 +314,35 @@ class TestGotoPoseHandlerNav2Execute:
+         goal_handle = self._make_goal_handle()
+         result = asyncio.run(handler.execute(goal_handle))
+         assert isinstance(result.final_pose, PoseStamped)
++
++
++@pytest.mark.parametrize("during_send", [False, True])
++def test_cancel_reaches_pending_native_nav2_goal(during_send):
++    from action_msgs.msg import GoalStatus
++    from arena_robots_msgs.action import GotoPose
++
++    helper = TestGotoPoseHandlerNav2Execute()
++    handler = helper._make_handler()
++    goal_handle = helper._make_goal_handle()
++    native_goal = MagicMock(accepted=True)
++    native_goal.cancel_goal_async = MagicMock()
++
++    async def send(*args, **kwargs):
++        if during_send:
++            goal_handle.is_cancel_requested = True
++        return native_goal
++
++    async def terminal():
++        if not during_send:
++            goal_handle.is_cancel_requested = True
++            handler.on_cancel(goal_handle)
++        assert native_goal.cancel_goal_async.called, "Cancel must reach the executing native goal"
++        return SimpleNamespace(status=GoalStatus.STATUS_CANCELED, result=None)
++
++    native_goal.get_result_async = terminal
++    handler._native_client.server_is_ready.return_value = True
++    handler._native_client.send_goal_async = send
++    result = asyncio.run(handler.execute(goal_handle))
++    assert result.status == GotoPose.Result.STATUS_CANCELED
++    goal_handle.canceled.assert_called_once()
++    assert not handler._native_goals

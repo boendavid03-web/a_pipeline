@@ -1,0 +1,13 @@
+{
+  "method": "CrowdNav",
+  "status": "BLOCKED",
+  "planner_source": "[LOCAL_PATH]",
+  "planner_sha256": "4c0741983e952592fa92a2343a0351ab6d73174979353d7751aa1fc45c141946",
+  "weights_manifest": "[LOCAL_PATH]",
+  "weights_manifest_contents": "files: []",
+  "expected_runtime_weight": "[LOCAL_PATH]",
+  "runtime_weight_exists": false,
+  "readme_weight_statement": "No pretrained weights shipped yet (upstream does not publish any); without weights SARL runs random initialization.",
+  "upstream_repo": "https://github.com/vita-epfl/CrowdNav",
+  "blocker": "Cannot establish original trained SARL checkpoint identity; random initialization and other SARL candidates are not substitutes."
+}

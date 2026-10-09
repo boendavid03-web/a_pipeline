@@ -1,0 +1,1 @@
+String values are: ['RotateToGoal', 'Oscillation', 'ObstacleFootprint', 'GoalAlign', 'PathAlign', 'PathDist', 'GoalDist']

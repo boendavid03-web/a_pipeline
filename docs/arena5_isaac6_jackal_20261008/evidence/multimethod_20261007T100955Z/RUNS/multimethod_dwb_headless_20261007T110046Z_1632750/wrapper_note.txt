@@ -1,0 +1,1 @@
+Native case and probe completed; launcher file was edited during this run, so the shell wrapper exited on an unbound variable after native completion. Preserve this as a diagnostic trial; not counted toward wrapper-level repeats.

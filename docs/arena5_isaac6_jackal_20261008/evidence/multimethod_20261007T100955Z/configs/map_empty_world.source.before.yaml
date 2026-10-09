@@ -1,0 +1,73 @@
+zones:
+  - description: "Empty Zone"
+    name: "empty_zone"
+    walls:
+      - start: {x: 0.0, y: 0.0}
+        end: {x: 14.0, y: 0.0}
+        kind: painting
+      - start: {x: 16.0, y: 0.0}
+        end: {x: 30.0, y: 0.0}
+        kind: painting
+
+      - start: {x: 30.0, y: 0.0}
+        end: {x: 30.0, y: 4.0}
+      - start: {x: 30.0, y: 6.0}
+        end: {x: 30.0, y: 17.0}
+
+      - start: {x: 30.0, y: 19.0}
+        end: {x: 30.0, y: 23.0}
+
+      - start: {x: 30.0, y: 23.0}
+        end: {x: 18.0, y: 23.0}
+
+      - start: {x: 12.0, y: 23.0}
+        end: {x: 0.0, y: 23.0}
+        
+      - start: {x: 0.0, y: 23.0}
+        end: {x: 0.0, y: 13.0}
+        material: ["Marble", {"tint": "rgba(0,255,255,0.2)"}]
+      - start: {x: 0.0, y: 10.0}
+        end: {x: 0.0, y: 0.0}
+        material: ["Marble", {"tint": "rgba(255,255,0,0.2)"}]
+
+    corners:
+      - [0.0, 0.0]
+      - [30.0, 0.0]
+      - [30.0, 23.0]
+      - [0.0, 23.0]
+    doors:
+      - name: "north_door"
+        start: [12.0, 23.0]
+        end: [18.0, 23.0]
+        height: 2.0
+        kind: "sliding"
+        material: ["Aluminum_Anodized", {"tint": "rgba(255,0,0,0.2)"}]
+      - name: "west_door"
+        start: [0.0, 10.0]
+        end: [0.0, 13.0]
+        height: 2.0
+        kind: "sliding"
+        material: ["Aluminum_Anodized", {"tint": "rgba(0,0,255,0.2)"}]
+      - name: "south_door"
+        start: [14.0, 0.0]
+        end: [16.0, 0.0]
+        height: 2.0
+        kind: "sliding"
+        material: ["Aluminum_Anodized", {"tint": "rgba(0,255,255,0.2)"}]
+
+    elevators:
+      - name: "elevator_ground"
+        position: [31.0, 5.0, 0.0]
+        size: [2.0, 2.0, 2.0]
+        door_side: "-x"
+        destination: "0.elevator_top"
+      - name: "elevator_top"
+        position: [31.0, 18.0, 0.0]
+        size: [2.0, 2.0, 2.0]
+        door_side: "-x"
+        destination: "0.elevator_ground"
+    entities:
+      static:
+      - name: table_0
+        model: table # showcase local
+        pose: [7,5,0]

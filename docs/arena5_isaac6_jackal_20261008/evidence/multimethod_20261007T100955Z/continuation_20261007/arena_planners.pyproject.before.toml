@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arena_planners"
+version = "0.0.0"
+description = "DRL planner bridge SDK (subprocess-side: protocol, transport, sdk)."
+dependencies = [
+    "pyzmq>=25",
+    "msgpack>=1.0",
+    "msgpack-numpy>=0.4.8",
+    "numpy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["arena_planners*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "ros: requires a sourced ROS2 environment",
+    "slow: long-running tests",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N"]

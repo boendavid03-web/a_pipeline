@@ -1,0 +1,236 @@
+diff --git a/arena_humansim/arena_humansim/core/agent_manager.py b/arena_humansim/arena_humansim/core/agent_manager.py
+index b02153c..81bd0f4 100644
+--- a/arena_humansim/arena_humansim/core/agent_manager.py
++++ b/arena_humansim/arena_humansim/core/agent_manager.py
+@@ -166,6 +166,7 @@ class _ExternalEntity:
+     owned: bool = True
+     saved_policy_idx: int | None = None
+     vel: tuple[float, float] = (0.0, 0.0)
++    pose: tuple[float, float, float] | None = None
+ 
+ 
+ class _AgentStateMsgPool:
+@@ -643,6 +644,9 @@ class AgentManager(Node):
+         return params
+ 
+     def _allocate_agent_id(self) -> int:
++        reserved = {msg.agent_id for _, msg in self._pending_scenario_spawns}
++        while self._next_agent_id in self._agents or self._next_agent_id in reserved:
++            self._next_agent_id += 1
+         aid = self._next_agent_id
+         self._next_agent_id += 1
+         return aid
+@@ -935,10 +939,14 @@ class AgentManager(Node):
+ 
+         immediate = SpawnAgents.Request()
+         pending: list[tuple[int, AgentStateMsg]] = []
++        explicit_ids = [int(a.agent_id) for a in scenario.agents if int(a.agent_id) != 0]
++        reserved = set(self._agents) | {msg.agent_id for _, msg in self._pending_scenario_spawns}
++        if len(explicit_ids) != len(set(explicit_ids)) or reserved.intersection(explicit_ids):
++            raise ValueError("Scenario agent IDs must be unique and not already reserved")
++        self._next_agent_id = max([self._next_agent_id, *(aid + 1 for aid in explicit_ids)])
+         for a in scenario.agents:
+             if int(a.agent_id) == 0:
+-                a.agent_id = self._next_agent_id
+-                self._next_agent_id += 1
++                a.agent_id = self._allocate_agent_id()
+             if int(a.kind) == int(AgentKind.ROBOT) and a.services:
+                 self._robot_service_advertiser.register(int(a.agent_id), a.services)
+             msg = AgentStateMsg()
+@@ -1448,15 +1456,21 @@ class AgentManager(Node):
+                 own_mask = pool.policy_idx[:n] == int(pidx)
+                 if planner.supports_pool:
+                     pool.has_goal[:n] = saved_has_goal & active_mask & own_mask
++                    self._apply_external_velocity_pins()
+                     planner.compute_pool(pool, store_forces=self._publish_markers >= 2, dt=self._dt)
+                     accum_vel[own_mask] = pool.vel[:n][own_mask]
+                 else:
+-                    group = [agents[i] for i in range(n) if int(pool.policy_idx[i]) == int(pidx)]
++                    # Non-pool planners need observed external bodies as context.
++                    # Only this policy's outputs are applied below.
++                    self._apply_external_velocity_pins()
++                    pool.sync_back(agents)
++                    group = [agents[i] for i in range(n) if own_mask[i] or not active_mask[i]]
+                     vel_dict = planner.compute(group, self._cached_intermediate_goals, dt=self._dt)
+                     for i in range(n):
+                         if not own_mask[i]:
+                             continue
+-                        v = vel_dict.get(int(pool.agent_ids[i]), (0.0, 0.0))
++                        # Respect the terminal latch for non-pool policy outputs.
++                        v = (0.0, 0.0) if pool.latched[i] else vel_dict.get(int(pool.agent_ids[i]), (0.0, 0.0))
+                         accum_vel[i, 0] = v[0]
+                         accum_vel[i, 1] = v[1]
+             pool.vel[:n] = accum_vel
+@@ -1548,6 +1562,15 @@ class AgentManager(Node):
+         if corrected:
+             self._global_planner.invalidate_paths(corrected)
+         self._park_seated(pool)
++        # Simulator-controlled robot observations are authoritative. Their
++        # velocity informs pedestrian planning; engine integration and wall
++        # projection must not move or reorient the mirrored physical robot.
++        for entity in self._external_entities.values():
++            idx = pool._id_to_idx.get(entity.agent_id)
++            if idx is not None and pool.kind[idx] == KIND_ROBOT and entity.pose is not None:
++                pool.pos[idx] = entity.pose[:2]
++                pool.theta[idx] = entity.pose[2]
++                pool.vel[idx] = entity.vel
+         self._phase_end("collision", t0)
+ 
+         t0 = time.perf_counter()
+@@ -1716,7 +1739,9 @@ class AgentManager(Node):
+             vel_dict.update(planner.compute(group, intermediate_goals, dt=self._dt))
+         for i in range(pool.n):
+             aid = int(pool.agent_ids[i])
+-            v = vel_dict.get(aid, (0.0, 0.0))
++            # The cached subgoal precedes arrival_latch_step; a latched agent
++            # must brake instead of accepting another non-pool motion command.
++            v = (0.0, 0.0) if pool.latched[i] else vel_dict.get(aid, (0.0, 0.0))
+             pool.vel[i, 0] = v[0]
+             pool.vel[i, 1] = v[1]
+ 
+@@ -2055,8 +2080,8 @@ class AgentManager(Node):
+         entity.last_seen = self._tick_count
+         radius = agent_msg.radius if agent_msg.radius > 0 else 0.3
+         self._teleport_agent(entity.agent_id, agent_msg.pose.x, agent_msg.pose.y, agent_msg.pose.theta, radius)
+-        if entity.saved_policy_idx is not None:
+-            entity.vel = (agent_msg.velocity.x, agent_msg.velocity.y)
++        entity.vel = (agent_msg.velocity.x, agent_msg.velocity.y)
++        entity.pose = (agent_msg.pose.x, agent_msg.pose.y, agent_msg.pose.theta)
+ 
+     def _match_registered_robot(self, agent_msg: AgentStateMsg) -> int | None:
+         """Nearest unbound robot-kind agent within _EXTERNAL_ADOPT_RADIUS, None if no match."""
+@@ -2087,8 +2112,7 @@ class AgentManager(Node):
+ 
+     def _spawn_external_agent(self, agent_msg: AgentStateMsg) -> int:
+         """Add a non-autonomous robot-kind pool entity mirroring an externally simulated body."""
+-        aid = self._next_agent_id
+-        self._next_agent_id += 1
++        aid = self._allocate_agent_id()
+         agent = self._build_base_agent(aid, agent_msg, [])
+         agent.state.kind = KIND_ROBOT
+         self._agents[aid] = agent
+@@ -2116,8 +2140,6 @@ class AgentManager(Node):
+         """Reassert fed velocities on bound agents after planning zeroes non-autonomous rows."""
+         pool = self._pool
+         for entity in self._external_entities.values():
+-            if entity.saved_policy_idx is None:
+-                continue
+             idx = pool._id_to_idx.get(entity.agent_id)
+             if idx is None:
+                 continue
+@@ -2229,11 +2251,18 @@ class AgentManager(Node):
+             response.message = f"agent names {reserved} are reserved attention keywords {list(ATTENTION_KEYWORDS)}" if reserved else f"handedness must be 'l' or 'r', got {bad_hands}"
+             self._logger.error(response.message)
+             return response
++        explicit_ids = [m.agent_id for m in request.agents if m.agent_id != 0]
++        reserved_ids = set(self._agents) | {msg.agent_id for _, msg in self._pending_scenario_spawns}
++        if len(explicit_ids) != len(set(explicit_ids)) or reserved_ids.intersection(explicit_ids):
++            response.success = False
++            response.message = "Agent IDs must be unique and not already reserved"
++            self._logger.error(response.message)
++            return response
++        self._next_agent_id = max([self._next_agent_id, *(aid + 1 for aid in explicit_ids)])
+         for agent_msg in request.agents:
+             aid = agent_msg.agent_id
+             if aid == 0:
+-                aid = self._next_agent_id
+-                self._next_agent_id += 1
++                aid = self._allocate_agent_id()
+ 
+             waypoints = [Pose2D(x=pt.pose.x, y=pt.pose.y, theta=pt.pose.theta) for pt in agent_msg.waypoints.points]
+             radii = [pt.radius for pt in agent_msg.waypoints.points]
+diff --git a/arena_humansim/arena_humansim/local_planner/socialgail/planner.py b/arena_humansim/arena_humansim/local_planner/socialgail/planner.py
+index a4efdbc..567cf6d 100644
+--- a/arena_humansim/arena_humansim/local_planner/socialgail/planner.py
++++ b/arena_humansim/arena_humansim/local_planner/socialgail/planner.py
+@@ -115,6 +115,15 @@ class SocialGAILPlanner(LocalPlanner):
+         self._Batch = None
+         self._device = None
+ 
++    def attach(self, pool: AgentPool) -> None:
++        pool.register_extension(self)
++
++    def on_pool_reset(self) -> None:
++        # A new episode must not reuse the previous decision phase or features.
++        self._history.evict(())
++        self._rot_cache.clear()
++        self._tick = 0
++
+     def _ensure_actor(self) -> None:
+         if self._actor is not None:
+             return
+diff --git a/arena_humansim/tests/ros/test_world_state_ingest.py b/arena_humansim/tests/ros/test_world_state_ingest.py
+index 28ac861..5706fc0 100644
+--- a/arena_humansim/tests/ros/test_world_state_ingest.py
++++ b/arena_humansim/tests/ros/test_world_state_ingest.py
+@@ -269,3 +269,70 @@ def test_ghost_spawn_unchanged_alongside_bound_agent(system: RosTestSystem) -> N
+     published = {a.agent_id for a in manager._build_agent_states_msg().agents}
+     assert ped_aid in published
+     assert ghost.agent_id not in published
++
++
++@pytest.mark.parametrize('registered', [False, True])
++@pytest.mark.parametrize('local_planner', ['sfm', 'hsfm', 'straight', 'socialgail', 'nsp'])
++def test_external_robot_velocity_reaches_pool_and_planner(system: RosTestSystem, registered: bool, local_planner: str) -> None:
++    manager = system.manager
++    previous = manager.get_parameter('local_planner').value
++    manager._select_local_planner(local_planner)
++    if registered:
++        _spawn_robot(system, 3.0, 0.0)
++    resp = system.call(SpawnAgents, 'spawn_agents', make_spawn_request([{'x': 0.0, 'y': 0.0}]))
++    ped_aid = resp.spawned_ids[0]
++    msg = _world_state([(_EXT_ID, 3.0, 0.0, 0.2, 0.3)])
++    msg.agents[0].velocity = Vector3(x=0.8, y=-0.2, z=0.0)
++    seen = []
++    planner = manager._local_planner
++    compute = planner.compute_pool
++    def observe(pool, *args, **kwargs):
++        aid = manager._external_entities[_EXT_ID].agent_id
++        seen.append(pool.vel[pool.idx(aid)].copy())
++        return compute(pool, *args, **kwargs)
++    planner.compute_pool = observe
++    try:
++        manager._world_state_callback(msg)
++        system.tick_manager(1)
++        entity = manager._external_entities[_EXT_ID]
++        idx = manager._pool.idx(entity.agent_id)
++        assert entity.vel == (0.8, -0.2)
++        assert seen and tuple(seen[-1]) == pytest.approx((0.8, -0.2))
++        assert tuple(manager._pool.vel[idx]) == pytest.approx((0.8, -0.2))
++        assert tuple(manager._pool.pos[idx]) == pytest.approx((3.0, 0.0))
++        assert manager._pool.theta[idx] == pytest.approx(0.2)
++        assert entity.agent_id in manager._pool.visible_agent_ids(ped_aid)
++    finally:
++        planner.compute_pool = compute
++        manager._select_local_planner(previous)
++
++
++@pytest.mark.parametrize('registered', [False, True])
++def test_orca_receives_authoritative_external_robot(system: RosTestSystem, registered: bool) -> None:
++    manager = system.manager
++    previous = manager.get_parameter('local_planner').value
++    manager._select_local_planner('orca')
++    if registered:
++        _spawn_robot(system, 3.0, 0.0)
++    resp = system.call(SpawnAgents, 'spawn_agents', make_spawn_request([{'x': 0.0, 'y': 0.0}]))
++    ped = resp.spawned_ids[0]
++    seen = []
++    planner = manager._local_planner
++    compute = planner.compute
++    def observe(agents, *args, **kwargs):
++        seen.append({a.state.agent_id: (a.state.pose.x, a.state.pose.y, *a.state.velocity) for a in agents})
++        return compute(agents, *args, **kwargs)
++    planner.compute = observe
++    try:
++        msg = _world_state([(_EXT_ID, 3.0, 0.0, 0.2, 0.3)])
++        msg.agents[0].velocity = Vector3(x=0.8, y=-0.2)
++        manager._world_state_callback(msg)
++        system.tick_manager(1)
++        robot = manager._external_entities[_EXT_ID].agent_id
++        assert seen and ped in seen[-1]
++        assert robot in seen[-1]
++        assert seen[-1][robot] == pytest.approx((3.0, 0.0, 0.8, -0.2))
++        assert tuple(manager._pool.pos[manager._pool.idx(robot)]) == pytest.approx((3.0, 0.0))
++    finally:
++        planner.compute = compute
++        manager._select_local_planner(previous)

@@ -1,0 +1,24 @@
+--- [LOCAL_PATH]	2026-10-07 11:23:50.271209203 -0700
++++ [LOCAL_PATH]	2026-10-07 11:23:50.285208987 -0700
+@@ -18,6 +18,7 @@
+ 
+ _V_PREF: float = 1.0
+ _RADIUS: float = 0.3
++_TASK_GOAL_TOLERANCE: float = 0.25
+ _TIME_STEP: float = 0.25
+ _ABSENT_DIST: float = 15.0  # crowd_sim parks absent humans at (15, 15)
+ 
+@@ -40,6 +41,13 @@
+     p.set_phase("test")
+     p.time_step = _TIME_STEP
+     p.query_env = False
++    # Keep the trained 0.3 m physical radius in FullState. Arena's fixed task
++    # tolerance is 0.25 m, so stop only after the same task boundary is met.
++    def reach_task_goal(state: JointState) -> bool:
++        ss = state.self_state
++        return math.hypot(ss.px - ss.gx, ss.py - ss.gy) < _TASK_GOAL_TOLERANCE
++
++    p.reach_destination = reach_task_goal
+     return p
+ 
+ 

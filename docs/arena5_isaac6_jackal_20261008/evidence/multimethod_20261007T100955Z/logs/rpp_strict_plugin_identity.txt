@@ -1,0 +1,2 @@
+String value is: nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+String value is: nav2_navfn_planner::NavfnPlanner

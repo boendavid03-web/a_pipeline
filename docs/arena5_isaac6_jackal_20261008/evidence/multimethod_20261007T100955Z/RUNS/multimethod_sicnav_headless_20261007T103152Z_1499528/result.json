@@ -1,0 +1,50 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "terminal_status": 4,
+  "episode_state": 2,
+  "episode_info": "finished after 11.8s",
+  "sim_elapsed_s": 26.25,
+  "wall_elapsed_s": 13.534,
+  "tf_samples": 140,
+  "travel_m_excluding_reset_jumps": 4.175,
+  "start_map_xy": [
+    10.0,
+    10.0
+  ],
+  "end_map_xy": [
+    14.127,
+    9.608
+  ],
+  "reference_map_xy": [
+    5.0,
+    5.0
+  ],
+  "goal_map_xy": [
+    15.0,
+    10.0
+  ],
+  "final_goal_error_m": 0.957,
+  "post_goal_sim_s": 7.383,
+  "post_goal_cmd_samples": 29,
+  "post_goal_tf_samples": 49,
+  "post_goal_wheel_target_samples": 208,
+  "post_goal_odom_samples": 208,
+  "post_goal_max_cmd_component": 0.0,
+  "post_goal_max_wheel_target": 0.0,
+  "post_goal_max_odom_twist": 0.0007129499983093891,
+  "post_goal_tf_drift_m": 0.0046,
+  "last_cmd_before_terminal": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "cmd_count": 149,
+  "moving_cmd_count": 108,
+  "scan_count": 192,
+  "plan_count": 42,
+  "status": "FAIL",
+  "error": "AssertionError('Final robot pose exceeds the configured 0.25 m goal tolerance')"
+}

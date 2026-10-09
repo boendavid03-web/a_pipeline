@@ -1,0 +1,21 @@
+diff --git a/arena_robots/config/nav2/nav2.yaml b/arena_robots/config/nav2/nav2.yaml
+index f56b35f..ed7f8b4 100644
+--- a/arena_robots/config/nav2/nav2.yaml
++++ b/arena_robots/config/nav2/nav2.yaml
+@@ -137,7 +137,7 @@ local_costmap:
+       resolution: 0.1
+       footprint: ${footprint}
+       footprint_padding: ${footprint_padding:-0.01}
+-      plugins: ["voxel_layer", "inflation_layer"]
++      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+       inflation_layer:
+         plugin: "nav2_costmap_2d::InflationLayer"
+         cost_scaling_factor: 3.0
+@@ -154,6 +154,7 @@ local_costmap:
+         observation_sources: ${observation_sources_string}
+         "${**observation_sources_dict}": ''
+       static_layer:
++        plugin: "nav2_costmap_2d::StaticLayer"
+         map_subscribe_transient_local: True
+         map_topic: ${task_generator_node}/map
+       always_send_full_costmap: True

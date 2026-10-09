@@ -1,0 +1,11 @@
+--- [LOCAL_PATH]	2026-10-07 10:36:51.656236845 -0700
++++ [LOCAL_PATH]	2026-10-07 10:36:51.667236748 -0700
+@@ -33,7 +33,7 @@
+  raise RuntimeError('ownership '+label+' '+repr(found))
+ 
+ def native(kind,uid,args):
+- return ['docker','exec','-u',str(uid),'-e','HOME=/home/arena','-e','ROS_DOMAIN_ID='+D,'-e','PYTHONUNBUFFERED=1','-e','TORCH_FORCE_WEIGHTS_ONLY_LOAD=1','-e','OMP_NUM_THREADS=1','-e','MKL_NUM_THREADS=1','-e','PYTHONDONTWRITEBYTECODE=1',C,'bash','-c','source /opt/arena_ws/source >/dev/null; export ARENA_CONTAINER=1 ARENA_GPU=1; exec setsid --wait /opt/venv/bin/python -m arena_cli '+kind+' "$@"','--',*args]
++ return ['docker','exec','-u',str(uid),'-e','HOME=/home/arena','-e','ROS_DOMAIN_ID='+D,'-e','PYTHONUNBUFFERED=1','-e','OMP_NUM_THREADS=1','-e','MKL_NUM_THREADS=1','-e','PYTHONDONTWRITEBYTECODE=1',C,'bash','-c','source /opt/arena_ws/source >/dev/null; export ARENA_CONTAINER=1 ARENA_GPU=1; exec setsid --wait /opt/venv/bin/python -m arena_cli '+kind+' "$@"','--',*args]
+ try:
+  launch('runtime',native('runtime',0,['sim:=isaac','headless:='+('true' if headless=='1' else 'false'),'world:='+world,'log_level:=info','sim.isaac.viewport.resolution:=960x640']));claim('runtime','/opt/ros/jazzy/bin/ros2 launch arena_bringup arena_runtime.launch.py');ready('runtime','node initialized (sim=isaac)',330);print('RUNTIME_READY',flush=True)
+  if __import__('os').environ.get('A_RUNTIME_ALIGN_PHYSICS_METADATA')=='1':

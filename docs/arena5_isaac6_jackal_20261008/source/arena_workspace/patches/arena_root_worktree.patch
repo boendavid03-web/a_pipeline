@@ -1,0 +1,336 @@
+diff --git a/arena_isaac b/arena_isaac
+--- a/arena_isaac
++++ b/arena_isaac
+@@ -1 +1 @@
+-Subproject commit 1445c751503f0cfcd14248859af16ecd47b8e6b7
++Subproject commit 1445c751503f0cfcd14248859af16ecd47b8e6b7-dirty
+diff --git a/arena_planners b/arena_planners
+--- a/arena_planners
++++ b/arena_planners
+@@ -1 +1 @@
+-Subproject commit 6ac21ed975a5a1f7fd78abef041445a1909c2f50
++Subproject commit 6ac21ed975a5a1f7fd78abef041445a1909c2f50-dirty
+diff --git a/arena_robots b/arena_robots
+--- a/arena_robots
++++ b/arena_robots
+@@ -1 +1 @@
+-Subproject commit f81bb02221c90d6064a3b7369a7b13ffb013851d
++Subproject commit f81bb02221c90d6064a3b7369a7b13ffb013851d-dirty
+diff --git a/arena_runtime/arena_runtime/arena_runtime/registry.py b/arena_runtime/arena_runtime/arena_runtime/registry.py
+index d6124425..81b1b376 100644
+--- a/arena_runtime/arena_runtime/arena_runtime/registry.py
++++ b/arena_runtime/arena_runtime/arena_runtime/registry.py
+@@ -152,25 +152,25 @@ class EnvRegistry:
+         self._reflow()
+ 
+     def _reflow(self) -> None:
+-        """Rebuild shelves and recompute reference/prespawn for every placed record, in env_id order."""
+-        placed = sorted(
+-            (r for r in self._records.values() if r.placed),
+-            key=lambda r: r.env_id,
+-        )
++        """Rebuild occupied shelves without moving another live environment.
++
++        A registry-only move cannot relocate the world's USD geometry or TF.
++        Keep existing slot origins; holes before a shelf cursor stay unused.
++        """
+         self._shelves = []
+-        for r in placed:
++        for r in self._records.values():
++            if not r.placed:
++                continue
+             slot_w, slot_h = r.slot_extent
+-            x, y = self._pack(slot_w, slot_h)
+-            slot_cx = x + slot_w / 2.0
+-            slot_cy = y + slot_h / 2.0
+-            bbox_cx = (r.extent.x_min + r.extent.x_max) / 2.0
+-            bbox_cy = (r.extent.y_min + r.extent.y_max) / 2.0
+-            buffer = self._slot_buffer
+-            r.reference = (slot_cx - bbox_cx, slot_cy - bbox_cy)
+-            r.prespawn = (
+-                r.reference[0] + r.extent.x_max + buffer / 2.0,
+-                r.reference[1] + bbox_cy,
+-            )
++            x = r.reference[0] + r.extent.x_min - self._slot_buffer
++            y = r.reference[1] + r.extent.y_min - self._slot_buffer
++            shelf = next((s for s in self._shelves if abs(s.y - y) <= 1e-6), None)
++            if shelf is None:
++                self._shelves.append(_Shelf(y=y, height=slot_h, cursor=x + slot_w))
++            else:
++                shelf.height = max(shelf.height, slot_h)
++                shelf.cursor = max(shelf.cursor, x + slot_w)
++        self._shelves.sort(key=lambda s: s.y)
+ 
+     def _pack(self, w: float, h: float) -> tuple[float, float]:
+         """First-fit shelf pack. Shelves grow along +x; new shelves stack along +y."""
+diff --git a/arena_runtime/arena_runtime/arena_runtime/sim/isaac_simulator.py b/arena_runtime/arena_runtime/arena_runtime/sim/isaac_simulator.py
+index a3c9ef7d..7375b4b4 100644
+--- a/arena_runtime/arena_runtime/arena_runtime/sim/isaac_simulator.py
++++ b/arena_runtime/arena_runtime/arena_runtime/sim/isaac_simulator.py
+@@ -546,8 +546,10 @@ class IsaacSimulator(BaseSim, NodeInterface):
+         return await asyncio.gather(*(self._delete_entity(self._NS_ROBOT(r.name)) for r in robots))
+ 
+     async def remove_world(self) -> bool:
+-        res = await self._clients.ResetWorld.call_timeout(ResetWorld.Request())
+-        return bool(res) and res.ret
++        res = await self._clients.DeletePrims.call_timeout(
++            DeletePrims.Request(names=[str(self._NS_WALL), str(self._NS_FLOOR), str(self._NS_CEILING)])
++        )
++        return bool(res) and len(res.ret) == 3 and all(res.ret)
+ 
+     async def spawn_walls(self, walls: Sequence[WallDefinition], clear_existing: bool = True) -> bool:
+         if clear_existing:
+diff --git a/arena_simulation_setup/worlds/map_empty/0/world.yaml b/arena_simulation_setup/worlds/map_empty/0/world.yaml
+index 8823db3b..2fa64b20 100644
+--- a/arena_simulation_setup/worlds/map_empty/0/world.yaml
++++ b/arena_simulation_setup/worlds/map_empty/0/world.yaml
+@@ -71,3 +71,4 @@ zones:
+       - name: table_0
+         model: table # showcase local
+         pose: [7,5,0]
++        bbox: [[-0.88, 0.88], [-1.23, 1.23], [0.0, 0.75]]
+diff --git a/humansim b/humansim
+--- a/humansim
++++ b/humansim
+@@ -1 +1 @@
+-Subproject commit 4fdb401a5c72bdba1cb3d73bae56e78df5e5c031
++Subproject commit 4fdb401a5c72bdba1cb3d73bae56e78df5e5c031-dirty
+diff --git a/task_generator/task_generator/manager/robot_manager/robot_manager.py b/task_generator/task_generator/manager/robot_manager/robot_manager.py
+index 9d33df0d..ef4a4534 100644
+--- a/task_generator/task_generator/manager/robot_manager/robot_manager.py
++++ b/task_generator/task_generator/manager/robot_manager/robot_manager.py
+@@ -316,6 +316,16 @@ class RobotManager(NodeInterface):
+             self._publish_goal_task.cancel()
+             self._publish_goal_task = None
+ 
++    def cancel_task(self) -> None:
++        """Stop the current request and its adapters without removing the robot."""
++        seen: set[int] = set()
++        for adapter in self._adapters.values():
++            if id(adapter) not in seen:
++                seen.add(id(adapter))
++                adapter.cancel()
++        self._stop_current_task()
++        self._stop_pub.publish(geometry_msgs.msg.Twist())
++
+     def _outcome_for_phase(self, phase: TaskPhase) -> tuple[int | None, str | None]:
+         """Return (status, reason) for the phase that just completed."""
+         adapter = self._adapters.get(phase.kind)
+diff --git a/task_generator/task_generator/manager/world_manager/world_manager_ros.py b/task_generator/task_generator/manager/world_manager/world_manager_ros.py
+index c613dd34..3f3aba99 100644
+--- a/task_generator/task_generator/manager/world_manager/world_manager_ros.py
++++ b/task_generator/task_generator/manager/world_manager/world_manager_ros.py
+@@ -225,6 +225,15 @@ class WorldManagerROS(MapServerHandler, WorldManager):
+             extent.y_min = float(min(f.pos.y - f.y_length / 2 for f in floors))
+             extent.x_max = float(max(f.pos.x + f.x_length / 2 for f in floors))
+             extent.y_max = float(max(f.pos.y + f.y_length / 2 for f in floors))
++        elif compacted_description is not None:
++            # A floor material can be disabled while the room still has walls.
++            # Reserve its geometry footprint instead of a zero-sized slot.
++            corners = [p for zone in compacted_description.zones for p in zone.corners]
++            if corners:
++                extent.x_min = float(min(p.x for p in corners))
++                extent.y_min = float(min(p.y for p in corners))
++                extent.x_max = float(max(p.x for p in corners))
++                extent.y_max = float(max(p.y for p in corners))
+ 
+         req = arena_runtime_msgs.srv.ConfirmWorld.Request()
+         req.env_id = self.node._env_id
+diff --git a/task_generator/task_generator/node.py b/task_generator/task_generator/node.py
+index a69be8fa..83ee4785 100644
+--- a/task_generator/task_generator/node.py
++++ b/task_generator/task_generator/node.py
+@@ -1646,12 +1646,18 @@ class TaskGenerator(ArenaMixinNode, SafeCallbackNode, rclpy.lifecycle.LifecycleN
+         episode_id = self._episodes.current.episode_id
+         fut = self._episodes.pending_outcomes.get(episode_id)
+         if fut is not None and not fut.done():
++            self.event_loop.call_soon_threadsafe(self._cancel_robot_tasks)
+             self.event_loop.call_soon_threadsafe(
+                 fut.set_result,
+                 (task_generator_msgs.action.RunEpisode.Result.SKIPPED, "cancelled"),
+             )
+         return CancelResponse.ACCEPT
+ 
++    def _cancel_robot_tasks(self) -> None:
++        if self._robots_manager is not None:
++            for manager in self._robots_manager.managers.values():
++                manager.cancel_task()
++
+     def _execute_callback(self, goal_handle: object) -> task_generator_msgs.action.RunEpisode.Result:
+         return self.wait_for(
+             self._run_episode(
+diff --git a/task_generator/task_generator/simulators/human/arena_humansim/arena_humansim.py b/task_generator/task_generator/simulators/human/arena_humansim/arena_humansim.py
+index a9000b5b..a7683478 100644
+--- a/task_generator/task_generator/simulators/human/arena_humansim/arena_humansim.py
++++ b/task_generator/task_generator/simulators/human/arena_humansim/arena_humansim.py
+@@ -6,6 +6,8 @@ import math
+ import traceback
+ from collections.abc import Mapping, Sequence
+ 
++import rclpy.time
++import tf2_ros
+ import yaml
+ from arena_humansim_msgs.msg import (
+     AgentState as AgentStateMsg,
+@@ -94,7 +96,7 @@ from visualization_msgs.msg import MarkerArray
+ 
+ from task_generator.constants import Constants
+ from task_generator.constants.rng import stable_int
+-from task_generator.shared import Door, DynamicObstacle, Obstacle, Pose, Position, Region, Robot, Wall
++from task_generator.shared import Door, DynamicObstacle, Obstacle, Orientation, Pose, Position, Region, Robot, Wall
+ from task_generator.simulators.human import BaseHumanSimulator
+ from task_generator.simulators.human.arena_humansim import ArenaHumanDynamicObstacle, resolve_agent_type_path
+ 
+@@ -226,6 +228,8 @@ class ArenaHumanSimulator(BaseHumanSimulator):
+         self._arena_pedestrians: Pedestrians = Pedestrians()
+         self._arena_pedestrians.header.frame_id = "map"
+         self._dirty_robots: dict[str, Robot] = {}
++        self._tracked_robots: dict[str, Robot] = {}
++        self._robot_feedback_previous: dict[str, tuple[int, float, float]] = {}
+ 
+         # IDs managed by the bridge (scenario-defined agents)
+         self._bridge_agent_ids: set[int] = set()
+@@ -627,16 +631,40 @@ class ArenaHumanSimulator(BaseHumanSimulator):
+     def _publish_world_state(self):
+         """Publish robot and possessed pedestrian poses as AgentStates on world_state topic."""
+         possessed = self.possessed_peds()
+-        if not self._dirty_robots and not possessed:
++        if not self._tracked_robots and not possessed:
+             return
+         msg = AgentStatesMsg()
+         msg.header.stamp = self.node.sim_time.to_msg()
+         msg.header.frame_id = "map"
+-        for robot in self._dirty_robots.values():
++        for robot in self._tracked_robots.values():
+             a = AgentStateMsg()
+             a.agent_id = stable_int(robot.name) & 0x7FFFFFFF
+             a.name = robot.name
+-            a.pose = self._engine_pose(robot.pose)
++            a.kind = 1
++            if robot.name in self._dirty_robots:
++                # Reset/spawn poses are supplied by the positioning path. Never
++                # differentiate a teleport into a physical velocity.
++                a.pose = self._engine_pose(self._dirty_robots[robot.name].pose)
++                self._robot_feedback_previous.pop(robot.name, None)
++            else:
++                base_frame = robot.frame(robot.model.resolve_sync().model_params.base_frame).raw()
++                try:
++                    transform = self.node.tf_buffer.lookup_transform("map", base_frame, rclpy.time.Time())
++                except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
++                    continue
++                stamp_ns = rclpy.time.Time.from_msg(transform.header.stamp).nanoseconds
++                tr = transform.transform.translation
++                previous = self._robot_feedback_previous.get(robot.name)
++                if previous is not None and stamp_ns == previous[0]:
++                    continue
++                a.pose = self._engine_pose(Pose(Position(tr.x, tr.y), Orientation.from_msg(transform.transform.rotation)))
++                if previous is not None and stamp_ns > previous[0]:
++                    dt = (stamp_ns - previous[0]) * 1e-9
++                    a.velocity.x = (tr.x - previous[1]) / dt
++                    a.velocity.y = (tr.y - previous[2]) / dt
++                if not all(math.isfinite(v) for v in (a.pose.x, a.pose.y, a.pose.theta, a.velocity.x, a.velocity.y)):
++                    continue
++                self._robot_feedback_previous[robot.name] = (stamp_ns, tr.x, tr.y)
+             a.radius = 0.3
+             msg.agents.append(a)
+         name_to_aid = {agent_name: aid for aid, agent_name in self._agent_names.items()}
+@@ -650,7 +678,8 @@ class ArenaHumanSimulator(BaseHumanSimulator):
+             a.radius = 0.35
+             msg.agents.append(a)
+         self._dirty_robots.clear()
+-        self._world_state_pub.publish(msg)
++        if msg.agents:
++            self._world_state_pub.publish(msg)
+ 
+     def _agent_states_to_pedestrians(self, msg: AgentStatesMsg) -> Pedestrians:
+         peds = Pedestrians()
+@@ -1096,6 +1125,7 @@ class ArenaHumanSimulator(BaseHumanSimulator):
+     async def _spawn_robot_impl(self, robots: Sequence[Robot]) -> Sequence[bool]:
+         """Register robot poses: published to arena_humansim via world_state topic."""
+         for robot in robots:
++            self._tracked_robots[robot.name] = robot
+             self._dirty_robots[robot.name] = robot
+         self._publish_world_state()
+         return (True,) * len(robots)
+@@ -1103,10 +1133,13 @@ class ArenaHumanSimulator(BaseHumanSimulator):
+     async def _remove_robot_impl(self, robots: Sequence[Robot]) -> Sequence[bool]:
+         for robot in robots:
+             self._dirty_robots.pop(robot.name, None)
++            self._tracked_robots.pop(robot.name, None)
++            self._robot_feedback_previous.pop(robot.name, None)
+         return (True,) * len(robots)
+ 
+     async def _move_robot_impl(self, robots: Sequence[Robot]) -> Sequence[bool]:
+         """Update tracked robot poses (sent to arena_humansim each tick)."""
+         for robot in robots:
++            self._tracked_robots[robot.name] = robot
+             self._dirty_robots[robot.name] = robot
+         return (True,) * len(robots)
+diff --git a/task_generator/task_generator/tasks/robots/adapters/__init__.py b/task_generator/task_generator/tasks/robots/adapters/__init__.py
+index 05468dd4..36c22ac3 100644
+--- a/task_generator/task_generator/tasks/robots/adapters/__init__.py
++++ b/task_generator/task_generator/tasks/robots/adapters/__init__.py
+@@ -185,6 +185,12 @@ class Adapter(ABC):
+     def client_for(self, tk: TaskKind) -> Client:
+         return self._clients[tk]
+ 
++    def cancel(self) -> None:
++        """Cancel this adapter's active child actions."""
++        for client in self._clients.values():
++            if client.is_done() is False:
++                client.cancel()
++
+     @property
+     def displays(self) -> tuple[AdapterDisplayHint, ...]:
+         return (*self.cap_displays, *self._meta().displays)
+diff --git a/task_generator/task_generator/tasks/robots/adapters/mobile/drl.py b/task_generator/task_generator/tasks/robots/adapters/mobile/drl.py
+index 0ebb74b8..7b99d6b7 100644
+--- a/task_generator/task_generator/tasks/robots/adapters/mobile/drl.py
++++ b/task_generator/task_generator/tasks/robots/adapters/mobile/drl.py
+@@ -105,6 +105,7 @@ class DrlAdapter(MobileAdapter):
+         self._edge_node: object = None
+         self._run_loop_task: asyncio.Task | None = None
+         self._current_phase: TaskPhase | None = None
++        self._phase_goal_handle: object | None = None
+ 
+     # ------------------------------------------------------------------
+     # Lifecycle
+@@ -287,6 +288,7 @@ class DrlAdapter(MobileAdapter):
+         assert isinstance(phase, GoToPhase), f"DrlAdapter only accepts GOTO_POSE phases; got {type(phase).__name__} (kind={phase.kind!r})"
+         robot._goal_pos = phase.pose  # pylint: disable=protected-access
+         self._current_phase = phase
++        self._phase_goal_handle = None
+ 
+         task = self._run_loop_task
+         if task is not None and task.done() and not task.cancelled():
+@@ -306,7 +308,18 @@ class DrlAdapter(MobileAdapter):
+         goal = GotoPose.Goal()
+         goal.target = self._phase_to_pose_stamped(phase, robot)
+         goal.pose_tolerance, goal.yaw_tolerance = self._resolve_tolerances(phase, robot)
+-        await self.client.send_goal(goal)
++        handle = await self.client.send_goal(goal)
++        self._phase_goal_handle = handle
++        handle.get_result_async().add_done_callback(lambda _: self._stop_completed_goal(handle))
++
++    def _stop_completed_goal(self, handle: object) -> None:
++        if handle is self._phase_goal_handle and self._edge_node is not None:
++            self._edge_node.stop_driving()
++
++    def cancel(self) -> None:
++        if self._edge_node is not None:
++            self._edge_node.stop_driving()
++        super().cancel()
+ 
+     def _phase_to_pose_stamped(
+         self,
+@@ -322,6 +335,10 @@ class DrlAdapter(MobileAdapter):
+         return msg
+ 
+     def is_phase_done(self, phase: TaskPhase, robot: RobotManager) -> bool | None:
++        if phase.is_satisfied(robot):
++            if self._edge_node is not None:
++                self._edge_node.stop_driving()
++            return True
+         return None
+ 
+     # ------------------------------------------------------------------

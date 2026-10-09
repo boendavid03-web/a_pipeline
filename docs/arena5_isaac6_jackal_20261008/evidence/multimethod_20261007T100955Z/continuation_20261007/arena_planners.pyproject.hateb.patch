@@ -1,0 +1,12 @@
+--- [LOCAL_PATH]	2026-10-07 11:14:15.383529159 -0700
++++ [LOCAL_PATH]	2026-10-07 11:14:15.393529753 -0700
+@@ -14,6 +14,9 @@
+     "pyyaml",
+ ]
+ 
++[project.scripts]
++cohan_peds_bridge = "arena_planners.cohan_peds_bridge:main"
++
+ [project.optional-dependencies]
+ test = ["pytest>=7"]
+ 

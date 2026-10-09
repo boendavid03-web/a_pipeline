@@ -1,0 +1,30 @@
+--- [LOCAL_PATH]	2026-10-07 11:30:30.560912399 -0700
++++ [LOCAL_PATH]	2026-10-07 11:30:39.208005683 -0700
+@@ -1,5 +1,5 @@
+ """Read-only observation of the native child; callbacks retain original results."""
+-import hashlib,inspect,json,marshal,os,pathlib,sys,time
++import hashlib,inspect,json,marshal,math,os,pathlib,sys,time
+ 
+ def install(cls, step_fn, manifest, output):
+     directory=pathlib.Path(output);directory.mkdir(parents=True,exist_ok=True)
+@@ -25,6 +25,10 @@
+     def observe(self,frame,callback):
+         f=frame.features
+         features={k:v for k,v in f.items() if k in {'robot_pose','robot_state','goal_pose','pedestrians'}}
++        scan=f.get('laser_scan')
++        if scan is not None:
++            finite=[float(v) for v in scan if math.isfinite(float(v))]
++            features['laser_summary']={'beams':len(scan),'finite_beams':len(finite),'finite_min_m':min(finite) if finite else None,'finite_max_m':max(finite) if finite else None}
+         forwards={};previous=sys.getprofile()
+         def profile(call,event,arg):
+             if event=='call' and call.f_code.co_name=='forward':
+@@ -35,6 +39,9 @@
+             if event=='call' and call.f_code.co_name=='predict' and type(call.f_locals.get('self')).__name__=='SARLPolicy':
+                 state=call.f_locals.get('state')
+                 if state is not None:emit('actual_policy_state',seq=frame.seq,sim=frame.t_sec+frame.t_nanosec*1e-9,file=call.f_code.co_filename,robot=vars(state.self_state),humans=[vars(h) for h in state.human_states])
++            if event=='return' and call.f_code.co_name=='act' and type(call.f_locals.get('self')).__name__=='_Runner' and '/cadrl/' in call.f_code.co_filename:
++                state=call.f_locals.get('state')
++                if state is not None:emit('actual_cadrl_input_action',seq=frame.seq,sim=frame.t_sec+frame.t_nanosec*1e-9,file=call.f_code.co_filename,state=state.tolist(),action=arg)
+         emit('obs',seq=frame.seq,sim=frame.t_sec+frame.t_nanosec*1e-9,active=self._active,features=features)
+         def step(features):
+             started=time.monotonic();result=callback(features)

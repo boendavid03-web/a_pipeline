@@ -1,0 +1,1 @@
+./arena_robot_nav --method rpp --world sbend_corridor --scenario sbend --headless

@@ -1,0 +1,67 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "goal_local_xy": [
+    10.0,
+    5.0
+  ],
+  "seed": 42,
+  "sim_limit_s": 120.0,
+  "wall_limit_s": 210.0,
+  "terminal_status": 4,
+  "episode_state": 2,
+  "episode_info": "finished after 78.6s",
+  "sim_elapsed_s": 78.633,
+  "wall_elapsed_s": 117.521,
+  "tf_samples": 813,
+  "travel_m_excluding_reset_jumps": 7.707,
+  "start_map_xy": [
+    -0.008,
+    0.0
+  ],
+  "end_map_xy": [
+    15.128,
+    10.082
+  ],
+  "reference_map_xy": [
+    5.0,
+    5.0
+  ],
+  "goal_map_xy": [
+    15.0,
+    10.0
+  ],
+  "final_goal_error_m": 0.152,
+  "table_center_map_xy": [
+    12.0,
+    10.0
+  ],
+  "min_tf_distance_to_table_center_m": 1.454,
+  "trajectory_y_range_m": [
+    0.0,
+    12.223
+  ],
+  "collision_event_count_2d": 0,
+  "collision_event_ids_2d": [],
+  "post_goal_sim_s": 5.733,
+  "post_goal_cmd_samples": 0,
+  "post_goal_tf_samples": 49,
+  "post_goal_wheel_target_samples": 161,
+  "post_goal_odom_samples": 161,
+  "post_goal_max_cmd_component": null,
+  "post_goal_max_wheel_target": 0.0,
+  "post_goal_max_odom_twist": 0.0008452500013936774,
+  "post_goal_tf_drift_m": 0.0043,
+  "last_cmd_before_terminal": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "cmd_count": 2334,
+  "moving_cmd_count": 2332,
+  "scan_count": 843,
+  "plan_count": 293,
+  "status": "TASK_PASS_STOP_CMD_INCONCLUSIVE"
+}

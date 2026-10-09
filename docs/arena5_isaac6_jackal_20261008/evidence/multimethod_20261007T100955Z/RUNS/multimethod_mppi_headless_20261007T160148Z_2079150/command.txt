@@ -1,0 +1,1 @@
+[LOCAL_PATH] --method mppi --world sbend_corridor --scenario sbend --headless

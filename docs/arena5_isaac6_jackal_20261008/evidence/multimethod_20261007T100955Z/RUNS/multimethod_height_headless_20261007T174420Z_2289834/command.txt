@@ -1,0 +1,1 @@
+[LOCAL_PATH] --method height --world map_empty --scenario quicktest --headless

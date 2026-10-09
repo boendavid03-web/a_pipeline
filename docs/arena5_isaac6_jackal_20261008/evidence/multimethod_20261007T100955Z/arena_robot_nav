@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() { echo 'Usage: arena_robot_nav --method rpp|dwb|mppi|hateb|sicnav|dsrnn|cd-sarl|cadrl|drlvo|attngraph|kdma|rlrvo|height|scope|crowdsurfer|gensafenav|her-drl|navistar|navrep|sonic --world map_empty|sbend_corridor --scenario quicktest|table_leg_static|sbend [--headless|--gui]' >&2; exit 64; }
+method='' world='' scenario='' display='headless'
+while (($#)); do
+  case "$1" in
+    --method) (($# >= 2)) || usage; method=$2; shift 2 ;;
+    --world) (($# >= 2)) || usage; world=$2; shift 2 ;;
+    --scenario) (($# >= 2)) || usage; scenario=$2; shift 2 ;;
+    --headless) display='headless'; shift ;;
+    --gui) display='gui'; shift ;;
+    *) usage ;;
+  esac
+done
+scenario_file=''; obstacles_mode=random; goal_x=10.0; goal_y=5.0; sim_limit=120; wall_limit=210
+case "$world/$scenario" in
+  map_empty/quicktest) ;;
+  map_empty/table_leg_static)
+    obstacles_mode=scenario; goal_y=5.7 ;;
+  sbend_corridor/sbend) goal_x=1.0; goal_y=11.5; sim_limit=240; wall_limit=360 ;;
+  *) usage ;;
+esac
+case "$method" in
+  rpp) controller=regulated_pure_pursuit; native_method=nav2; nav2_smoke=1; autonav_probe=0 ;;
+  dwb|mppi|hateb) controller=$method; native_method=nav2; nav2_smoke=1; autonav_probe=0 ;;
+  sicnav|dsrnn|cd-sarl|cadrl|drlvo|attngraph|kdma|rlrvo|height|scope|crowdsurfer|gensafenav|her-drl|navistar|navrep|sonic) controller=regulated_pure_pursuit; native_method=$method; nav2_smoke=0; autonav_probe=1 ;;
+  *) usage ;;
+esac
+
+report_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+case_name="multimethod_${method}_${display}_$(date -u +%Y%m%dT%H%M%SZ)_$$"
+run_dir="$report_dir/RUNS/$case_name"
+mkdir "$run_dir"
+printf '%s\n' "RUN_DIR=$run_dir"
+printf '%s\n' "NATIVE_CASE=[LOCAL_PATH]$case_name" > "$run_dir/native_case.txt"
+printf '%q ' "$0" --method "$method" --world "$world" --scenario "$scenario" "--$display" > "$run_dir/command.txt"
+printf '\n' >> "$run_dir/command.txt"
+headless=1
+[[ $display == gui ]] && headless=0
+set +e
+env A_RUNTIME_HEADLESS="$headless" A_RUNTIME_NAV2_SMOKE="$nav2_smoke" A_RUNTIME_AUTONAV_PROBE="$autonav_probe" A_NAV2_CONTROLLER="$controller" A_WORLD="$world" A_SCENARIO_NAME="$scenario" A_RUNTIME_SCENARIO_FILE="$scenario_file" A_RUNTIME_OBSTACLES_MODE="$obstacles_mode" A_GOAL_X="$goal_x" A_GOAL_Y="$goal_y" A_PROBE_SIM_LIMIT_S="$sim_limit" A_PROBE_WALL_LIMIT_S="$wall_limit" \
+  python3 -B [LOCAL_PATH] \
+  "$native_method" 0 "$case_name" > "$run_dir/launcher.log" 2>&1
+code=$?
+set -e
+printf '%s\n' "$code" > "$run_dir/exit_code.txt"
+trace=[LOCAL_PATH]$case_name
+if [[ -f "$trace/autonomous_nav_summary.json" ]]; then
+  cp "$trace/autonomous_nav_summary.json" "$run_dir/result.json"
+fi
+printf '%s\n' "EXIT_CODE=$code" "RUN_DIR=$run_dir"
+exit "$code"

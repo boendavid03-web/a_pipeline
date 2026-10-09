@@ -29,7 +29,12 @@
     "physx_contact_safety": "not established",
     "pedestrian_interaction": "not tested in this stage",
     "cross_scene_generalization": "not established",
-    "raw_run_artifacts_in_this_branch": false
+    "raw_run_artifacts_in_this_branch": true,
+    "run_folders": 61,
+    "result_json_files": 53,
+    "full_native_runtime_traces": false,
+    "gui_screenshots": "excluded because captures show the full desktop",
+    "historical_isaac5_notes_and_scripts": "included separately under related_arena5_isaac5/"
   },
   "known_blockers": [
     "CrowdNav: exact trained SARL checkpoint unavailable",

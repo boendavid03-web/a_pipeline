@@ -1,0 +1,20 @@
+--- [LOCAL_PATH]	2026-10-07 11:10:20.634353466 -0700
++++ [LOCAL_PATH]	2026-10-07 11:10:20.643354202 -0700
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set -euo pipefail
+ 
+-usage() { echo 'Usage: arena_robot_nav --method rpp|dwb|mppi|sicnav|dsrnn|cd-sarl|cadrl|drlvo|attngraph|kdma|rlrvo|height|scope|crowdsurfer|gensafenav|her-drl|navistar|navrep|sonic --world map_empty|sbend_corridor --scenario quicktest|table_leg_static|sbend [--headless|--gui]' >&2; exit 64; }
++usage() { echo 'Usage: arena_robot_nav --method rpp|dwb|mppi|hateb|sicnav|dsrnn|cd-sarl|cadrl|drlvo|attngraph|kdma|rlrvo|height|scope|crowdsurfer|gensafenav|her-drl|navistar|navrep|sonic --world map_empty|sbend_corridor --scenario quicktest|table_leg_static|sbend [--headless|--gui]' >&2; exit 64; }
+ method='' world='' scenario='' display='headless'
+ while (($#)); do
+   case "$1" in
+@@ -23,7 +23,7 @@
+ esac
+ case "$method" in
+   rpp) controller=regulated_pure_pursuit; native_method=nav2; nav2_smoke=1; autonav_probe=0 ;;
+-  dwb|mppi) controller=$method; native_method=nav2; nav2_smoke=1; autonav_probe=0 ;;
++  dwb|mppi|hateb) controller=$method; native_method=nav2; nav2_smoke=1; autonav_probe=0 ;;
+   sicnav|dsrnn|cd-sarl|cadrl|drlvo|attngraph|kdma|rlrvo|height|scope|crowdsurfer|gensafenav|her-drl|navistar|navrep|sonic) controller=regulated_pure_pursuit; native_method=$method; nav2_smoke=0; autonav_probe=1 ;;
+   *) usage ;;
+ esac

@@ -1,0 +1,27 @@
+{
+  "world": "map_empty",
+  "scenario": "quicktest",
+  "robot": "jackal",
+  "human_count": 0,
+  "goal_local_xy": [
+    10.0,
+    5.0
+  ],
+  "seed": 42,
+  "sim_limit_s": 120.0,
+  "wall_limit_s": 210.0,
+  "status": "FAIL",
+  "error": "TimeoutError('Autonomous navigation did not reach a terminal result within the bounded task window')",
+  "collision_event_count_2d": 0,
+  "collision_event_ids_2d": [],
+  "goal_map_xy": [
+    15.0,
+    10.0
+  ],
+  "final_goal_error_m": 5.708,
+  "closest_goal_error_m": 4.952,
+  "end_map_xy": [
+    11.829,
+    5.254
+  ]
+}

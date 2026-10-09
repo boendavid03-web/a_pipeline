@@ -6,7 +6,10 @@ This folder is the public handoff for the Arena5 zero-pedestrian Jackal reproduc
 
 1. [`STATUS.json`](STATUS.json) for machine-readable scope and current counts.
 2. [`METHOD_MATRIX.md`](METHOD_MATRIX.md) for per-method outcomes and their evidence limits.
-3. [`EVIDENCE_INDEX.md`](EVIDENCE_INDEX.md) for what is and is not present in this public branch.
+3. [`EVIDENCE_INDEX.md`](EVIDENCE_INDEX.md) for the evidence and source snapshot map.
+4. [`evidence/multimethod_20261007T100955Z/`](evidence/multimethod_20261007T100955Z/) for the per-run archive.
+5. [`source/arena_workspace/`](source/arena_workspace/) for worktree patches and source provenance.
+6. [`related_arena5_isaac5/`](related_arena5_isaac5/) for earlier Isaac Sim 5.1 notes and scripts, separate from this Isaac Sim 6 stage.
 
 ## Current stage
 
@@ -18,15 +21,17 @@ This folder is the public handoff for the Arena5 zero-pedestrian Jackal reproduc
 
 ## Provenance and limits
 
-The stage report and source checkout were maintained separately from this repository; the raw run tree and native ROS/Isaac logs are not published in this branch. The main `a_pipeline` checkout contains separate historical Isaac Sim 5.1 work. Do not assume its source, launch scripts, or assets reproduce this Isaac Sim 6.0.0 stage.
+The stage report and source checkout were maintained separately from this repository. This branch now includes the textual per-run archive and local source patches. The main `a_pipeline` checkout contains separate historical Isaac Sim 5.1 work. Do not assume its source, launch scripts, or assets reproduce this Isaac Sim 6.0.0 stage.
 
-The method matrix is the contemporaneous ledger. Run directory names are preserved as identifiers, but the raw `result.json`, trajectories, native logs, and source/config snapshots are not included here. Treat detailed measurements as reported results until those artifacts are published or independently reproduced. No model weights, simulator assets, or large run archives are included.
+The method matrix is the contemporaneous ledger. Run directory names, commands, launcher logs, exit codes, and available `result.json` files are included. Local absolute paths and LAN addresses were redacted. The 61 run folders contain 53 result JSON files; full native runtime traces are not included. The source folder contains patches against recorded upstream commits, rather than a second copy of the multi-gigabyte source and asset tree. The exact source submodules remain separate upstream repositories. The related Isaac Sim 5.1 folder adds older reports and validation scripts from the local `a_pipeline` worktree, plus the Jackal contact/drive forensics already published on `experiment/scenario-topology-ab-e314f56` at `776ff4b`.
+
+All 7 GUI screenshot files were omitted because they capture the full desktop, including unrelated applications and chat. No model weights, simulator assets, checkpoints, caches, or generated Python metadata were included. The legacy worktree's checkpoint and ZIP artifacts were excluded.
 
 ## Next work
 
-1. Publish or attach a minimal, privacy-reviewed evidence bundle for the cited runs (per-run result JSON, command/config/source identity, and selected trajectories/log excerpts).
+1. Attach the missing native runtime traces and the remaining 8 result JSON files if they can be recovered and reviewed.
 2. Resolve the CrowdNav checkpoint and SoNIC policy identity blockers without substituting random or unrelated weights.
 3. Revisit the CADRL radius candidate only after its resource preflight clears; run one bounded case and preserve the original result.
-4. Keep original-scene, S-bend, GUI, pedestrian, and PhysX-contact gates as separate follow-up work. Do not promote the current quicktest ledger to those layers.
+4. Keep original-scene, S-bend, pedestrian, and PhysX-contact gates as separate follow-up work. Do not promote the current quicktest ledger to those layers.
 
 Snapshot date: 2026-10-09 (source ledger timestamp: 2026-10-08 02:00 UTC).

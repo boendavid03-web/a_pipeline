@@ -1,0 +1,44 @@
+{
+  "upstream_project": "voshch/Arena (Arena Jazzy / Isaac Sim 6 workspace)",
+  "superproject_base_commit": "eefb505c27f8e7deac43fd8229925c6f8edb1d20",
+  "superproject_origin": "https://github.com/voshch/Arena.git",
+  "captured_submodules": [
+    {
+      "path": "arena_isaac",
+      "commit": "1445c751503f0cfcd14248859af16ecd47b8e6b7",
+      "origin": "https://github.com/Arena-Rosnav/arena-isaac",
+      "local_worktree_changes_captured": true
+    },
+    {
+      "path": "arena_planners",
+      "commit": "6ac21ed975a5a1f7fd78abef041445a1909c2f50",
+      "origin": "https://github.com/arena-planners/arena_planners.git",
+      "local_worktree_changes_captured": true
+    },
+    {
+      "path": "arena_robots",
+      "commit": "f81bb02221c90d6064a3b7369a7b13ffb013851d",
+      "origin": "https://github.com/arena-robots/arena_robots.git",
+      "local_worktree_changes_captured": true
+    },
+    {
+      "path": "humansim",
+      "commit": "4fdb401a5c72bdba1cb3d73bae56e78df5e5c031",
+      "origin": "https://github.com/voshch/humansim.git",
+      "local_worktree_changes_captured": true
+    }
+  ],
+  "included_worktree_only_files": [
+    "arena_simulation_setup/worlds/map_empty/scenarios/table_leg_static/scenario.json",
+    "task_generator/tests/ros/test_drl_terminal_stop.py",
+    "task_generator/tests/ros/test_humansim_robot_feedback.py"
+  ],
+  "patches": [
+    "arena_isaac_worktree.patch",
+    "arena_planners_worktree.patch",
+    "arena_robots_worktree.patch",
+    "arena_root_worktree.patch",
+    "humansim_worktree.patch"
+  ],
+  "scope_note": "Patch snapshots of the local worktree at publication time. Not merged upstream, not tested by this publication step, and not a standalone workspace."
+}

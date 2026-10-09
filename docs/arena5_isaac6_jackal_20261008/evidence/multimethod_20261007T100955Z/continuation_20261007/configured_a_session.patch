@@ -1,0 +1,11 @@
+--- [LOCAL_PATH]	2026-10-07 10:29:41.814654458 -0700
++++ [LOCAL_PATH]	2026-10-07 10:29:41.828654287 -0700
+@@ -6,7 +6,7 @@
+ from gpu_preflight import require_safe
+ BASE=pathlib.Path('[LOCAL_PATH]');HERE=pathlib.Path(__file__).resolve().parent;RUN=HERE.parents[1]
+ if len(sys.argv)!=4:raise SystemExit('Usage: METHOD(nav2/sicnav/dsrnn/cd-sarl/cadrl) HUMANS(0/1) UNIQUE_CASE')
+-method,count,case=sys.argv[1:];assert method in {'nav2','sicnav','dsrnn','cd-sarl','cadrl'} and count in {'0','1'} and '/' not in case
++method,count,case=sys.argv[1:];assert method in {'nav2','sicnav','dsrnn','cd-sarl','cadrl','drlvo','attngraph','kdma','rlrvo','height','scope','crowdsurfer','gensafenav','her-drl','navistar','navrep','sonic'} and count in {'0','1'} and '/' not in case
+ require_safe()
+ # Exclusive A lock, after resource gate; no stale-lock deletion.
+ lock=RUN/'A_RUNTIME.lock';handle=lock.open('x');handle.write(json.dumps({'argv':sys.argv,'pid':__import__('os').getpid()}));handle.close();__import__('os').environ['A3_OWNED_RUNTIME_LOCK']=str(lock)

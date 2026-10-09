@@ -1,0 +1,79 @@
+{
+  "scope": "prior 2026-10-06 runtime; not the 2026-10-07 collision case",
+  "trace": "[LOCAL_PATH]",
+  "actual_neural_input_count": 149,
+  "observation_count": 188,
+  "step_count": 149,
+  "human_count_values": [
+    0
+  ],
+  "robot_node_shape": [
+    1,
+    1,
+    7
+  ],
+  "temporal_edges_shape": [
+    1,
+    1,
+    2
+  ],
+  "spatial_edges_shape": [
+    1,
+    5,
+    2
+  ],
+  "spatial_rows_all_15_15": true,
+  "nonfinite_input_scalar_count": 0,
+  "first_actual_input": {
+    "robot_node": [
+      [
+        [
+          0.0,
+          0.0,
+          0.30000001192092896,
+          2.00008487701416,
+          3.814697265625e-06,
+          1.0,
+          0.0
+        ]
+      ]
+    ],
+    "temporal_edges": [
+      [
+        [
+          -0.00029399999766610563,
+          0.0
+        ]
+      ]
+    ],
+    "spatial_edges": [
+      [
+        [
+          15.0,
+          15.0
+        ],
+        [
+          15.0,
+          15.0
+        ],
+        [
+          15.0,
+          15.0
+        ],
+        [
+          15.0,
+          15.0
+        ],
+        [
+          15.0,
+          15.0
+        ]
+      ]
+    ]
+  },
+  "first_step_action": [
+    0.1,
+    -0.4
+  ],
+  "step_action_nonfinite_count": 0
+}

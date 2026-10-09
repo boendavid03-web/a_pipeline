@@ -1,0 +1,1 @@
+./arena_robot_nav --method dwb --world map_empty --scenario quicktest --headless
